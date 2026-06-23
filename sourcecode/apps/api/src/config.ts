@@ -5,7 +5,8 @@ export interface AppConfig {
   ALLOWED_ORIGINS: string[]
   DATABASE_URL: string
   REDIS_URL: string
-  KEYCLOAK_ISSUER_URL: string
+  KEYCLOAK_ISSUER_URL: string   // what tokens carry as `iss` (browser-facing); validated as allowedIss
+  KEYCLOAK_INTERNAL_URL: string // API-reachable realm base for JWKS discovery (same keys, any host)
   KEYCLOAK_API_AUDIENCE: string
 }
 
@@ -25,6 +26,8 @@ export function loadConfig(): AppConfig {
     DATABASE_URL: process.env.DATABASE_URL ?? '',
     REDIS_URL: process.env.REDIS_URL ?? '',
     KEYCLOAK_ISSUER_URL: process.env.KEYCLOAK_ISSUER_URL ?? '',
+    KEYCLOAK_INTERNAL_URL:
+      process.env.KEYCLOAK_INTERNAL_URL ?? process.env.KEYCLOAK_ISSUER_URL ?? '',
     KEYCLOAK_API_AUDIENCE: process.env.KEYCLOAK_API_AUDIENCE ?? 'agentpm-api',
   }
 }

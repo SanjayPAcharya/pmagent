@@ -15,14 +15,14 @@
 ## Now / Next / Blocked
 
 - **Current phase:** Phase 1 — Skeleton + Auth + Platform
-- **Now:** ✅ **Stage A complete — verified locally & committed (`beac2c9`, not pushed).** `docker compose up` brings up api + web + keycloak + postgres + redis (all green); API `/health` 200, `agentpm` realm imported, init migration applied, Keycloak admin reachable over HTTP.
-- **Next:** Stage B — auth (JWKS verify, `requireAuth` + JIT provisioning, `/api/me`)
-- **Blocked:** none. Notes for next session: (1) `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`; (2) before Stage B add `127.0.0.1 keycloak` to `/etc/hosts` and switch the Keycloak URLs to `http://keycloak:8080` so token `iss` matches (see phase-1 gotchas).
+- **Now:** ✅ **Stage B (API auth) complete & verified.** API verifies Keycloak tokens (JWKS + iss + aud); `/api/me` JIT-provisions a User on first valid token. Verified with a real minted token: 401 without / with tampered token, 200 with valid token, PATCH works, idempotent (1 user row). Stage A still green.
+- **Next:** Stage C — Organizations + Projects CRUD (uses `requireOrgRole`/RBAC, already implemented).
+- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. (No `/etc/hosts` hack needed — issuer validation and JWKS fetch are decoupled: `KEYCLOAK_ISSUER_URL` browser-facing vs `KEYCLOAK_INTERNAL_URL` container-reachable.)
 
 ---
 
 ## Phase 1 — Skeleton, Auth (Keycloak), Platform → [plan](agentpm-plan/phases/phase-1-skeleton-auth-platform.md)
-**Status:** 🟡 in progress — **Stage A done (boots & verified)**; Stages B–E pending
+**Status:** 🟡 in progress — **Stages A + B done (boots, auth verified)**; Stages C–E pending
 
 Scaffold & data
 - [x] Monorepo: pnpm workspaces + Turborepo (`package.json`, `pnpm-workspace.yaml`, `turbo.json`)
@@ -35,9 +35,9 @@ Local container stack (so `docker compose up` works)
 - [x] Local Keycloak container + committed `realm-agentpm.json` (clients, audience mapper, self-registration)
 
 Backend
-- [~] Fastify bootstrap + middleware — CORS, rate-limit, websocket, `/health` done; **JWKS verify pending (Stage B)**
-- [ ] Auth middleware (`requireAuth` + JIT user provisioning, `requireOrgRole`) + RBAC
-- [ ] `GET`/`PATCH /api/me`
+- [x] Fastify bootstrap + middleware — CORS, rate-limit, websocket, `/health`, **JWKS token verification (iss + aud)**
+- [x] Auth middleware (`requireAuth` + JIT user provisioning, `requireOrgRole`) + RBAC
+- [x] `GET`/`PATCH /api/me`
 - [ ] Organizations CRUD + member management
 - [ ] Projects CRUD (no GitHub repo link yet)
 
@@ -112,6 +112,7 @@ Identity (external prereqs)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-23 | P1/B | Stage B (API auth): @fastify/jwt + get-jwks JWKS verification (iss/aud); issuer vs JWKS host decoupled (no /etc/hosts). `requireAuth` + JIT User provisioning, `requireOrgRole` + RBAC, `GET`/`PATCH /api/me`. Verified with real Keycloak token: 401/tampered→401, valid→200, PATCH ok, idempotent (1 row). | _pending_ |
 | 2026-06-23 | P1/A | Fix: local dev = plain HTTP (no TLS). Added dev-only `keycloak-init` (shares KC netns, sets master realm `sslRequired=NONE` on every up) so the admin console works over HTTP; not in prod overlay (prod keeps HTTPS via Caddy). Synced ref 12. | beac2c9 |
 | 2026-06-23 | P1/A | Fix: moved prod Keycloak flags (start --optimized, KC_HOSTNAME, KC_PROXY_HEADERS, KC_HTTP_ENABLED) out of compose base → dev base now `start-dev`. Resolves admin-console "HTTPS required" on localhost. Synced ref 12 (base dev-safe; prod flags in prod overlay). | beac2c9 |
 | 2026-06-23 | P1/A | Stage A scaffold: monorepo, Dockerfiles, compose (base+dev), Postgres init, Keycloak realm, Prisma schema+init migration, Fastify `/health`, Vite/React/Tailwind shell. Verified: install, typecheck, build, test, `docker compose up` (5 services green), `/health` 200, realm imported, migration applied. | beac2c9 |

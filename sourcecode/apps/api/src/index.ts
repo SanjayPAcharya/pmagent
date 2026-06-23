@@ -2,6 +2,8 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import rateLimit from '@fastify/rate-limit'
 import websocket from '@fastify/websocket'
+import jwt, { type TokenOrHeader } from '@fastify/jwt'
+import buildGetJwks from 'get-jwks'
 import { loadConfig } from './config.js'
 
 export async function buildServer() {
@@ -16,9 +18,37 @@ export async function buildServer() {
   })
 
   await app.register(cors, { origin: config.ALLOWED_ORIGINS, credentials: true })
-  // In-memory for now; Redis-backed rate limiting is wired with auth (Stage B).
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
   await app.register(websocket) // WS room handling lands in Phase 3
+
+  // ── Keycloak token verification (the API is an OIDC resource server) ──
+  // Verify signature against the realm's JWKS + check iss/aud. Keys are fetched
+  // from KEYCLOAK_INTERNAL_URL (reachable from the container); the issuer the
+  // token carries (browser-facing) is validated separately via allowedIss — so
+  // there's no need to align the two hostnames (no /etc/hosts hack).
+  const getJwks = buildGetJwks({ providerDiscovery: true })
+  await app.register(jwt, {
+    decode: { complete: true },
+    // @fastify/jwt calls the function secret as (request, tokenOrHeader, cb).
+    // With complete decode, tokenOrHeader carries `.header` (kid/alg). Resolve
+    // the realm signing key from Keycloak's JWKS for that kid.
+    secret: (
+      _request,
+      tokenOrHeader: TokenOrHeader,
+      cb: (err: Error | null, secret: string | Buffer | undefined) => void,
+    ) => {
+      const header = (tokenOrHeader as { header?: { kid?: string; alg?: string } }).header ??
+        (tokenOrHeader as { kid?: string; alg?: string })
+      getJwks
+        .getPublicKey({ kid: header.kid!, alg: header.alg!, domain: config.KEYCLOAK_INTERNAL_URL })
+        .then((key) => cb(null, key))
+        .catch((err: unknown) => cb(err as Error, undefined))
+    },
+    verify: {
+      allowedIss: config.KEYCLOAK_ISSUER_URL,
+      allowedAud: config.KEYCLOAK_API_AUDIENCE,
+    },
+  })
 
   app.get('/health', async () => ({
     status: 'ok',
@@ -26,7 +56,8 @@ export async function buildServer() {
     ts: new Date().toISOString(),
   }))
 
-  // Phase 1 (Stage B+): /api/me, /api/orgs, /api/projects
+  await app.register(import('./routes/me.js'), { prefix: '/api/me' })
+  // Stage C: /api/orgs, /api/projects
   return app
 }
 
