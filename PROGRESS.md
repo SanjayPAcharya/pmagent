@@ -15,14 +15,14 @@
 ## Now / Next / Blocked
 
 - **Current phase:** Phase 1 — Skeleton + Auth + Platform
-- **Now:** ✅ **Stage C (Org + Project CRUD) complete & verified.** Orgs CRUD (creator→OWNER) + members; Projects CRUD; RBAC via `requireOrgRole`/`assertOrgRole`; global error handler (ApiError + Zod→400). Verified with real tokens: create/list/get, project create/list, validation 400, last-owner guard 400, non-member → 403. Stages A+B still green.
-- **Next:** Stage D — frontend auth (keycloak-js login/signup/social) + org/project UI + typed API client.
-- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. (Automated API tests for auth/org/project land in Stage E; verified manually so far.)
+- **Now:** ✅ **Stage D (frontend) complete & verified in-browser by user.** keycloak-js login/signup (PKCE) → JIT user → dashboard; create org (OWNER) → create project, all via the typed API client (token attach + refresh). User confirmed full flow end-to-end. Stages A–C still green.
+- **Next:** Stage E — automated tests (auth middleware + org/project cases) + tidy-up → Phase 1 ready to push.
+- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`.
 
 ---
 
 ## Phase 1 — Skeleton, Auth (Keycloak), Platform → [plan](agentpm-plan/phases/phase-1-skeleton-auth-platform.md)
-**Status:** 🟡 in progress — **Stages A + B + C done (boots, auth, platform CRUD)**; Stages D–E pending
+**Status:** 🟡 in progress — **Stages A–D done (boots, auth, platform CRUD, frontend)**; Stage E (tests) pending
 
 Scaffold & data
 - [x] Monorepo: pnpm workspaces + Turborepo (`package.json`, `pnpm-workspace.yaml`, `turbo.json`)
@@ -42,11 +42,11 @@ Backend
 - [x] Projects CRUD (no GitHub repo link yet)
 
 Frontend
-- [~] Vite + React 18 + TS + Tailwind — done; **shadcn/ui init pending**
-- [ ] React Router + protected layout / auth guard
-- [ ] keycloak-js auth (login, signup, social buttons, silent refresh)
-- [ ] Dashboard + org/project navigation
-- [ ] Typed API client (attaches token + refresh-on-401) — placeholder fetch only so far
+- [x] Vite + React 18 + TS + Tailwind (shadcn/ui deferred — plain Tailwind for now)
+- [x] React Router + protected layout / auth gate
+- [x] keycloak-js auth (login, signup, PKCE, token auto-refresh; social shown on the KC page once IdPs added)
+- [x] Dashboard + org/project navigation
+- [x] Typed API client (attaches token + refresh-before / retry-on-401)
 
 Identity (external prereqs)
 - [x] Keycloak realm running locally (email/password first)
@@ -112,6 +112,7 @@ Identity (external prereqs)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-23 | P1/D | Stage D (frontend): keycloak-js auth (login/signup, PKCE, token refresh), auth-gated React Router + Layout, typed API client (token attach + retry-on-401), Dashboard (orgs + create) + OrgProjects (projects + create) via React Query. Verified in-browser by user: signup → create org (OWNER) → create project. shadcn deferred (plain Tailwind). | _pending_ |
 | 2026-06-23 | P1/C | Stage C (platform CRUD): Organizations CRUD + members (creator→OWNER, last-owner guard, add-by-email), Projects CRUD; shared authz (`assertOrgRole`/`requireOrgRole`/RBAC), slug helper, global error handler (ApiError + ZodError→400). Verified with real tokens: CRUD, validation 400, last-owner 400, non-member 403. | 2560397 |
 | 2026-06-23 | P1/B | Stage B (API auth): @fastify/jwt + get-jwks JWKS verification (iss/aud); issuer vs JWKS host decoupled (no /etc/hosts). `requireAuth` + JIT User provisioning, `requireOrgRole` + RBAC, `GET`/`PATCH /api/me`. Verified with real Keycloak token: 401/tampered→401, valid→200, PATCH ok, idempotent (1 row). | 8f6d5c6 |
 | 2026-06-23 | P1/A | Fix: local dev = plain HTTP (no TLS). Added dev-only `keycloak-init` (shares KC netns, sets master realm `sslRequired=NONE` on every up) so the admin console works over HTTP; not in prod overlay (prod keeps HTTPS via Caddy). Synced ref 12. | beac2c9 |
