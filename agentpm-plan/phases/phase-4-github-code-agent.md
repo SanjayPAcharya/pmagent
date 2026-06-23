@@ -2,7 +2,7 @@
 
 > **Goal:** The first AI agent. Connect a project to a GitHub repository via a GitHub App, then let a user assign a ticket to the **Code Agent**, which reads the repo, generates an implementation with the Anthropic API, opens a PR, and links it back to the ticket. Includes the job queue, the in-process worker, the approval gate, and PR-level rollback.
 
-**Depends on:** Phase 1 (projects), Phase 3 (tickets + event bus + WebSocket), Phase 2 (deploys the agent worker).
+**Depends on:** Phase 1 (projects), Phase 2 (tickets + event bus + WebSocket), Phase 3 (deploys the agent worker).
 
 **References:**
 - [03-data-models.md](../references/03-data-models.md) — adds `AgentAction`, `Approval`, `Integration`, and uses ticket agent fields
@@ -24,7 +24,7 @@
 - [ ] PR creator (branch, commits, PR with description)
 - [ ] BullMQ queue + concurrency guard (atomic claim + deterministic jobId)
 - [ ] Agent worker process (consumes `agent-jobs`, runs `runCodeAgent` in-process)
-- [ ] Worker deployment: the FargateService reserved in Phase 2's compute stack
+- [ ] Worker deployment: the FargateService reserved in Phase 3's compute stack
 - [ ] AgentAction logging + rollback (close PR + delete branch, reset ticket)
 - [ ] Agent approval gate — server-side enforcement
 - [ ] Frontend: "Assign to Code Agent", agent activity feed, approval gate UI, PR link
@@ -477,7 +477,7 @@ async function start() {
 start().catch((err) => { console.error('Agent worker failed to start:', err); process.exit(1) })
 ```
 
-**Deployment:** the worker is a separate long-lived process. Define the `AgentWorkerService` (`ecs.FargateService`) reserved in [phase-2](phase-2-dev-deployment-cicd.md)'s compute stack — it reuses the API image with `command: ['node', 'dist/worker.js']`, runs in a public subnet (no NAT) so it can reach Anthropic + GitHub, has no load balancer, and gets the `DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`, `GITHUB_APP_PRIVATE_KEY` secrets. For the earliest MVP it may be folded into the API container to save ~$36/mo (see [09-cost-estimates.md](../references/09-cost-estimates.md)).
+**Deployment:** the worker is a separate long-lived process. Define the `AgentWorkerService` (`ecs.FargateService`) reserved in [phase-3](phase-3-dev-deployment-cicd.md)'s compute stack — it reuses the API image with `command: ['node', 'dist/worker.js']`, runs in a public subnet (no NAT) so it can reach Anthropic + GitHub, has no load balancer, and gets the `DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`, `GITHUB_APP_PRIVATE_KEY` secrets. For the earliest MVP it may be folded into the API container to save ~$36/mo (see [09-cost-estimates.md](../references/09-cost-estimates.md)).
 
 **Job lifecycle:** API enqueues + sets `IN_PROGRESS` → `QueueEvents` emits `agent.started` (WS) → worker runs `runCodeAgent()` → agent writes `AgentAction` + updates ticket (`IN_REVIEW`+PR on success, `BLOCKED` on failure) → `QueueEvents` emits `agent.completed`/`agent.failed` (WS) → notification workers fan out (Phase 5).
 
@@ -545,12 +545,12 @@ export async function rollbackTicket(ticketId: string, userId: string) {
 
 ## Frontend additions
 
-Wire the deferred Phase 3 ticket-drawer sections:
+Wire the deferred Phase 2 ticket-drawer sections:
 - **Agent Assignment panel:** "Assign to Code Agent" → `POST /api/tickets/:id/assign-agent`; show current agent type + status.
 - **Agent Action Log:** collapsible `AgentAction` list (action type, reasoning, duration, status); "Rollback" button when a PR exists.
 - **Approval Gate:** when awaiting approval, show what the agent did (diff preview) + Approve / Request Changes.
 - **PR Link:** opens the GitHub PR in a new tab.
-- **Agent Activity Feed** (`AgentActivityFeed.tsx`): real-time feed of agent actions, filterable by agent type, virtualized, updates live via the WebSocket `agent.*` events from Phase 3's client.
+- **Agent Activity Feed** (`AgentActivityFeed.tsx`): real-time feed of agent actions, filterable by agent type, virtualized, updates live via the WebSocket `agent.*` events from Phase 2's client.
 
 ---
 

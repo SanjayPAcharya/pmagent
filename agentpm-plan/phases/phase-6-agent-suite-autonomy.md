@@ -2,7 +2,7 @@
 
 > **Goal:** Complete the agent lifecycle from idea to deployed feature. Add the Spec, QA, Deploy, and Observability agents, introduce per-run container isolation, and build the graduated autonomy dial that governs which phase transitions need a human.
 
-**Depends on:** Phase 4 (Code Agent, queue, worker, approval gate), Phase 5 (notifications), Phase 2 (infra to extend for isolation + deploys).
+**Depends on:** Phase 4 (Code Agent, queue, worker, approval gate), Phase 5 (notifications), Phase 3 (infra to extend for isolation + deploys).
 
 > This maps to the original plan's **Phase 2 — Full Agent Suite** (Weeks 7–18).
 
@@ -55,7 +55,7 @@
 
 ## Agent isolation (graduates from in-process)
 
-The QA Agent executes generated code, so it needs hard sandboxing. This is where the worker's in-process dispatch (Phase 4) is replaced with an **ECS `runTask` per run** — each agent run gets its own Fargate task with no shared filesystem. Because every agent is a pure function decoupled from invocation, the agent code itself does not change; only the worker's dispatch does. Update the network/compute stacks ([phase-2](phase-2-dev-deployment-cicd.md)) to grant agent tasks their own security group (already reserved as `AgentSG`) and minimal IAM.
+The QA Agent executes generated code, so it needs hard sandboxing. This is where the worker's in-process dispatch (Phase 4) is replaced with an **ECS `runTask` per run** — each agent run gets its own Fargate task with no shared filesystem. Because every agent is a pure function decoupled from invocation, the agent code itself does not change; only the worker's dispatch does. Update the network/compute stacks ([phase-3](phase-3-dev-deployment-cicd.md)) to grant agent tasks their own security group (already reserved as `AgentSG`) and minimal IAM.
 
 ## Autonomy dial semantics
 

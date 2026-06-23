@@ -1,6 +1,6 @@
 # Reference: Monitoring & Observability
 
-> Stable reference. Wired up during Phase 2 (infra) and refined per phase. Source: §15 of the original plan.
+> Stable reference. Wired up during Phase 3 (infra) and refined per phase. Source: §15 of the original plan.
 
 ## CloudWatch alarms
 

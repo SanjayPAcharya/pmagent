@@ -25,7 +25,7 @@
 
 ## Notes for builders
 
-- **Sprint Planner Agent** decomposes a milestone into tickets with `goal` / `acceptanceCriteria` / `constraints` (the same structured fields humans fill in Phase 3) and wires `TicketDependency` edges into a dependency graph.
+- **Sprint Planner Agent** decomposes a milestone into tickets with `goal` / `acceptanceCriteria` / `constraints` (the same structured fields humans fill in Phase 2) and wires `TicketDependency` edges into a dependency graph.
 - **Coordination is still queue-mediated** (Principle 1): the coordination layer schedules work and shares context, but agents never call each other directly. Merge-conflict prediction looks at the files each in-flight Code Agent run touches before parallelizing.
 - **Gates still apply:** auto-execution runs only as far as each phase's autonomy level allows; production always stops for a human ([phase-6](phase-6-agent-suite-autonomy.md)).
 - **Analytics:** velocity tracking and team-level autonomy reports build on the `AgentAction` audit log and `Sprint.velocity`.

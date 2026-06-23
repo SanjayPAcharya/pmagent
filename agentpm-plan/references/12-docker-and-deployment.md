@@ -1,6 +1,6 @@
 # Reference: Docker Topology & Deployment
 
-> Stable reference. **The app runs in Docker — the same images in dev and prod (parity).** The frontend is a container (nginx), not S3/CloudFront. Primary deployment target: **Docker Compose on a VM**; AWS ECS is a documented scale-up path (see [phase-2](../phases/phase-2-dev-deployment-cicd.md)).
+> Stable reference. **The app runs in Docker — the same images in dev and prod (parity).** The frontend is a container (nginx), not S3/CloudFront. Primary deployment target: **Docker Compose on a VM**; AWS ECS is a documented scale-up path (see [phase-3](../phases/phase-3-dev-deployment-cicd.md)).
 >
 > **Data placement (key rule):** **in production, state lives on managed cloud services — NOT in containers on the VM.** Postgres → managed (AWS RDS, or Neon/Supabase); Redis → managed (AWS ElastiCache, or Upstash). Only **stateless** app containers (web, api, worker, keycloak, caddy) run on the VM. **In local dev, everything (incl. Postgres + Redis) runs in containers** so a laptop needs nothing but Docker.
 
@@ -41,7 +41,7 @@
 ## Images (one Dockerfile per buildable service)
 
 ### API — `apps/api/Dockerfile`
-Multi-stage Node build (see [phase-2](../phases/phase-2-dev-deployment-cicd.md) for the full file). `CMD ["node", "dist/index.js"]`.
+Multi-stage Node build (see [phase-3](../phases/phase-3-dev-deployment-cicd.md) for the full file). `CMD ["node", "dist/index.js"]`.
 
 ### Agent worker — no separate image
 Reuses the API image with the command overridden to `node dist/worker.js` (wired in [phase-4](../phases/phase-4-github-code-agent.md)).
@@ -422,4 +422,4 @@ Pick providers in the same region as the VM to keep latency low. Everything else
 
 ## When to graduate
 
-This setup already keeps state off the VM — the single biggest risk of one host is gone. Compose-on-VM then scales vertically (bigger box) a long way. Move to **ECS Fargate** (same images — see [phase-2](../phases/phase-2-dev-deployment-cicd.md) alternative) or **Kubernetes** only when you need horizontal auto-scaling, zero-downtime rolling deploys across nodes, or multi-node HA for the *app tier*.
+This setup already keeps state off the VM — the single biggest risk of one host is gone. Compose-on-VM then scales vertically (bigger box) a long way. Move to **ECS Fargate** (same images — see [phase-3](../phases/phase-3-dev-deployment-cicd.md) alternative) or **Kubernetes** only when you need horizontal auto-scaling, zero-downtime rolling deploys across nodes, or multi-node HA for the *app tier*.

@@ -15,14 +15,14 @@
 
 ## Build flow (re-sequenced)
 
-This re-sequences the original plan into the order things should actually be built: **stand up the platform skeleton + login first, get it deploying to dev with CI/CD second, then layer the PM core, then third-party integrations and agents.**
+This re-sequences the original plan into the order things should actually be built: **stand up the platform skeleton + login first, layer the PM core second, get it deploying to dev with CI/CD third, then third-party integrations and agents.**
 
 ```
 Phase 1  Skeleton + Auth + Platform     → app shell, Keycloak login/signup (Google/Microsoft/GitHub), orgs & projects
    │
-Phase 2  Dev Deployment + CI/CD         → AWS infra (CDK), Docker, GitHub Actions, deploy to dev/staging
+Phase 2  PM Core                        → tickets, kanban board, sprints, real-time (WebSocket)
    │
-Phase 3  PM Core                        → tickets, kanban board, sprints, real-time (WebSocket)
+Phase 3  Dev Deployment + CI/CD         → Docker, GitHub Actions, managed data, deploy to dev/staging
    │
 Phase 4  GitHub Integration + Code Agent→ GitHub App, repo linking, queue/worker, Code Agent → PR
    │
@@ -60,8 +60,8 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 | Phase | File | Goal |
 |---|---|---|
 | 1 | [phase-1-skeleton-auth-platform.md](phases/phase-1-skeleton-auth-platform.md) | Frontend + backend skeleton, Keycloak login + self-signup (Google/Microsoft/GitHub), create the platform (orgs & projects) |
-| 2 | [phase-2-dev-deployment-cicd.md](phases/phase-2-dev-deployment-cicd.md) | Basic deployment to dev/staging with CI/CD |
-| 3 | [phase-3-pm-core.md](phases/phase-3-pm-core.md) | Tickets, kanban board, sprints, real-time updates |
+| 2 | [phase-2-pm-core.md](phases/phase-2-pm-core.md) | Tickets, kanban board, sprints, real-time updates |
+| 3 | [phase-3-dev-deployment-cicd.md](phases/phase-3-dev-deployment-cicd.md) | Basic deployment to dev/staging with CI/CD |
 | 4 | [phase-4-github-code-agent.md](phases/phase-4-github-code-agent.md) | Third-party integration: GitHub App + Code Agent → PR |
 | 5 | [phase-5-notifications-channels.md](phases/phase-5-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
 | 6 | [phase-6-agent-suite-autonomy.md](phases/phase-6-agent-suite-autonomy.md) | Spec / QA / Deploy / Observability agents + autonomy dial |

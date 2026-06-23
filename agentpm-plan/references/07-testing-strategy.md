@@ -24,7 +24,7 @@ apps/web/__tests__/e2e/board.spec.ts            → Playwright E2E
 ## Critical test cases
 
 ```typescript
-// Ticket routes (Phase 3)
+// Ticket routes (Phase 2)
 describe('POST /api/tickets', () => {
   it('creates ticket with all required fields')
   it('rejects ticket without projectId')

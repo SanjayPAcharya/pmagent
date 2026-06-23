@@ -55,7 +55,7 @@ GET    /api/projects/:projectId/autonomy       Get autonomy settings          (P
 PATCH  /api/projects/:projectId/autonomy       Update autonomy settings       (Phase 6)
 ```
 
-### Tickets (`/api/tickets`) — Phase 3 (CRUD); agent endpoints land in Phase 4
+### Tickets (`/api/tickets`) — Phase 2 (CRUD); agent endpoints land in Phase 4
 ```
 POST   /api/tickets                            Create ticket
 GET    /api/tickets?projectId=:id&sprintId=:id List tickets (filterable)
@@ -73,7 +73,7 @@ GET    /api/tickets/:ticketId/actions          List agent actions
 POST   /api/tickets/bulk-update                Bulk status/sprint update
 ```
 
-### Sprints (`/api/sprints`) — Phase 3
+### Sprints (`/api/sprints`) — Phase 2
 ```
 POST   /api/sprints                            Create sprint
 GET    /api/sprints?projectId=:id              List sprints

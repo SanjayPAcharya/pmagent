@@ -2,7 +2,7 @@
 
 > **Goal:** Close the loop with humans. Start with email (AWS SES) driven by the event bus, then add two-way WhatsApp and Slack. Notification workers subscribe to events and fan out to channels — no coupling to board logic.
 
-**Depends on:** Phase 3 (event bus), Phase 4 (agent events to notify about).
+**Depends on:** Phase 2 (event bus), Phase 4 (agent events to notify about).
 
 **References:**
 - [03-data-models.md](../references/03-data-models.md) — adds `Notification`; uses `Integration`
@@ -69,7 +69,7 @@ export const emailTemplates = {
 
 ### Notification worker flow
 
-The notification worker subscribes to the Redis event bus (`subscribeToEvents`, see [phase-3](phase-3-pm-core.md)). For each relevant event (e.g. `agent.completed`, `agent.needs_approval`, `agent.failed`), it:
+The notification worker subscribes to the Redis event bus (`subscribeToEvents`, see [phase-2](phase-2-pm-core.md)). For each relevant event (e.g. `agent.completed`, `agent.needs_approval`, `agent.failed`), it:
 1. Resolves which users to notify (assignee, project members, etc.).
 2. Reads each user's channel preferences + the project's active `Integration` records.
 3. Renders the matching template and sends via the channel (email now; WhatsApp/Slack later).

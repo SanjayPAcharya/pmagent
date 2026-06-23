@@ -1,8 +1,8 @@
-# Phase 2 — Containerized Deployment for Dev/Prod with CI/CD
+# Phase 3 — Containerized Deployment for Dev/Prod with CI/CD
 
 > **Goal:** Get the Phase 1 skeleton deploying automatically. **The app runs in Docker — the same images in dev and prod.** Primary target: **Docker Compose on a VM** (cheapest, full parity). **Where data lives is a one-flag toggle (`selfhost-data` profile): production defaults to managed cloud Postgres + Redis (RDS + ElastiCache); local dev and cost-sensitive staging run them as containers on the box.** AWS ECS Fargate is a documented scale-up alternative at the end of this file. Wire a GitHub Actions pipeline that lint/test → builds images → runs migrations → redeploys.
 
-**Depends on:** Phase 1 — which already produced a working **local** container stack: `apps/api/Dockerfile`, `apps/web/Dockerfile`, `docker-compose.yml` (base), `docker-compose.override.yml` (dev), the Postgres init script, and the local Keycloak + committed realm. Phase 2 does **not** recreate these — it adds the **prod/deploy layer** on top (prod compose overlay, Caddy/TLS, managed data, the VM, registry images, CI/CD). So the moment Phase 1 is green (`docker compose up` runs end-to-end locally), Phase 2 has everything it needs to start.
+**Depends on:** Phase 1 — which already produced a working **local** container stack: `apps/api/Dockerfile`, `apps/web/Dockerfile`, `docker-compose.yml` (base), `docker-compose.override.yml` (dev), the Postgres init script, and the local Keycloak + committed realm. Phase 3 does **not** recreate these — it adds the **prod/deploy layer** on top (prod compose overlay, Caddy/TLS, managed data, the VM, registry images, CI/CD). So the moment Phase 1 is green (`docker compose up` runs end-to-end locally), Phase 3 has everything it needs to start.
 
 **References:**
 - **[12-docker-and-deployment.md](../references/12-docker-and-deployment.md) — the canonical container topology, Dockerfiles, Compose files, Caddy. Read this first; this phase is the *process* around it.**
@@ -18,7 +18,7 @@
 
 > **Already exist from Phase 1 (verify, don't recreate):** `apps/api/Dockerfile`, `apps/web/Dockerfile`, `docker-compose.yml` (base), `docker-compose.override.yml` (dev), Postgres init script, local Keycloak realm. Confirm the prod **target** of each Dockerfile builds cleanly (see the build-correctness note under the Dockerfile below).
 
-New in Phase 2:
+New in Phase 3:
 - [ ] `docker-compose.prod.yml` (built images by `${IMAGE_TAG}` + Caddy/TLS + restart policies)
 - [ ] Caddy reverse proxy config (auto-HTTPS, routes web/api/keycloak)
 - [ ] `Makefile` with `up-managed` / `up-selfhost` targets (see [12-docker-and-deployment.md](../references/12-docker-and-deployment.md))

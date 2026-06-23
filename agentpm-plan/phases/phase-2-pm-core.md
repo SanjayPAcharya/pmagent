@@ -1,8 +1,8 @@
-# Phase 3 — PM Core: Tickets, Kanban Board, Sprints & Real-time
+# Phase 2 — PM Core: Tickets, Kanban Board, Sprints & Real-time
 
 > **Goal:** Turn the platform into a usable project manager. Structured tickets (goal, acceptance criteria, dependencies), a drag-and-drop kanban board, sprint planning, and real-time updates over WebSocket so multiple users see the board change live.
 
-**Depends on:** Phase 1 (orgs/projects/auth). Can be built/deployed via Phase 2's pipeline.
+**Depends on:** Phase 1 (orgs/projects/auth). Can be built/deployed via Phase 3's pipeline.
 
 **References:**
 - [03-data-models.md](../references/03-data-models.md) — adds `Ticket`, `TicketDependency`, `Label`, `TicketLabel`, `Comment`, `Sprint`
@@ -156,7 +156,7 @@ export const wsServer: FastifyPluginAsync = async (app) => {
         }
         return
       }
-      // (Phase 3 clients only listen; inbound messages after auth are ignored.)
+      // (Phase 2 clients only listen; inbound messages after auth are ignored.)
     })
 
     socket.on('close', () => { clearTimeout(authTimer); leaveAll(socket) })

@@ -32,7 +32,7 @@
 - [ ] Dashboard + org/project navigation
 - [ ] Typed API client that attaches the Keycloak access token + refreshes it
 
-**Local container stack (so `docker compose up` works — Phase 2 builds the prod/deploy layer on top):**
+**Local container stack (so `docker compose up` works — Phase 3 builds the prod/deploy layer on top):**
 - [ ] `apps/api/Dockerfile` + `apps/web/Dockerfile` (the multi-stage builds in [12-docker-and-deployment.md](../references/12-docker-and-deployment.md))
 - [ ] `docker-compose.yml` (base) + `docker-compose.override.yml` (dev hot reload) + committed `.env.example` (dev defaults incl. `COMPOSE_PROFILES=selfhost-data`; `cp .env.example .env`)
 - [ ] Postgres init script (`infra/postgres/init`) creating `agentpm` + `keycloak` DBs
@@ -96,7 +96,7 @@ export async function buildServer() {
     redis: getRedisClient()
   })
 
-  await app.register(fastifyWebsocket)  // WS handlers land in Phase 3
+  await app.register(fastifyWebsocket)  // WS handlers land in Phase 2
 
   // Phase 1 routes (no /api/auth — login/signup are Keycloak's hosted pages):
   await app.register(import('./routes/me'), { prefix: '/api/me' })  // profile from verified token
@@ -167,7 +167,7 @@ Resource: Project
   OWNER/ADMIN: full CRUD on project, settings, integrations, autonomy dial
   MEMBER: create/edit/view tickets, view agent feed, approve gates
 
-Resource: Ticket           (enforced from Phase 3)
+Resource: Ticket           (enforced from Phase 2)
   Creator: full edit
   Project member: comment, view, change own assignments
   Admin+: delete, rollback, override status
@@ -279,7 +279,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': { target: 'http://localhost:3001', changeOrigin: true },
-      '/ws': { target: 'ws://localhost:3001', ws: true }   // used from Phase 3
+      '/ws': { target: 'ws://localhost:3001', ws: true }   // used from Phase 2
     }
   },
   build: { outDir: 'dist', sourcemap: true }

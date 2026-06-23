@@ -16,8 +16,8 @@
 
 - **Current phase:** Phase 1 — Skeleton + Auth + Platform
 - **Now:** ✅ **Phase 1 COMPLETE (Stages A–E).** Stage E added a hermetic test harness (RSA/JWKS stand-in, no Keycloak) — **13 tests green** (auth 6, orgs 4, projects 2, health 1). `docker compose up` + full Keycloak→org→project flow verified in-browser. **Ready to copy to your other machine and push.**
-- **Next:** your call — **Phase 2** (deploy + CI/CD) or **Phase 3** (PM core: tickets/board/sprints). Optional Phase-1 leftover: wire Google/Microsoft/GitHub IdP external apps.
-- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. CI test-DB env wiring (`TEST_DATABASE_URL`) finalized in Phase 2.
+- **Next:** **Phase 2 — PM Core** (tickets/board/sprints/realtime). Then Phase 3 (deploy + CI/CD). Optional Phase-1 leftover: wire Google/Microsoft/GitHub IdP external apps.
+- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. CI test-DB env wiring (`TEST_DATABASE_URL`) finalized in Phase 3 (deploy).
 
 ---
 
@@ -60,7 +60,17 @@ Tests (Stage E)
 
 ---
 
-## Phase 2 — Containerized Deployment + CI/CD → [plan](agentpm-plan/phases/phase-2-dev-deployment-cicd.md)
+## Phase 2 — PM Core (tickets, board, sprints, realtime) → [plan](agentpm-plan/phases/phase-2-pm-core.md)
+**Status:** ⬜ not started
+- [ ] Migration: ticket/sprint/label/comment models
+- [ ] Tickets CRUD + per-project numbering + status transitions
+- [ ] Sprints CRUD + start/complete
+- [ ] Event bus (Redis pub/sub) + WebSocket server + auth handshake
+- [ ] Kanban board (dnd-kit) + ticket drawer + sprint view + live updates
+
+---
+
+## Phase 3 — Containerized Deployment + CI/CD → [plan](agentpm-plan/phases/phase-3-dev-deployment-cicd.md)
 **Status:** ⬜ not started
 - [ ] `docker-compose.prod.yml` + Caddy config + `Makefile` (`up-managed` / `up-selfhost`)
 - [ ] Provision managed data (RDS + ElastiCache) + create `agentpm`/`keycloak` DBs
@@ -68,16 +78,6 @@ Tests (Stage E)
 - [ ] Prod `.env` on VM (managed endpoints, locked perms)
 - [ ] GitHub Actions CI (lint/typecheck/test) + CD (build/push images → migrate → `compose up -d`)
 - [ ] Deploy to staging end-to-end + hardening checklist
-
----
-
-## Phase 3 — PM Core (tickets, board, sprints, realtime) → [plan](agentpm-plan/phases/phase-3-pm-core.md)
-**Status:** ⬜ not started
-- [ ] Migration: ticket/sprint/label/comment models
-- [ ] Tickets CRUD + per-project numbering + status transitions
-- [ ] Sprints CRUD + start/complete
-- [ ] Event bus (Redis pub/sub) + WebSocket server + auth handshake
-- [ ] Kanban board (dnd-kit) + ticket drawer + sprint view + live updates
 
 ---
 
@@ -116,6 +116,7 @@ Tests (Stage E)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-23 | plan | Re-sequenced phases: **Phase 2 = PM Core**, **Phase 3 = Deployment + CI/CD** (swapped). Renamed phase files + updated all headings, cross-refs, links, README flow/index, PROGRESS. | _pending_ |
 | 2026-06-23 | P1/E | Stage E (tests): hermetic auth harness (jose RSA keypair + in-test JWKS/OIDC stand-in, no Keycloak), Vitest globalSetup (creates+migrates `agentpm_test`) + per-worker truncation. Suites: auth middleware (6), organizations (4), projects (2) + health (1) = 13 green. Removed temp debug log. **Phase 1 complete.** | 8de7afe |
 | 2026-06-23 | P1/D | Stage D (frontend): keycloak-js auth (login/signup, PKCE, token refresh), auth-gated React Router + Layout, typed API client (token attach + retry-on-401), Dashboard (orgs + create) + OrgProjects (projects + create) via React Query. Verified in-browser by user: signup → create org (OWNER) → create project. shadcn deferred (plain Tailwind). | 140d01c |
 | 2026-06-23 | P1/C | Stage C (platform CRUD): Organizations CRUD + members (creator→OWNER, last-owner guard, add-by-email), Projects CRUD; shared authz (`assertOrgRole`/`requireOrgRole`/RBAC), slug helper, global error handler (ApiError + ZodError→400). Verified with real tokens: CRUD, validation 400, last-owner 400, non-member 403. | 2560397 |
