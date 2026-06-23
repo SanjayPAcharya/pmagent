@@ -4,7 +4,9 @@ import rateLimit from '@fastify/rate-limit'
 import websocket from '@fastify/websocket'
 import jwt, { type TokenOrHeader } from '@fastify/jwt'
 import buildGetJwks from 'get-jwks'
+import { ZodError } from 'zod'
 import { loadConfig } from './config.js'
+import { ApiError } from './lib/errors.js'
 
 export async function buildServer() {
   const config = loadConfig()
@@ -50,6 +52,22 @@ export async function buildServer() {
     },
   })
 
+  // Map domain + validation errors to clean JSON responses.
+  app.setErrorHandler((err, request, reply) => {
+    if (err instanceof ApiError) {
+      return reply.code(err.statusCode).send({ error: err.message, code: err.code })
+    }
+    if (err instanceof ZodError) {
+      return reply.code(400).send({ error: 'ValidationError', details: err.flatten() })
+    }
+    const status = (err as { statusCode?: number }).statusCode
+    if (status && status < 500) {
+      return reply.code(status).send({ error: (err as Error).message })
+    }
+    request.log.error({ err }, 'unhandled error')
+    return reply.code(500).send({ error: 'Internal Server Error' })
+  })
+
   app.get('/health', async () => ({
     status: 'ok',
     service: 'api',
@@ -57,7 +75,8 @@ export async function buildServer() {
   }))
 
   await app.register(import('./routes/me.js'), { prefix: '/api/me' })
-  // Stage C: /api/orgs, /api/projects
+  await app.register(import('./routes/organizations.js'), { prefix: '/api/orgs' })
+  await app.register(import('./routes/projects.js'), { prefix: '/api/projects' })
   return app
 }
 
