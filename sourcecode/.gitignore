@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+.vite/
+*.log
+.DS_Store
+
+# env — only the example is committed
+.env
+.env.*
+!.env.example
+
+# prisma
+apps/api/prisma/*.db

@@ -1,0 +1,80 @@
+# Base compose — app services always run; postgres/redis only when the
+# `selfhost-data` profile is enabled (dev default; prod uses managed RDS/ElastiCache).
+# Dev hot-reload + published ports come from docker-compose.override.yml.
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    # Dev-safe default. Production flags (start --optimized, KC_HOSTNAME,
+    # KC_PROXY_HEADERS, KC_HTTP_ENABLED) live in docker-compose.prod.yml (Phase 2),
+    # NOT here — proxy-header parsing with no proxy in front breaks dev ("HTTPS required").
+    command: start-dev --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+    volumes:
+      - ./infra/keycloak/realm-agentpm.json:/opt/keycloak/data/import/realm-agentpm.json:ro
+
+  api:
+    image: ${REGISTRY:-ghcr.io/yourorg}/agentpm-api:${IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: "3001"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
+      KEYCLOAK_API_AUDIENCE: ${KEYCLOAK_API_AUDIENCE:-agentpm-api}
+
+  web:
+    image: ${REGISTRY:-ghcr.io/yourorg}/agentpm-web:${IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_WS_URL: ${VITE_WS_URL}
+        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
+        VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-agentpm}
+        VITE_KEYCLOAK_CLIENT: ${VITE_KEYCLOAK_CLIENT:-agentpm-web}
+    depends_on: [api]
+
+  # ── Optional self-hosted data (only with `--profile selfhost-data`) ──
+  postgres:
+    profiles: ["selfhost-data"]
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_USER: ${KC_DB_USERNAME:-agentpm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USERNAME:-agentpm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    profiles: ["selfhost-data"]
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
