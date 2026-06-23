@@ -34,6 +34,38 @@
 - [ ] **Completion progress bar** — done/total as a progress bar on the sprint header and the project header (and per-column counts on the board)
 - [ ] **UI/UX polish** — clean, smooth, lightly creative per the UX direction above (drag motion, transitions, empty states)
 
+**Expanded scope (round 2 — approved):**
+
+_Tickets & board_
+- [ ] **Due date** on tickets
+- [ ] **Soft-delete** tickets (archive via `archivedAt`; lists exclude archived by default)
+- [ ] **Search + filter + sort** on board & list — by assignee, label, priority, status, and free text
+- [ ] **Inline quick-add** per column + **Cmd-K command palette** (quick add / jump to ticket)
+- [ ] **Deep-linkable ticket route** `/:orgSlug/:projectSlug/ticket/:number` (opens the drawer directly; shareable)
+- [ ] **Markdown render + `@mention`** in description & comments, **sanitized (DOMPurify)**
+
+_Real-time / notifications_
+- [ ] **In-app notification center (bell)** over WS — notify the assignee, creator, watchers/CC, and `@mentioned` users on relevant events; unread badge + mark-read
+- [ ] **Presence** — "who's viewing this board" via WS rooms
+
+_Onboarding_
+- [ ] **Org invite links** (token-based; copy-link now, emailed in Phase 5)
+
+_API quality_
+- [ ] **Pagination convention** (cursor/limit) on all list endpoints
+- [ ] **OpenAPI/Swagger** at `/documentation` (`@fastify/swagger` + swagger-ui)
+- [ ] **`/ready` readiness probe** (DB + Redis) + graceful shutdown (also needed for Phase 3 deploy)
+- [ ] **Seed script** (`pnpm db:seed`) — demo org/project/tickets for a fresh stack
+
+_Frontend polish_
+- [ ] **Optimistic UI + toasts + skeleton loaders** (drag/edits apply instantly)
+- [ ] **Dark mode** (theme toggle, Tailwind `dark:`)
+- [ ] **i18n scaffolding** (react-i18next, `en` baseline, strings externalized)
+- [ ] **Mobile-responsive** board + drawer
+- [ ] **Playwright E2E** for core flows (create ticket → drag status → comment → notification)
+
+> **Scope decisions kept as-is:** org membership = project access (no separate `ProjectMember` table this phase); **attachments deferred**. Say the word if you want either pulled in.
+
 ---
 
 ## Ticket request/response contracts
@@ -211,9 +243,22 @@ type WSEventType =
   | 'agent.started' | 'agent.progress' | 'agent.completed' | 'agent.failed'
   | 'agent.needs_approval' | 'approval.resolved'
   | 'notification.new' | 'sprint.updated' | 'member.joined'
+  | 'presence.state'                       // current viewers of a board
 ```
 
 > Ticket CRUD handlers in this phase call `publishEvent('ticket.created' | 'ticket.updated' | 'ticket.deleted', { ..., projectId })`. The `agent.*` and `approval.*` events are emitted starting in Phase 4.
+
+### Rooms: project + per-user (added round 2)
+
+The WS server joins each authenticated socket to **two** rooms:
+- `project:{projectId}` — board events (ticket/sprint/presence), as above.
+- `user:{userId}` — **personal** events, used for the in-app notification bell (`notification.new`).
+
+So the fan-out routes an event by whichever key its payload carries: `payload.projectId → project:*`, `payload.userId → user:*`. A notification published with `{ userId, ... }` reaches exactly that user across all their open tabs/devices.
+
+### Presence ("who's viewing this board")
+
+On join/leave, the server tracks the set of `userId`s in each `project:{projectId}` room and broadcasts `presence.state` (the deduped list of current viewers) to that room. No DB — purely the in-memory room membership. The board renders viewer avatars; it updates as people open/close the board.
 
 ---
 
@@ -320,6 +365,63 @@ export function useProjectWebSocket(
 
 ---
 
+## Onboarding: org invite links
+
+Adding a member by email (Phase 1/PM-core) only works if they've already signed up. Invite links fix onboarding without depending on email (which arrives in Phase 5).
+
+- `OrgInvite` model: `{ id, orgId, email?, role, token (random, unique), invitedById, expiresAt, acceptedAt? }`.
+```
+POST   /api/orgs/:slug/invites        create invite → returns a link /invite/:token  (ADMIN+)
+GET    /api/orgs/:slug/invites         list pending invites                          (ADMIN+)
+DELETE /api/orgs/:slug/invites/:id     revoke                                        (ADMIN+)
+POST   /api/invites/:token/accept      accept (current Keycloak user joins the org)
+```
+Flow now: admin creates invite → **copies the link** → recipient signs in/up via Keycloak → hits `/invite/:token` → `accept` adds them as an `OrgMember` with the invite's role. In Phase 5 the same invite is *emailed*; nothing else changes.
+
+## Search, filter, sort & pagination
+
+- **List endpoints** (`/api/tickets`, `/api/sprints`, `/api/orgs`, notifications, …) accept a shared query convention:
+  `?limit=50&cursor=<opaque>` (cursor = base64 of the last id/createdAt). Responses return `{ items, nextCursor }`.
+- **Tickets** additionally accept: `q` (text over title/number), `status`, `priority`, `type`, `assignedToId`, `labelId`, `sprintId`, `sort` (e.g. `position`, `-updatedAt`, `priority`). All combine; all enforced server-side after the org-role check.
+- Board view fetches per-column (status) with its own cursor so large columns stay fast.
+
+## In-app notifications (bell)
+
+Pulls the **in-app slice** of notifications forward to Phase 2 (email/Slack/WhatsApp stay Phase 5). Uses the existing `Notification` model with `channel = IN_APP`.
+
+- A small **notification service** subscribes to ticket events and, for each, resolves recipients and writes `Notification` rows + publishes `notification.new` to each recipient's `user:{userId}` room.
+- **Who gets notified:** the ticket's **assignee**, **creator**, **watchers/CC**, and any **`@mentioned`** users — minus the actor themselves.
+- **Triggers (Phase 2):** assigned to you, commented / `@mention`, status changed, added as watcher, ticket in your sprint moved. (Agent events join in Phase 4.)
+```
+GET    /api/notifications?limit=&cursor=   list (most recent first)
+GET    /api/notifications/unread-count
+POST   /api/notifications/:id/read
+POST   /api/notifications/read-all
+```
+- Frontend: a **bell** with an unread badge (seeded by `unread-count`, kept live by `notification.new`), a dropdown list, click → deep-link to the ticket, mark-read.
+
+## API docs, readiness & seed
+
+- **Swagger:** register `@fastify/swagger` + `@fastify/swagger-ui`; schemas come from the per-route Zod (via `zod-to-json-schema` or fastify-type-provider-zod). Served at `/documentation`.
+- **`/ready`:** returns 200 only when Postgres + Redis are reachable (distinct from `/health` liveness); add graceful shutdown (close server, Prisma, Redis on SIGTERM).
+- **Seed:** `pnpm db:seed` creates a demo org + project + a handful of tickets/sprint so a fresh `docker compose up` isn't an empty board.
+
+## Frontend UX & polish
+
+- **Optimistic UI:** drag/drop, status change, and inline edits apply immediately via React Query optimistic updates; reconcile on server response; **toasts** for success/error; **skeleton loaders** on first load.
+- **Quick-add + Cmd-K:** inline "add ticket" at the top of each column; a command palette (Cmd/Ctrl-K) to quick-add or jump to a ticket by number/title.
+- **Deep-link route:** `/:orgSlug/:projectSlug/ticket/:number` opens the board with the drawer pre-opened; closing returns to the board URL.
+- **Markdown + mentions:** render sanitized markdown (**DOMPurify**) in description/comments; `@` opens a member picker; selecting inserts a mention that resolves to a notification.
+- **Dark mode:** Tailwind `dark:` with a toggle persisted to localStorage / system preference.
+- **i18n:** react-i18next scaffolding, `en` baseline, all UI strings externalized (no hard-coded copy).
+- **Mobile:** board scrolls horizontally with snap; drawer becomes a full-screen sheet; touch-friendly drag.
+- **Presence/empty states:** viewer avatars on the board header; friendly empty states for no-tickets / no-projects.
+
+## Testing additions (Stage E + E2E)
+
+- API: tickets/sprints CRUD, numbering, RBAC 403, assignment/watcher/activity, invite accept, notification creation, pagination — hermetic-token harness (as Phase 1).
+- **Playwright E2E** against the docker stack: sign in → create ticket → drag to change status → comment with `@mention` → see the notification bell update.
+
 ## Definition of Done
 
 - A user can create/edit/delete tickets with the full structured schema, organize them into sprints, and start/complete a sprint.
@@ -328,5 +430,8 @@ export function useProjectWebSocket(
 - Status can be changed JIRA-style from the card dropdown (not only by drag).
 - A ticket can be **assigned** to a member and have **watchers (CC)** added/removed; both changes appear in the **activity timeline**.
 - The **completion progress bar** reflects done/total on the sprint and project headers.
-- The UI feels clean and smooth (per the UX direction) — subjective, reviewed in-browser.
-- The ticket CRUD test cases in [07-testing-strategy.md](../references/07-testing-strategy.md) pass, plus assignment/watcher/activity coverage.
+- The UI feels clean and smooth (per the UX direction) — optimistic drag, toasts, skeletons, dark mode, mobile-responsive.
+- Search/filter/sort works on the board & list; all list endpoints paginate; `/documentation` (Swagger) and `/ready` respond.
+- Org invite link → accept adds a member; the **bell** shows in-app notifications to assignee/creator/watchers/@mentioned in real time.
+- Deep-link `/…/ticket/:number` opens the drawer directly; markdown is rendered sanitized.
+- The ticket CRUD test cases in [07-testing-strategy.md](../references/07-testing-strategy.md) pass, plus assignment/watcher/activity/invite/notification coverage, and the Playwright E2E core flow is green.

@@ -35,9 +35,13 @@ GET    /api/orgs/:slug             Get organization by slug
 PATCH  /api/orgs/:slug             Update organization
 DELETE /api/orgs/:slug             Delete organization (owner only)
 GET    /api/orgs/:slug/members     List members
-POST   /api/orgs/:slug/members     Invite member by email
+POST   /api/orgs/:slug/members     Add existing user by email
 PATCH  /api/orgs/:slug/members/:userId  Update member role
 DELETE /api/orgs/:slug/members/:userId  Remove member
+POST   /api/orgs/:slug/invites     Create invite link (Phase 2)
+GET    /api/orgs/:slug/invites     List pending invites (Phase 2)
+DELETE /api/orgs/:slug/invites/:id Revoke invite (Phase 2)
+POST   /api/invites/:token/accept  Accept invite — current user joins (Phase 2)
 ```
 
 ### Projects (`/api/projects`) — Phase 1 (CRUD); GitHub/integration/autonomy endpoints land in Phase 4
@@ -88,12 +92,24 @@ POST   /api/sprints/:sprintId/tickets          Add tickets to sprint
 DELETE /api/sprints/:sprintId/tickets/:ticketId Remove from sprint
 ```
 
+### Notifications (`/api/notifications`) — Phase 2 (in-app)
+```
+GET    /api/notifications?limit=&cursor=      List (most recent first)
+GET    /api/notifications/unread-count         Unread badge count
+POST   /api/notifications/:id/read             Mark one read
+POST   /api/notifications/read-all             Mark all read
+```
+
 ### Agents (`/api/agents`) — Phase 4
 ```
 GET    /api/agents/feed?projectId=:id         Live agent activity (paginated)
 GET    /api/agents/actions/:actionId          Get single action detail
 POST   /api/agents/actions/:actionId/retry    Retry failed action
 ```
+
+## List conventions (pagination, filter, sort) — Phase 2
+
+All list endpoints share a cursor convention: `?limit=<n>&cursor=<opaque>` → response `{ items, nextCursor }` (`nextCursor: null` at the end). Tickets additionally accept `q`, `status`, `priority`, `type`, `assignedToId`, `labelId`, `sprintId`, and `sort` (e.g. `position`, `-updatedAt`). Filters/sorts are enforced server-side after the org-role check. Archived tickets (`archivedAt != null`) are excluded unless `?includeArchived=true`.
 
 ## Validation pattern (applies to every route)
 

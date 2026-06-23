@@ -62,13 +62,18 @@ Tests (Stage E)
 
 ## Phase 2 — PM Core (tickets, board, sprints, realtime) → [plan](agentpm-plan/phases/phase-2-pm-core.md)
 **Status:** ⬜ not started
-- [ ] Migration: ticket/sprint/label/comment + `TicketWatcher` + `TicketActivity`
-- [ ] Tickets CRUD + per-project numbering + status transitions
-- [ ] Assignee + watchers/CC + activity timeline (status/assignee/watcher/sprint changes)
+- [ ] Migration: ticket/sprint/label/comment + `TicketWatcher` + `TicketActivity` + `OrgInvite` + `Notification` (in-app); ticket `dueDate` + `archivedAt`
+- [ ] Tickets CRUD + per-project numbering + status transitions + **due date** + **soft-delete**
+- [ ] Assignee + watchers/CC + activity timeline
 - [ ] Sprints CRUD + start/complete; completion progress bar (done/total)
-- [ ] Event bus (Redis pub/sub) + WebSocket server + auth handshake
-- [ ] Kanban board (dnd-kit) + JIRA-style quick status change + ticket drawer + sprint view + live updates
-- [ ] UI/UX: clean, smooth, lightly creative (guideline)
+- [ ] Event bus (Redis pub/sub) + WebSocket server (project **+ user** rooms) + auth handshake + **presence**
+- [ ] **In-app notifications (bell)** → assignee/creator/watchers/@mentioned, live via WS
+- [ ] **Org invite links** (token; copy-link now, emailed in Phase 5)
+- [ ] **Search + filter + sort + pagination** (cursor) on lists
+- [ ] **OpenAPI/Swagger** `/documentation` + **`/ready`** probe + graceful shutdown + **seed script**
+- [ ] Kanban board (dnd-kit) + quick status change + ticket drawer + sprint view + live updates
+- [ ] Frontend polish: **optimistic UI + toasts + skeletons**, **quick-add + Cmd-K**, **deep-link ticket route**, **markdown + @mention (DOMPurify)**, **dark mode**, **i18n scaffold**, **mobile-responsive**
+- [ ] **Playwright E2E** core flow + API tests (assignment/watcher/activity/invite/notification)
 
 ---
 
@@ -118,6 +123,7 @@ Tests (Stage E)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-23 | plan | Phase 2 scope round 2: invite links, due date, soft-delete, search/filter/sort + cursor pagination, deep-link ticket route, optimistic UI/toasts/skeletons, quick-add + Cmd-K, markdown+@mention (DOMPurify), presence, in-app notification bell (WS user rooms → assignee/creator/watchers/mentioned), Swagger + /ready + seed, dark mode, i18n scaffold, mobile, Playwright E2E. Models: `OrgInvite` + in-app `Notification`, ticket `dueDate`/`archivedAt`. Decisions kept: org=project access, attachments deferred. | _pending_ |
 | 2026-06-23 | plan | Phase 2 scope additions (feedback): clean/smooth/creative UI guideline, JIRA-style quick status change, assignee, watchers/CC, activity timeline, completion progress bar. Added `TicketWatcher` + `TicketActivity` models + watcher/activity endpoints. Not yet implemented. | 585ff49 |
 | 2026-06-23 | plan | Re-sequenced phases: **Phase 2 = PM Core**, **Phase 3 = Deployment + CI/CD** (swapped). Renamed phase files + updated all headings, cross-refs, links, README flow/index, PROGRESS. | 9528d39 |
 | 2026-06-23 | P1/E | Stage E (tests): hermetic auth harness (jose RSA keypair + in-test JWKS/OIDC stand-in, no Keycloak), Vitest globalSetup (creates+migrates `agentpm_test`) + per-worker truncation. Suites: auth middleware (6), organizations (4), projects (2) + health (1) = 13 green. Removed temp debug log. **Phase 1 complete.** | 8de7afe |

@@ -1,7 +1,7 @@
 # Reference: Data Models & Database Schema
 
 > Stable reference. The single source of truth for all DB entities. Source: §4 of the original plan.
-> **Phasing note:** not every model is needed on day one. Phase 1 needs `User`, `Organization`, `OrgMember`, `Project`. Phase 2 adds `Ticket`, `TicketDependency`, `Label`, `TicketLabel`, `Comment`, `Sprint`, `TicketWatcher`, `TicketActivity`. Phase 4 adds `AgentAction`, `AutonomySettings`, `Approval`, `Integration`. Phase 5 adds `Notification`. Migrate incrementally — but keep this file as the complete target schema.
+> **Phasing note:** not every model is needed on day one. Phase 1 needs `User`, `Organization`, `OrgMember`, `Project`. Phase 2 adds `Ticket`, `TicketDependency`, `Label`, `TicketLabel`, `Comment`, `Sprint`, `TicketWatcher`, `TicketActivity`, `OrgInvite`, and `Notification` (used for the **in-app** bell now; email/Slack/WhatsApp fan-out + `Integration` come in Phase 5). Phase 4 adds `AgentAction`, `AutonomySettings`, `Approval`, `Integration`. Migrate incrementally — but keep this file as the complete target schema.
 >
 > **Auth note (Keycloak):** identity is delegated to Keycloak (see [phase-1](../phases/phase-1-skeleton-auth-platform.md)). `User.idpSub` links to the Keycloak subject; `User.passwordHash` and the entire `Session` model are **unused** (Keycloak owns credentials + refresh tokens). They are kept in the schema for reference / possible fallback but are not written to in the Keycloak flow.
 
@@ -40,6 +40,7 @@ model User {
   assignedTickets Ticket[]   @relation("AssignedTo")
   watching      TicketWatcher[]
   ticketActivity TicketActivity[]
+  sentInvites   OrgInvite[]  @relation("InvitesSent")
   sessions      Session[]
   notifications Notification[]
 
@@ -72,8 +73,27 @@ model Organization {
 
   members   OrgMember[]
   projects  Project[]
+  invites   OrgInvite[]
 
   @@index([slug])
+}
+
+model OrgInvite {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId        String   @db.Uuid
+  email        String?  // optional target; link works for whoever opens it if null
+  role         OrgRole  @default(MEMBER)
+  token        String   @unique // random; the /invite/:token link
+  invitedById  String   @db.Uuid
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("InvitesSent", fields: [invitedById], references: [id])
+
+  @@index([orgId])
+  @@index([token])
 }
 
 model OrgMember {
@@ -131,6 +151,8 @@ model Ticket {
   priority          Priority      @default(MEDIUM)
   type              TicketType    @default(FEATURE)
   storyPoints       Int?
+  dueDate           DateTime?     // optional ticket due date
+  archivedAt        DateTime?     // soft delete — lists exclude archived by default
   assignedToId      String?       @db.Uuid
   createdById       String        @db.Uuid
   assignedAgentType AgentType?    // null = human assigned; set atomically on agent claim
