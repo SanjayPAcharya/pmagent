@@ -2,6 +2,8 @@
 
 > **Goal:** Turn the platform into a usable project manager. Structured tickets (goal, acceptance criteria, dependencies), a drag-and-drop kanban board, sprint planning, and real-time updates over WebSocket so multiple users see the board change live.
 
+> **UX direction (guideline, not a hard rule):** keep the UI **clean, smooth, and a little creative** — subtle motion on drag/drop and status changes, tasteful transitions, thoughtful empty states, good keyboard affordances. Favor clarity over density. It should feel closer to Linear than to a stock Bootstrap admin.
+
 **Depends on:** Phase 1 (orgs/projects/auth). Can be built/deployed via Phase 3's pipeline.
 
 **References:**
@@ -13,7 +15,7 @@
 
 ## Deliverables
 
-- [ ] Migration adding ticket/sprint/label/comment models
+- [ ] Migration adding ticket/sprint/label/comment models (+ `TicketWatcher`, `TicketActivity` — see below)
 - [ ] Tickets full CRUD + status transitions (status route is a stub gate now; full gate logic in Phase 4)
 - [ ] Sequential per-project ticket numbering (e.g. AGP-42)
 - [ ] Sprints CRUD + start/complete + add/remove tickets
@@ -23,6 +25,14 @@
 - [ ] Ticket drawer with all fields + inline editing + comments
 - [ ] Real-time board updates via WebSocket client
 - [ ] Sprint view
+
+**Added per feedback:**
+- [ ] **JIRA-style quick status change** — change status from the card (dropdown) and by drag; reflected everywhere live
+- [ ] **Assignee** — single assignee per ticket (`assignedToId`) with an assignee picker (avatars)
+- [ ] **Watchers / "CC"** — add/remove multiple users who follow a ticket (`TicketWatcher`); they'll receive notifications once Phase 5 lands
+- [ ] **Activity timeline** — record + show status changes, assignment, watcher and sprint moves (`TicketActivity`); shown as a timeline tab in the drawer
+- [ ] **Completion progress bar** — done/total as a progress bar on the sprint header and the project header (and per-column counts on the board)
+- [ ] **UI/UX polish** — clean, smooth, lightly creative per the UX direction above (drag motion, transitions, empty states)
 
 ---
 
@@ -66,6 +76,26 @@ interface CreateTicketResponse {
 ```
 
 > The `goal`, `acceptanceCriteria`, and `constraints` fields are the structured inputs the Code Agent consumes in Phase 4 — capture them well now even though nothing reads them yet.
+
+---
+
+## Assignment, watchers (CC) & activity
+
+**Assignee (single)** — set via `assignedToId` on create or `PATCH /api/tickets/:id`. The assignee must be a member of the ticket's org (validated). Changing it writes a `TicketActivity` row and emits `ticket.updated`.
+
+**Watchers / CC (many)** — a `TicketWatcher` join (`ticketId` × `userId`). The creator and assignee are auto-added; anyone can add others (org members). Watchers receive notifications once Phase 5 lands.
+```
+POST   /api/tickets/:id/watchers      { userId }   add a watcher (CC)
+DELETE /api/tickets/:id/watchers/:userId           remove
+```
+
+**Activity timeline** — server records a `TicketActivity` entry on each meaningful change (status, assignee, watcher add/remove, sprint move, created). Returned with the ticket and via:
+```
+GET    /api/tickets/:id/activity       chronological activity feed
+```
+Recorded server-side (not client-trusted); rendered as a timeline tab in the drawer. Comments (`Comment`) stay separate from activity.
+
+**Completion progress** — computed, no new storage. Sprint and project detail responses include `{ counts: { total, done, ... per status } }`; the board derives column counts. The UI renders a progress bar (done ÷ total). Sprint velocity (story points completed) is set on `complete`.
 
 ---
 
@@ -197,15 +227,19 @@ File: `apps/web/src/routes/project/BoardPage.tsx`
 /**
  * KANBAN BOARD PAGE
  * Columns: BACKLOG | TODO | IN_PROGRESS | IN_REVIEW | DONE
- * - Drag-and-drop ticket reordering (dnd-kit)
+ * - Drag-and-drop ticket reordering (dnd-kit) — smooth motion, subtle drop animation
+ * - JIRA-style quick status change on the card (dropdown) in addition to drag
  * - Real-time updates via WebSocket
- * - Ticket card: title, priority, agent badge (Phase 4), PR link (Phase 4)
+ * - Ticket card: number (AGP-42), title, priority, assignee avatar, label chips,
+ *   watcher count; agent badge (Phase 4), PR link (Phase 4)
+ * - Per-column counts; project completion progress bar in the board header
  * - Click ticket → slide-in drawer with full detail
  * - "Assign to agent" button (Phase 4)
  * - Agent activity feed sidebar (Phase 4)
  *
  * Libraries: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities
  * State: React Query for tickets, WebSocket for real-time updates
+ * UX: clean/smooth/lightly creative (see UX direction at top) — not a hard rule
  */
 ```
 
@@ -214,15 +248,16 @@ File: `apps/web/src/routes/project/BoardPage.tsx`
 ```typescript
 /**
  * TICKET DRAWER — slides in from right when a ticket is clicked
- * 1. Header: title (editable inline), ticket number, status badge, priority
- * 2. Description (markdown editor — @uiw/react-md-editor)
+ * 1. Header: title (editable inline), ticket number, status (quick-change dropdown), priority
+ * 2. Description (markdown — styled textarea + render; rich editor optional later)
  * 3. Acceptance Criteria (structured text area)
  * 4. Agent Assignment panel        (wired in Phase 4)
  * 5. Agent Action Log              (Phase 4)
  * 6. Approval Gate                 (Phase 4)
  * 7. PR Link                       (Phase 4)
- * 8. Comments section
- * 9. Metadata sidebar: assignee, sprint, labels, story points, dates
+ * 8. Tabs: Comments | Activity timeline (status/assignee/watcher/sprint changes)
+ * 9. Metadata sidebar: assignee (picker), watchers/CC (add/remove chips),
+ *    sprint, labels, story points, dates
  */
 ```
 
@@ -290,4 +325,8 @@ export function useProjectWebSocket(
 - A user can create/edit/delete tickets with the full structured schema, organize them into sprints, and start/complete a sprint.
 - Tickets get sequential per-project numbers.
 - Dragging a card on the board updates status/position and the change appears live in another browser via WebSocket.
-- The ticket CRUD test cases in [07-testing-strategy.md](../references/07-testing-strategy.md) pass.
+- Status can be changed JIRA-style from the card dropdown (not only by drag).
+- A ticket can be **assigned** to a member and have **watchers (CC)** added/removed; both changes appear in the **activity timeline**.
+- The **completion progress bar** reflects done/total on the sprint and project headers.
+- The UI feels clean and smooth (per the UX direction) — subjective, reviewed in-browser.
+- The ticket CRUD test cases in [07-testing-strategy.md](../references/07-testing-strategy.md) pass, plus assignment/watcher/activity coverage.

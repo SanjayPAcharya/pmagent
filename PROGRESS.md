@@ -62,11 +62,13 @@ Tests (Stage E)
 
 ## Phase 2 — PM Core (tickets, board, sprints, realtime) → [plan](agentpm-plan/phases/phase-2-pm-core.md)
 **Status:** ⬜ not started
-- [ ] Migration: ticket/sprint/label/comment models
+- [ ] Migration: ticket/sprint/label/comment + `TicketWatcher` + `TicketActivity`
 - [ ] Tickets CRUD + per-project numbering + status transitions
-- [ ] Sprints CRUD + start/complete
+- [ ] Assignee + watchers/CC + activity timeline (status/assignee/watcher/sprint changes)
+- [ ] Sprints CRUD + start/complete; completion progress bar (done/total)
 - [ ] Event bus (Redis pub/sub) + WebSocket server + auth handshake
-- [ ] Kanban board (dnd-kit) + ticket drawer + sprint view + live updates
+- [ ] Kanban board (dnd-kit) + JIRA-style quick status change + ticket drawer + sprint view + live updates
+- [ ] UI/UX: clean, smooth, lightly creative (guideline)
 
 ---
 
@@ -116,6 +118,7 @@ Tests (Stage E)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-23 | plan | Phase 2 scope additions (feedback): clean/smooth/creative UI guideline, JIRA-style quick status change, assignee, watchers/CC, activity timeline, completion progress bar. Added `TicketWatcher` + `TicketActivity` models + watcher/activity endpoints. Not yet implemented. | _pending_ |
 | 2026-06-23 | plan | Re-sequenced phases: **Phase 2 = PM Core**, **Phase 3 = Deployment + CI/CD** (swapped). Renamed phase files + updated all headings, cross-refs, links, README flow/index, PROGRESS. | 9528d39 |
 | 2026-06-23 | P1/E | Stage E (tests): hermetic auth harness (jose RSA keypair + in-test JWKS/OIDC stand-in, no Keycloak), Vitest globalSetup (creates+migrates `agentpm_test`) + per-worker truncation. Suites: auth middleware (6), organizations (4), projects (2) + health (1) = 13 green. Removed temp debug log. **Phase 1 complete.** | 8de7afe |
 | 2026-06-23 | P1/D | Stage D (frontend): keycloak-js auth (login/signup, PKCE, token refresh), auth-gated React Router + Layout, typed API client (token attach + retry-on-401), Dashboard (orgs + create) + OrgProjects (projects + create) via React Query. Verified in-browser by user: signup → create org (OWNER) → create project. shadcn deferred (plain Tailwind). | 140d01c |

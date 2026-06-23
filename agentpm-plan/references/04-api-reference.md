@@ -69,7 +69,10 @@ POST   /api/tickets/:ticketId/reject           Reject pending gate              
 POST   /api/tickets/:ticketId/rollback         Close agent PR + reset ticket    (Phase 4)
 POST   /api/tickets/:ticketId/comments         Add comment
 GET    /api/tickets/:ticketId/comments         List comments
-GET    /api/tickets/:ticketId/actions          List agent actions
+POST   /api/tickets/:ticketId/watchers         Add a watcher / CC ({ userId })
+DELETE /api/tickets/:ticketId/watchers/:userId Remove a watcher
+GET    /api/tickets/:ticketId/activity         Activity timeline (status/assignee/watcher/sprint)
+GET    /api/tickets/:ticketId/actions          List agent actions               (Phase 4)
 POST   /api/tickets/bulk-update                Bulk status/sprint update
 ```
 
