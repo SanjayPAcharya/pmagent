@@ -15,14 +15,14 @@
 ## Now / Next / Blocked
 
 - **Current phase:** Phase 1 — Skeleton + Auth + Platform
-- **Now:** ✅ **Stage D (frontend) complete & verified in-browser by user.** keycloak-js login/signup (PKCE) → JIT user → dashboard; create org (OWNER) → create project, all via the typed API client (token attach + refresh). User confirmed full flow end-to-end. Stages A–C still green.
-- **Next:** Stage E — automated tests (auth middleware + org/project cases) + tidy-up → Phase 1 ready to push.
-- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`.
+- **Now:** ✅ **Phase 1 COMPLETE (Stages A–E).** Stage E added a hermetic test harness (RSA/JWKS stand-in, no Keycloak) — **13 tests green** (auth 6, orgs 4, projects 2, health 1). `docker compose up` + full Keycloak→org→project flow verified in-browser. **Ready to copy to your other machine and push.**
+- **Next:** your call — **Phase 2** (deploy + CI/CD) or **Phase 3** (PM core: tickets/board/sprints). Optional Phase-1 leftover: wire Google/Microsoft/GitHub IdP external apps.
+- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. CI test-DB env wiring (`TEST_DATABASE_URL`) finalized in Phase 2.
 
 ---
 
 ## Phase 1 — Skeleton, Auth (Keycloak), Platform → [plan](agentpm-plan/phases/phase-1-skeleton-auth-platform.md)
-**Status:** 🟡 in progress — **Stages A–D done (boots, auth, platform CRUD, frontend)**; Stage E (tests) pending
+**Status:** ✅ **COMPLETE (Stages A–E)** — boots, auth, platform CRUD, frontend, tests green. (Optional: social IdP external apps.)
 
 Scaffold & data
 - [x] Monorepo: pnpm workspaces + Turborepo (`package.json`, `pnpm-workspace.yaml`, `turbo.json`)
@@ -50,7 +50,11 @@ Frontend
 
 Identity (external prereqs)
 - [x] Keycloak realm running locally (email/password first)
-- [ ] Google OAuth client · Azure App Registration · GitHub OAuth App → wired as Keycloak IdPs
+- [ ] Google OAuth client · Azure App Registration · GitHub OAuth App → wired as Keycloak IdPs (optional)
+
+Tests (Stage E)
+- [x] Hermetic auth harness (RSA keypair + static JWKS stand-in; no Keycloak in CI)
+- [x] API tests green — auth middleware (6), organizations (4), projects (2), health (1) = 13
 
 **Exit:** sign up (email/Google/Microsoft/GitHub) → create org → create project; `docker compose up` runs the full stack; auth + org/project tests pass.
 
@@ -112,6 +116,7 @@ Identity (external prereqs)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-23 | P1/E | Stage E (tests): hermetic auth harness (jose RSA keypair + in-test JWKS/OIDC stand-in, no Keycloak), Vitest globalSetup (creates+migrates `agentpm_test`) + per-worker truncation. Suites: auth middleware (6), organizations (4), projects (2) + health (1) = 13 green. Removed temp debug log. **Phase 1 complete.** | _pending_ |
 | 2026-06-23 | P1/D | Stage D (frontend): keycloak-js auth (login/signup, PKCE, token refresh), auth-gated React Router + Layout, typed API client (token attach + retry-on-401), Dashboard (orgs + create) + OrgProjects (projects + create) via React Query. Verified in-browser by user: signup → create org (OWNER) → create project. shadcn deferred (plain Tailwind). | 140d01c |
 | 2026-06-23 | P1/C | Stage C (platform CRUD): Organizations CRUD + members (creator→OWNER, last-owner guard, add-by-email), Projects CRUD; shared authz (`assertOrgRole`/`requireOrgRole`/RBAC), slug helper, global error handler (ApiError + ZodError→400). Verified with real tokens: CRUD, validation 400, last-owner 400, non-member 403. | 2560397 |
 | 2026-06-23 | P1/B | Stage B (API auth): @fastify/jwt + get-jwks JWKS verification (iss/aud); issuer vs JWKS host decoupled (no /etc/hosts). `requireAuth` + JIT User provisioning, `requireOrgRole` + RBAC, `GET`/`PATCH /api/me`. Verified with real Keycloak token: 401/tampered→401, valid→200, PATCH ok, idempotent (1 row). | 8f6d5c6 |

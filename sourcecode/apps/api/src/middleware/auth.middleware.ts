@@ -25,8 +25,7 @@ interface KeycloakClaims {
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   try {
     await request.jwtVerify()
-  } catch (err) {
-    request.log.warn({ err: (err as Error).message }, 'jwtVerify failed')
+  } catch {
     return reply.code(401).send({ error: 'Unauthorized', code: 'INVALID_TOKEN' })
   }
 

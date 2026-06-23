@@ -3,6 +3,7 @@
 -- Create the separate Keycloak database and the extensions AgentPM needs.
 
 CREATE DATABASE keycloak;
+CREATE DATABASE agentpm_test;  -- used by the API test suite
 
 \connect agentpm
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
