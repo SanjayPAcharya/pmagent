@@ -24,12 +24,12 @@ export default function OrgProjects() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <Link to="/" className="text-sm text-slate-500 hover:underline">
+      <Link to="/" className="text-sm text-muted-foreground hover:underline">
         ← organizations
       </Link>
       <div className="mt-2 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">{org.data?.org.name ?? slug} · projects</h2>
-        <Link to={`/orgs/${slug}/members`} className="text-sm text-slate-500 hover:underline">
+        <h2 className="text-xl font-semibold text-foreground">{org.data?.org.name ?? slug} · projects</h2>
+        <Link to={`/orgs/${slug}/members`} className="text-sm text-muted-foreground hover:underline">
           Members &amp; invites →
         </Link>
       </div>
@@ -45,30 +45,30 @@ export default function OrgProjects() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New project name"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
         />
         <button
           disabled={!name.trim() || !orgId || create.isPending}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
           Create
         </button>
       </form>
       {create.isError && (
-        <p className="mt-2 text-sm text-rose-600">{(create.error as Error).message}</p>
+        <p className="mt-2 text-sm text-destructive">{(create.error as Error).message}</p>
       )}
 
-      <ul className="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+      <ul className="mt-6 divide-y divide-border rounded-lg border bg-card">
         {projects.data?.projects.map((p) => (
-          <li key={p.id} className="px-4 py-3 hover:bg-slate-50">
+          <li key={p.id} className="px-4 py-3 hover:bg-accent">
             <Link to={`/orgs/${slug}/projects/${p.slug}`} className="flex items-baseline gap-2">
-              <span className="font-medium text-slate-800">{p.name}</span>
-              <span className="text-xs text-slate-400">/{p.slug}</span>
+              <span className="font-medium text-foreground">{p.name}</span>
+              <span className="text-xs text-muted-foreground">/{p.slug}</span>
             </Link>
           </li>
         ))}
         {projects.data?.projects.length === 0 && (
-          <li className="px-4 py-6 text-center text-sm text-slate-400">No projects yet.</li>
+          <li className="px-4 py-6 text-center text-sm text-muted-foreground">No projects yet.</li>
         )}
       </ul>
     </div>

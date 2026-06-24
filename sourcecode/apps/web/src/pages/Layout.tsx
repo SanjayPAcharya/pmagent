@@ -1,11 +1,14 @@
 import { Outlet, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { Moon, Sun } from 'lucide-react'
 import { api } from '../lib/api'
 import { logout } from '../lib/auth'
+import { useTheme } from '../lib/theme'
 import { Button } from '@/components/ui/button'
 
 export default function Layout() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
+  const { theme, toggle } = useTheme()
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background">
@@ -15,6 +18,9 @@ export default function Layout() {
           </Link>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span>{me.data?.user.email}</span>
+            <Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme" aria-label="Toggle theme">
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => logout()}>
               Sign out
             </Button>

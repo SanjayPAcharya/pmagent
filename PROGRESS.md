@@ -99,8 +99,8 @@ _Group C — polish / pre-existing:_
 ---
 
 ## Phase 2.5 — UX Hardening → [plan](agentpm-plan/phases/phase-2.5-ux-hardening.md)
-**Status:** ⬜ not started (after Phase 2 verified)
-- [ ] Dark mode (Tailwind `darkMode:'class'` + toggle; retrofit existing components)
+**Status:** 🟡 in progress — dark mode done; i18n/mobile/Cmd-K/E2E next.
+- [x] Dark mode (Tailwind `darkMode:'class'` + `.dark` CSS-var palette; `theme.ts` localStorage+OS pref, applied pre-render; toggle in Layout; retrofit Landing/Dashboard/OrgProjects to tokens; Toaster `theme=system`)
 - [ ] i18n (react-i18next, `en` baseline, externalize all strings incl. Phase-1)
 - [ ] Mobile-responsive board + drawer
 - [ ] Cmd-K command palette

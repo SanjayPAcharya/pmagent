@@ -3,8 +3,12 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { keycloak } from './lib/auth'
+import { applyTheme, getInitialTheme } from './lib/theme'
 import App from './App'
 import './index.css'
+
+// Apply the saved/OS theme before first paint to avoid a flash.
+applyTheme(getInitialTheme())
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -32,7 +36,7 @@ keycloak
       <React.StrictMode>
         <QueryClientProvider client={queryClient}>
           <App />
-          <Toaster richColors position="bottom-right" />
+          <Toaster richColors position="bottom-right" theme="system" />
         </QueryClientProvider>
       </React.StrictMode>,
     )
