@@ -23,7 +23,7 @@ export default function OrgProjects() {
   })
 
   return (
-    <div>
+    <div className="mx-auto max-w-4xl">
       <Link to="/" className="text-sm text-slate-500 hover:underline">
         ← organizations
       </Link>
@@ -57,9 +57,11 @@ export default function OrgProjects() {
 
       <ul className="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
         {projects.data?.projects.map((p) => (
-          <li key={p.id} className="px-4 py-3">
-            <span className="font-medium text-slate-800">{p.name}</span>{' '}
-            <span className="text-xs text-slate-400">/{p.slug}</span>
+          <li key={p.id} className="px-4 py-3 hover:bg-slate-50">
+            <Link to={`/orgs/${slug}/projects/${p.slug}`} className="flex items-baseline gap-2">
+              <span className="font-medium text-slate-800">{p.name}</span>
+              <span className="text-xs text-slate-400">/{p.slug}</span>
+            </Link>
           </li>
         ))}
         {projects.data?.projects.length === 0 && (

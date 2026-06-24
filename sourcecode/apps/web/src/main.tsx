@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { keycloak } from './lib/auth'
 import App from './App'
 import './index.css'
@@ -25,6 +26,7 @@ keycloak
       <React.StrictMode>
         <QueryClientProvider client={queryClient}>
           <App />
+          <Toaster richColors position="bottom-right" />
         </QueryClientProvider>
       </React.StrictMode>,
     )

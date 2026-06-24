@@ -27,6 +27,7 @@ const createTicketSchema = z.object({
   projectId: z.string().uuid(),
   sprintId: z.string().uuid().optional(),
   title: z.string().min(1).max(200),
+  status: statusEnum.optional(),
   description: z.string().optional(),
   acceptanceCriteria: z.string().optional(),
   goal: z.string().optional(),

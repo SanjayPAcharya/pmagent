@@ -9,7 +9,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
+        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-6 py-3">
           <Link to="/" className="text-lg font-semibold text-foreground">
             AgentPM
           </Link>
@@ -21,7 +21,7 @@ export default function Layout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-6 py-8">
+      <main className="mx-auto w-full max-w-[1600px] px-6 py-8">
         <Outlet />
       </main>
     </div>

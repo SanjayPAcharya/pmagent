@@ -65,6 +65,7 @@ export interface CreateTicketInput {
   projectId: string
   sprintId?: string
   title: string
+  status?: 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE' | 'CANCELLED'
   description?: string
   acceptanceCriteria?: string
   goal?: string
@@ -109,8 +110,10 @@ export async function createTicket(orgId: string, createdById: string, input: Cr
     })
     const number = project.ticketCounter
 
+    const status = input.status ?? 'BACKLOG'
+    // New card sorts to the end of its target column.
     const last = await tx.ticket.findFirst({
-      where: { projectId: input.projectId, status: 'BACKLOG' },
+      where: { projectId: input.projectId, status },
       orderBy: { position: 'desc' },
       select: { position: true },
     })
@@ -126,6 +129,7 @@ export async function createTicket(orgId: string, createdById: string, input: Cr
         sprintId: input.sprintId,
         number,
         title: input.title,
+        status,
         description: input.description,
         acceptanceCriteria: input.acceptanceCriteria,
         goal: input.goal,

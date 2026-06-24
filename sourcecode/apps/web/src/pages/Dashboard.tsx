@@ -16,7 +16,7 @@ export default function Dashboard() {
   })
 
   return (
-    <div>
+    <div className="mx-auto max-w-4xl">
       <h2 className="text-xl font-semibold text-slate-900">Your organizations</h2>
 
       <form

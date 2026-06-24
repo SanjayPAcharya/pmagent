@@ -31,4 +31,6 @@ export function paginate<T extends { id: string }>(rows: T[], limit: number): { 
 }
 
 export const DEFAULT_LIMIT = 50
-export const MAX_LIMIT = 100
+// Boards fetch a whole project's tickets in one page to group by column, so the
+// cap is generous; very large boards move to per-column pagination in Phase 2.5.
+export const MAX_LIMIT = 200
