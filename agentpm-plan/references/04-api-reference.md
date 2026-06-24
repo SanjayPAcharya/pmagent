@@ -34,7 +34,7 @@ GET    /api/orgs                   List user's organizations
 GET    /api/orgs/:slug             Get organization by slug
 PATCH  /api/orgs/:slug             Update organization
 DELETE /api/orgs/:slug             Delete organization (owner only)
-GET    /api/orgs/:slug/members     List members
+GET    /api/orgs/:slug/members     List members → { members: { userId, name, email, avatarUrl, role }[] } (used by avatars, assignee/watcher + @mention pickers, presence)
 POST   /api/orgs/:slug/members     Add existing user by email
 PATCH  /api/orgs/:slug/members/:userId  Update member role
 DELETE /api/orgs/:slug/members/:userId  Remove member
@@ -46,7 +46,7 @@ POST   /api/invites/:token/accept  Accept invite — current user joins (Phase 2
 
 ### Projects (`/api/projects`) — Phase 1 (CRUD); GitHub/integration/autonomy endpoints land in Phase 4
 ```
-POST   /api/projects                           Create project (body: { orgId, name, slug })
+POST   /api/projects                           Create project (body: { orgId, name, slug?, key? }) — key derived if omitted
 GET    /api/projects?orgId=:orgId              List projects in org
 GET    /api/projects/:projectId                Get project
 PATCH  /api/projects/:projectId                Update project
@@ -77,7 +77,7 @@ POST   /api/tickets/:ticketId/watchers         Add a watcher / CC ({ userId })
 DELETE /api/tickets/:ticketId/watchers/:userId Remove a watcher
 GET    /api/tickets/:ticketId/activity         Activity timeline (status/assignee/watcher/sprint)
 GET    /api/tickets/:ticketId/actions          List agent actions               (Phase 4)
-POST   /api/tickets/bulk-update                Bulk status/sprint update
+# POST /api/tickets/bulk-update — DEFERRED (board drag covers reorder/move; revisit post-Phase 2 with per-org authz)
 ```
 
 ### Sprints (`/api/sprints`) — Phase 2
@@ -99,6 +99,7 @@ GET    /api/notifications/unread-count         Unread badge count
 POST   /api/notifications/:id/read             Mark one read
 POST   /api/notifications/read-all             Mark all read
 ```
+> **Caller-scoped (no org guard):** every handler filters by `request.userId` — list/count use `where:{ userId }`; `:id/read` matches `{ id, userId }` and returns 404 otherwise. Notifications are per-user, so do **not** reuse `requireOrgRole`.
 
 ### Agents (`/api/agents`) — Phase 4
 ```
@@ -109,7 +110,11 @@ POST   /api/agents/actions/:actionId/retry    Retry failed action
 
 ## List conventions (pagination, filter, sort) — Phase 2
 
-All list endpoints share a cursor convention: `?limit=<n>&cursor=<opaque>` → response `{ items, nextCursor }` (`nextCursor: null` at the end). Tickets additionally accept `q`, `status`, `priority`, `type`, `assignedToId`, `labelId`, `sprintId`, and `sort` (e.g. `position`, `-updatedAt`). Filters/sorts are enforced server-side after the org-role check. Archived tickets (`archivedAt != null`) are excluded unless `?includeArchived=true`.
+All list endpoints share a cursor convention: `?limit=<n>&cursor=<opaque>` → response `{ items, nextCursor }` (`nextCursor: null` at the end). Tickets additionally accept `q`, `status`, `priority`, `type`, `assignedToId`, `labelId`, `sprintId`, and `sort`. Filters/sorts are enforced server-side after the org-role check. Archived tickets (`archivedAt != null`) are excluded unless `?includeArchived=true`.
+
+> **Total order + tiebreaker (required for correct cursors):** every list `ORDER BY` ends with `id`, and the cursor encodes the `(sortKey…, id)` tuple with a keyset predicate `(sortVal, id) > (cursorSortVal, cursorId)`. Otherwise ties (e.g. `priority`, or `position` which many rows share) drop/duplicate rows across pages.
+> **`sort` is a whitelist** (Zod enum: `position|-position|updatedAt|-updatedAt|priority|-priority|number|-number`); filter ids are `z.string().uuid()`, status/priority/type are enums. No raw client string ever reaches `orderBy`.
+> **Cross-scope validation:** `assignedToId` + watcher ids must be `OrgMember`s of the ticket's org; `labelId(s)` must belong to that org; `sprintId`/`parentId`/`dependsOnIds` must belong to the same project — else `400`.
 
 ## Validation pattern (applies to every route)
 
@@ -141,3 +146,5 @@ export type CreateTicketBody = z.infer<typeof createTicketSchema>
 ```
 
 `validate.middleware.ts` runs the matching schema's `.parse()` on the request body (and params/query where relevant) before the handler runs, returning `400` with field errors on failure. **Writing the Zod schema is the first coding task per route.**
+
+> **From Phase 2 onward** routes use **`fastify-type-provider-zod`**: declare `schema: { body, querystring, params }` with Zod directly — Fastify validates from it *and* `@fastify/swagger` generates `/documentation` from the same schema (no drift, no separate JSON schema). Phase-1 routes keep the manual `.parse()` pattern above until migrated.

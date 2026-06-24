@@ -74,6 +74,7 @@ model Organization {
   members   OrgMember[]
   projects  Project[]
   invites   OrgInvite[]
+  labels    Label[]
 
   @@index([slug])
 }
@@ -90,7 +91,7 @@ model OrgInvite {
   createdAt    DateTime @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  invitedBy    User         @relation("InvitesSent", fields: [invitedById], references: [id])
+  invitedBy    User         @relation("InvitesSent", fields: [invitedById], references: [id], onDelete: Cascade)
 
   @@index([orgId])
   @@index([token])
@@ -116,6 +117,8 @@ model Project {
   orgId         String    @db.Uuid
   name          String
   slug          String
+  key           String    // short uppercase, e.g. "AGP" — prefixes ticket numbers (AGP-42)
+  ticketCounter Int       @default(0)  // monotonic per-project allocator for ticket `number`
   description   String?
   githubRepoUrl String?
   githubRepoOwner String?
@@ -132,6 +135,7 @@ model Project {
   autonomySettings AutonomySettings?
 
   @@unique([orgId, slug])
+  @@unique([orgId, key])
   @@index([orgId])
 }
 
@@ -167,9 +171,9 @@ model Ticket {
   updatedAt         DateTime      @updatedAt
 
   project           Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  sprint            Sprint?       @relation(fields: [sprintId], references: [id])
-  assignedTo        User?         @relation("AssignedTo", fields: [assignedToId], references: [id])
-  createdBy         User          @relation("CreatedBy", fields: [createdById], references: [id])
+  sprint            Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  assignedTo        User?         @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy         User          @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Restrict) // block deleting a user who created tickets
   parent            Ticket?       @relation("Subtasks", fields: [parentId], references: [id])
   subtasks          Ticket[]      @relation("Subtasks")
   agentActions      AgentAction[]
@@ -199,11 +203,12 @@ model TicketDependency {
 }
 
 model Label {
-  id      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name    String
-  color   String
-  orgId   String        @db.Uuid
-  tickets TicketLabel[]
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  color        String
+  orgId        String        @db.Uuid
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tickets      TicketLabel[]
 
   @@unique([orgId, name])
 }
@@ -257,7 +262,7 @@ model TicketActivity {
   createdAt DateTime         @default(now())
 
   ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  actor     User?  @relation(fields: [actorId], references: [id])
+  actor     User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([ticketId, createdAt])
 }
@@ -377,7 +382,7 @@ model Notification {
   metadata    Json?
 
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ticket      Ticket?            @relation(fields: [ticketId], references: [id])
+  ticket      Ticket?            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt])
 }

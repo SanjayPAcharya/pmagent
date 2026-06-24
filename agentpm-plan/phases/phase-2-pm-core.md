@@ -39,10 +39,10 @@
 _Tickets & board_
 - [ ] **Due date** on tickets
 - [ ] **Soft-delete** tickets (archive via `archivedAt`; lists exclude archived by default)
-- [ ] **Search + filter + sort** on board & list — by assignee, label, priority, status, and free text
-- [ ] **Inline quick-add** per column + **Cmd-K command palette** (quick add / jump to ticket)
+- [ ] **Search + filter + sort** on board & list — by assignee, label, priority, status, and free text (whitelisted sort enum)
+- [ ] **Inline quick-add** per column  _(Cmd-K command palette → Phase 2.5)_
 - [ ] **Deep-linkable ticket route** `/:orgSlug/:projectSlug/ticket/:number` (opens the drawer directly; shareable)
-- [ ] **Markdown render + `@mention`** in description & comments, **sanitized (DOMPurify)**
+- [ ] **Markdown render + `@mention`** in description & comments, **sanitized (DOMPurify, client + server)**
 
 _Real-time / notifications_
 - [ ] **In-app notification center (bell)** over WS — notify the assignee, creator, watchers/CC, and `@mentioned` users on relevant events; unread badge + mark-read
@@ -57,16 +57,105 @@ _API quality_
 - [ ] **`/ready` readiness probe** (DB + Redis) + graceful shutdown (also needed for Phase 3 deploy)
 - [ ] **Seed script** (`pnpm db:seed`) — demo org/project/tickets for a fresh stack
 
-_Frontend polish_
+_Frontend foundation & feel_
+- [ ] **UI component foundation** — adopt **shadcn/ui** (Radix: Dialog/Popover/Command/Toast); the drawer, pickers, and toasts depend on it
 - [ ] **Optimistic UI + toasts + skeleton loaders** (drag/edits apply instantly)
-- [ ] **Dark mode** (theme toggle, Tailwind `dark:`)
-- [ ] **i18n scaffolding** (react-i18next, `en` baseline, strings externalized)
-- [ ] **Mobile-responsive** board + drawer
-- [ ] **Playwright E2E** for core flows (create ticket → drag status → comment → notification)
 
-> **Scope decisions kept as-is:** org membership = project access (no separate `ProjectMember` table this phase); **attachments deferred**. Say the word if you want either pulled in.
+> **Split out to [Phase 2.5 — UX hardening](phase-2.5-ux-hardening.md):** dark mode, i18n, mobile-perfect, Cmd-K palette, Playwright E2E. Phase 2 ships a **verifiable PM core**; 2.5 hardens UX before Phase 3 (deploy).
+
+> **Decisions (this round):** (1) **shadcn/ui adopted** in Phase 2 (drawer/dialog/popover/toast are core). (2) **`bulk-update` deferred** — board drag covers reorder/move; remove from Phase-2 scope. (3) **CI deferred to Phase 3** (a note in Phase 2; minimal local run only). (4) **org membership = project access** kept (no `ProjectMember`); invite role is **capped at the creator's role**. (5) **attachments deferred**.
 
 ---
+
+## Resolved blockers (implementation decisions — read before 2A)
+
+These five were found in a dry-run review and are settled here so the build starts clean.
+
+1. **WS verification uses a shared async verifier, not `app.jwt.verify`.** `@fastify/jwt`'s sync verify can't resolve our async JWKS key, and `@fastify/websocket` v11 hands the handler `(socket, req)` (no `conn.socket`). A standalone **jose** verifier (`createRemoteJWKSet`) handles the WS handshake (see the WS section below). It's also reusable by HTTP if we ever unify.
+2. **Event bus is lazily initialized**, not connected at import — so tests and the worker don't force a Redis connection on module load. `initEventBus()` runs in `buildServer`; `disposeEventBus()` on shutdown (see the corrected snippet below). **Tests run with `REDIS_URL` pointed at the dev/CI Redis.**
+3. **Ticket numbering is atomic** via a per-project counter (`Project.ticketCounter`), incremented in the same transaction as the insert — no `MAX()+1` race.
+4. **Ticket display id = `Project.key` + number** (e.g. `AGP-42`). `Project` gains `key` (short uppercase, unique per org, derived on create, overridable). The Phase-2 migration **backfills `key` for existing projects** (derive from name; ensure per-org uniqueness) before adding the `NOT NULL` + unique constraint.
+5. **Validation + Swagger via `fastify-type-provider-zod`.** Phase-2 routes declare `schema: { body/querystring: <zod> }`; Fastify validates from the Zod schema **and** `@fastify/swagger` generates `/documentation` from it. (Phase-1 routes keep manual `.parse()` for now; migrate opportunistically.)
+
+```typescript
+// Ticket numbering (atomic) + display id
+const ticket = await prisma.$transaction(async (tx) => {
+  const p = await tx.project.update({
+    where: { id: projectId },
+    data: { ticketCounter: { increment: 1 } },
+    select: { ticketCounter: true, key: true },
+  })
+  return tx.ticket.create({ data: { ...input, projectId, number: p.ticketCounter } })
+})
+// display: `${project.key}-${ticket.number}`  → "AGP-42"
+```
+
+```typescript
+// apps/api/src/auth/verify-token.ts — shared async verifier (jose), used by the WS handshake
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+
+const jwks = createRemoteJWKSet(
+  new URL(`${process.env.KEYCLOAK_INTERNAL_URL}/protocol/openid-connect/certs`),
+)
+export async function verifyAccessToken(token: string) {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: process.env.KEYCLOAK_ISSUER_URL,
+    audience: process.env.KEYCLOAK_API_AUDIENCE,
+  })
+  return payload as { sub: string; email?: string; name?: string }
+}
+```
+> **Deps this adds.** API (runtime): `redis`, `jose` (promote from devDep), `fastify-type-provider-zod`, `@fastify/swagger`, `@fastify/swagger-ui`, `isomorphic-dompurify` (server-side sanitize). Web: `@dnd-kit/*`, **shadcn/ui + Radix primitives**, `marked` + `dompurify`, `date-fns`. (Cmd-K `cmdk` + `react-i18next` → Phase 2.5.)
+
+## Round 2 — blocker fixes from the full audit (also plan contract)
+
+A 7-dimension review of this plan + the Phase-1 code surfaced these. They are settled here.
+
+**Security**
+- **Notification endpoints scope to the caller** (per-user, no org guard): list/unread-count filter `where:{ userId: request.userId }`; `:id/read` matches `{ id, userId }` else 404. *(test: cannot read/mark another user's notification)*
+- **@mention is org-bounded:** autocomplete and server-side mention resolution restrict to `OrgMember`s of the ticket's org; the final recipient set is intersected with current org membership, minus the actor. *(test: @mention of a non-member → no notification)*
+- **Markdown sanitized both sides:** SPA renders `marked` + `DOMPurify` with raw-HTML disabled; any server-generated copy (notification body, later emails) is sanitized server-side (`isomorphic-dompurify`) or sent as plain text.
+- **Invite tokens:** `crypto.randomBytes(32).toString('base64url')` (≥128-bit); `accept` requires an authenticated user, verifies `expiresAt > now && acceptedAt == null` in the same tx that creates the `OrgMember`, sets `acceptedAt` (single-use), and if `email` is set must match the caller; uniform `404` on miss; **invite role capped at the creator's role** (ADMIN can't mint OWNER); stricter rate-limit on accept.
+- **Whitelisted sort/filter:** `sort` is a Zod enum (`position|-position|updatedAt|-updatedAt|priority|-priority|number|-number`); filter ids `z.string().uuid()`; status/priority/type enums.
+- **Cross-scope validation:** `assignedToId` + each watcher `userId` must be `OrgMember`s of the ticket's org; `labelIds` must belong to that org; `sprintId`/`parentId`/`dependsOnIds` must belong to the same project — else `400`.
+- **Per-user rate limit:** add a `request.userId`-keyed 1000/min limit alongside per-IP 100/min; set Fastify `trustProxy` (behind Caddy/ALB).
+
+**Correctness / data**
+- **Publish-after-commit:** emit events only after the `$transaction` resolves; events are "hints" → clients refetch.
+- **Fully transactional create:** ticketCounter increment + ticket insert + label/dependency rows + auto-add creator(+assignee) watcher + `CREATED` activity, all in one `$transaction`; strip non-scalar keys before `ticket.create`.
+- **Single `updateTicket(diff, actor)` service** used by `PATCH /tickets/:id`, `/status`, and sprint add/remove — computes field diffs, writes the right `TicketActivity` rows (incl. `PRIORITY_CHANGED`, `SPRINT_CHANGED`), publishes one `ticket.updated`, one tx.
+- **Board ordering:** `position` = midpoint between neighbours on move (append = max+step); document a rebalance when the gap collapses; every board/list query appends `id` as the final tiebreaker. (Keep `Float`; revisit LexoRank only if precision bites.)
+- **Cursor pagination is total:** ORDER BY ends with `id`; cursor encodes the `(sortKey…, id)` tuple; keyset predicate `(sortVal,id) > (cursorSortVal,cursorId)`; add covering indexes.
+- **`onDelete` + Label relation** (see [03](../references/03-data-models.md)): `Label` gets an `organization` relation (cascade); `Ticket.assignedTo`→`SetNull`, `TicketActivity.actor`→`SetNull`, `Notification.ticket`→`Cascade`, `OrgInvite.invitedBy`→`Cascade`, `Ticket.createdBy`→`Restrict` (block user delete).
+- **Agent enums stay, relations don't:** the Phase-2 schema keeps `AgentType`/`AgentPhase` enums + the ticket agent **scalar** columns (nullable); it omits the `agentActions`/`Approval` **relations + tables** (Phase 4). Phase-2 ticket include set = `{ project, sprint, labels, assignedTo, watchers, activity, comments }` (no `agentActions`).
+- **Notification-writer ownership:** in Phase 2 (single API instance) the API writes `Notification` rows and fans out. For multi-instance (Phase 3 scale) move the writer to the worker or add a dedupe unique key.
+- **Schema header:** Phase-2 schema keeps the Phase-1 generator/datasource header — **no managed `extensions`/pgvector** (defer to Phase 4).
+
+**Real-time**
+- **Self-echo dedupe:** every event payload carries `actorId`; the client ignores events where `actorId === me` for its own optimistic mutations (or the server skips the originating socket). **Board events carry only `projectId`; `notification.new` only `userId`** (no double-delivery).
+- **Refetch-on-reconnect:** after `auth.ok` on every (re)connect, the client invalidates board + sprint-counts + unread-count queries (WS is a "something changed" hint, not a lossless stream — Redis pub/sub has no replay).
+- **WS handshake hardening:** client `onopen` does `await keycloak.updateToken(30)` then sends a fresh token (the plan's `getAccessToken` → use `getToken`/refresh); reconnect re-refreshes; treat `4001` as retry-once-after-refresh. Server sets an `authPending` flag **synchronously before any await** (no double-join race), one project per socket, optional heartbeat/idle reap. (Tokens aren't re-checked mid-session — acceptable for Phase 2.)
+- **Shared WS types:** `WSMessage`/`WSEventType` live in `@agentpm/shared-types` (api + web import the one definition).
+
+**Frontend integration**
+- **Routing restructure:** mount `<BrowserRouter>` unconditionally; split **public** routes (`/invite/:token`, landing) from **auth-gated** routes (board/drawer/dashboard) via a guard wrapper — don't `return <Landing/>` before the router. `/invite/:token` persists the token across the Keycloak round-trip. Reconcile the URL scheme (`/orgs/:slug` vs `/:orgSlug/:projectSlug`) before layering the deep-link drawer.
+- **Members endpoint shape:** `GET /api/orgs/:slug/members` → `{ members: { userId, name, email, avatarUrl, role }[] }`; `api.listMembers(slug)` cached in React Query, shared by presence avatars, assignee/watcher pickers, and the @mention picker.
+
+**Lifecycle / ops**
+- **Graceful shutdown (gates Phase 3):** SIGTERM/SIGINT → flip `/ready` to 503 → `app.close()` (onClose hook closes all WS sockets + clears rooms) → `disposeEventBus()` → `prisma.$disconnect()`. `/ready` checks Postgres (`SELECT 1`) + Redis ping.
+- **zod type-provider scope:** register the validator/serializer compilers **inside the Phase-2 route plugins' encapsulated scope** (Phase-1 manual-parse routes untouched); register `@fastify/swagger` with `jsonSchemaTransform` before the route plugins.
+- **Idempotent seed:** `pnpm db:seed` upserts on unique keys (sets `ticketCounter`) and ties demo data to a known user.
+- **Test harness:** add `REDIS_URL` to `vitest.config.ts` env; call `disposeEventBus()` in teardown; extend the `beforeEach` truncation to every new table in child→parent FK order (or `TRUNCATE … RESTART IDENTITY CASCADE`); reset the test DB when the `Project.key` backfill migration lands.
+
+## Sub-stage plan (2A–2E) — build + verify + commit each
+
+- **2A — Data & migration.** Schema additions (Label relation + onDelete, `dueDate`, `archivedAt`, `Project.key` + `ticketCounter`, agent enums kept; `TicketWatcher`/`TicketActivity`/`OrgInvite`/in-app `Notification`), the `key` backfill migration, a soft-delete Prisma extension, and the idempotent seed. **Verify:** migrate + seed clean.
+- **2B — Tickets backend.** Ticket CRUD (transactional create + atomic numbering), the `updateTicket` service + activity, comments, assignee, watchers, label/dep/sprint cross-scope validation, search/filter/sort (whitelist) + cursor pagination, Swagger via zod-provider, `/ready` + graceful shutdown. **+ API tests.**
+- **2C — Sprints + real-time + notifications + invites (backend).** Sprint CRUD + completion counts; event bus init/dispose; WS server (project+user rooms, presence, hardened handshake) + shared `WSMessage`; caller-scoped in-app notifications; org invite tokens (+role cap, accept). **+ API/WS tests.**
+- **2D — Frontend foundation.** shadcn/ui adoption; routing restructure (public vs gated) + `/invite/:token` accept page; members endpoint + `api.listMembers`; typed WS client (refresh + reconnect-refetch + echo-dedupe).
+- **2E — Board & drawer & verify.** Kanban (dnd-kit + position) + quick-add + JIRA-style status; ticket drawer (comments / activity / assignee / watchers / labels / due) + markdown(@mention, sanitized); sprint view + completion bars; optimistic UI + toasts + skeletons; notification bell. **You verify in-browser; fill remaining API test gaps; close Phase 2.**
+
+Hard dependencies: 2B needs 2A; 2C needs 2A (+2B service for activity); 2D/2E need 2B+2C APIs. **Phase 2.5 (dark mode, i18n, mobile-perfect, Cmd-K, Playwright E2E) runs after Phase 2 is verified.**
 
 ## Ticket request/response contracts
 
@@ -136,27 +225,43 @@ Recorded server-side (not client-trusted); rendered as a timeline tab in the dra
 File: `apps/api/src/events/event-bus.ts`
 
 ```typescript
-import { createClient } from 'redis'
+import { createClient, type RedisClientType } from 'redis'
 
-const publisher = createClient({ url: process.env.REDIS_URL })
-const subscriber = createClient({ url: process.env.REDIS_URL })
+// Lazy — NOT connected at import (so tests/worker don't force a Redis connection
+// on module load). initEventBus() runs in buildServer; disposeEventBus() on shutdown.
+let publisher: RedisClientType | undefined
+let subscriber: RedisClientType | undefined
 
-await Promise.all([publisher.connect(), subscriber.connect()])
+export async function initEventBus() {
+  publisher = createClient({ url: process.env.REDIS_URL })
+  subscriber = publisher.duplicate()
+  await Promise.all([publisher.connect(), subscriber.connect()])
+}
 
-export async function publishEvent(type: string, payload: unknown) {
+export async function publishEvent(
+  type: string,
+  payload: { projectId?: string; userId?: string; [k: string]: unknown },
+) {
+  if (!publisher) return
   await publisher.publish('agentpm:events',
     JSON.stringify({ type, payload, timestamp: new Date().toISOString() }))
 }
 
-export async function subscribeToEvents(handler: (type: string, payload: unknown) => void) {
+export async function subscribeToEvents(handler: (type: string, payload: any) => void) {
+  if (!subscriber) return
   await subscriber.subscribe('agentpm:events', (message) => {
     const { type, payload } = JSON.parse(message)
     handler(type, payload)
   })
 }
+
+export async function disposeEventBus() {
+  await Promise.allSettled([publisher?.quit(), subscriber?.quit()])
+  publisher = subscriber = undefined
+}
 ```
 
-> **Contract that everything depends on:** every published event payload includes `projectId`. The WS server fans out by room `project:{projectId}`, so events without it never reach clients.
+> **Contract that everything depends on:** every published event payload includes a `projectId` (board events) and/or a `userId` (personal events). The WS server fans out by `project:{projectId}` and `user:{userId}`; an event with neither reaches no one.
 
 ## Real-time: WebSocket server
 
@@ -167,66 +272,85 @@ Real-time runs **inside the API process** via `@fastify/websocket` — no AWS AP
 File: `apps/api/src/websocket/ws-server.ts`
 
 ```typescript
+// @fastify/websocket v11: the handler receives (socket, req) — `socket` IS the
+// WebSocket (no conn.socket). Token is verified with the shared jose verifier
+// (async JWKS), NOT app.jwt.verify (which can't resolve the async key).
 import type { FastifyPluginAsync } from 'fastify'
-import { subscribeToEvents } from '../events/event-bus'
+import type { WebSocket } from '@fastify/websocket'
+import { subscribeToEvents } from '../events/event-bus.js'
+import { verifyAccessToken } from '../auth/verify-token.js'
+import { prisma } from '../db/client.js'
+import { assertOrgRole } from '../services/authz.js'
 
-const rooms = new Map<string, Set<WebSocket>>()   // room -> live sockets
+const rooms = new Map<string, Set<WebSocket>>()                 // room -> sockets
+const socketUser = new Map<WebSocket, { userId: string; projectId: string }>()
 
-function join(room: string, socket: WebSocket) {
-  if (!rooms.has(room)) rooms.set(room, new Set())
-  rooms.get(room)!.add(socket)
-}
-function leaveAll(socket: WebSocket) {
-  for (const set of rooms.values()) set.delete(socket)
-}
-function broadcast(room: string, message: object) {
-  const data = JSON.stringify(message)
+const join = (room: string, s: WebSocket) =>
+  (rooms.get(room) ?? rooms.set(room, new Set()).get(room)!).add(s)
+const leaveAll = (s: WebSocket) => { for (const set of rooms.values()) set.delete(s) }
+const broadcast = (room: string, msg: object) => {
+  const data = JSON.stringify(msg)
   rooms.get(room)?.forEach((s) => { try { s.send(data) } catch {} })
+}
+function presenceState(projectId: string) {
+  const ids = new Set<string>()
+  for (const s of rooms.get(`project:${projectId}`) ?? []) {
+    const u = socketUser.get(s); if (u) ids.add(u.userId)
+  }
+  return [...ids]
 }
 
 export const wsServer: FastifyPluginAsync = async (app) => {
+  // One subscription routes events by whichever key the payload carries.
   await subscribeToEvents((type, payload: any) => {
-    if (!payload?.projectId) return
-    broadcast(`project:${payload.projectId}`, {
-      type, room: `project:${payload.projectId}`,
-      payload, timestamp: new Date().toISOString()
-    })
+    const env = (room: string) => ({ type, room, payload, timestamp: new Date().toISOString() })
+    if (payload?.projectId) broadcast(`project:${payload.projectId}`, env(`project:${payload.projectId}`))
+    if (payload?.userId) broadcast(`user:${payload.userId}`, env(`user:${payload.userId}`))
   })
 
-  app.get('/ws', { websocket: true }, (conn, req) => {
-    const socket = conn.socket
+  app.get('/ws', { websocket: true }, (socket, _req) => {
     let authed = false
     const authTimer = setTimeout(() => { if (!authed) socket.close(4001, 'auth timeout') }, 5000)
 
     socket.on('message', async (raw) => {
       let msg: any
       try { msg = JSON.parse(raw.toString()) } catch { return }
+      if (authed) return // Phase 2 clients only listen after auth
 
-      if (!authed) {
-        if (msg.type !== 'auth') return
-        try {
-          const { sub: userId } = app.jwt.verify(msg.token) as { sub: string }
-          const member = await isProjectMember(userId, msg.projectId)
-          if (!member) throw new Error('not a member')
-          join(`project:${msg.projectId}`, socket)
-          authed = true
-          clearTimeout(authTimer)
-          socket.send(JSON.stringify({ type: 'auth.ok' }))
-        } catch {
-          socket.send(JSON.stringify({ type: 'auth.error' }))
-          socket.close(4001, 'auth failed')
-        }
-        return
+      if (msg.type !== 'auth') return
+      try {
+        const claims = await verifyAccessToken(msg.token)
+        // Map the Keycloak subject to our local user id (created on first API call).
+        const user = await prisma.user.findUniqueOrThrow({ where: { idpSub: claims.sub } })
+        const project = await prisma.project.findUniqueOrThrow({
+          where: { id: msg.projectId }, select: { orgId: true },
+        })
+        await assertOrgRole(user.id, project.orgId, 'MEMBER') // throws if not a member
+
+        join(`project:${msg.projectId}`, socket)
+        join(`user:${user.id}`, socket)
+        socketUser.set(socket, { userId: user.id, projectId: msg.projectId })
+        authed = true
+        clearTimeout(authTimer)
+        socket.send(JSON.stringify({ type: 'auth.ok' }))
+        broadcast(`project:${msg.projectId}`, { type: 'presence.state', payload: { projectId: msg.projectId, viewers: presenceState(msg.projectId) } })
+      } catch {
+        socket.send(JSON.stringify({ type: 'auth.error' }))
+        socket.close(4001, 'auth failed')
       }
-      // (Phase 2 clients only listen; inbound messages after auth are ignored.)
     })
 
-    socket.on('close', () => { clearTimeout(authTimer); leaveAll(socket) })
+    socket.on('close', () => {
+      clearTimeout(authTimer)
+      const u = socketUser.get(socket)
+      leaveAll(socket); socketUser.delete(socket)
+      if (u) broadcast(`project:${u.projectId}`, { type: 'presence.state', payload: { projectId: u.projectId, viewers: presenceState(u.projectId) } })
+    })
   })
 }
 ```
 
-`rooms` is in-memory per API instance — exactly right for the single-task MVP, and still correct without sticky sessions if you scale to multiple API tasks (because every instance subscribes to Redis). Only move to AWS API Gateway WebSockets if you outgrow what a few API instances can hold in concurrent connections.
+`rooms`/presence are in-memory per API instance — correct for the single-task MVP. **Board events** still propagate across instances via Redis (every instance subscribes), so live updates stay correct without sticky sessions; only **presence** is per-instance (move to a Redis presence set if you run multiple API tasks).
 
 ### WebSocket event envelope
 
@@ -402,36 +526,39 @@ POST   /api/notifications/read-all
 
 ## API docs, readiness & seed
 
-- **Swagger:** register `@fastify/swagger` + `@fastify/swagger-ui`; schemas come from the per-route Zod (via `zod-to-json-schema` or fastify-type-provider-zod). Served at `/documentation`.
-- **`/ready`:** returns 200 only when Postgres + Redis are reachable (distinct from `/health` liveness); add graceful shutdown (close server, Prisma, Redis on SIGTERM).
-- **Seed:** `pnpm db:seed` creates a demo org + project + a handful of tickets/sprint so a fresh `docker compose up` isn't an empty board.
+- **Swagger:** `@fastify/swagger` + `@fastify/swagger-ui` with `jsonSchemaTransform`, fed by **fastify-type-provider-zod** route schemas (compilers registered in the Phase-2 plugins' scope only). Served at `/documentation`.
+- **`/ready`:** 200 only when Postgres (`SELECT 1`) + Redis (ping) are reachable (distinct from `/health` liveness). **Graceful shutdown** on SIGTERM/SIGINT: flip `/ready`→503 → `app.close()` (onClose closes WS sockets + clears rooms) → `disposeEventBus()` → `prisma.$disconnect()`.
+- **Seed:** idempotent `pnpm db:seed` (upserts on unique keys, sets `ticketCounter`) — demo org/project/tickets/sprint tied to a known user.
 
-## Frontend UX & polish
+## Frontend UX (Phase 2 scope)
 
-- **Optimistic UI:** drag/drop, status change, and inline edits apply immediately via React Query optimistic updates; reconcile on server response; **toasts** for success/error; **skeleton loaders** on first load.
-- **Quick-add + Cmd-K:** inline "add ticket" at the top of each column; a command palette (Cmd/Ctrl-K) to quick-add or jump to a ticket by number/title.
-- **Deep-link route:** `/:orgSlug/:projectSlug/ticket/:number` opens the board with the drawer pre-opened; closing returns to the board URL.
-- **Markdown + mentions:** render sanitized markdown (**DOMPurify**) in description/comments; `@` opens a member picker; selecting inserts a mention that resolves to a notification.
-- **Dark mode:** Tailwind `dark:` with a toggle persisted to localStorage / system preference.
-- **i18n:** react-i18next scaffolding, `en` baseline, all UI strings externalized (no hard-coded copy).
-- **Mobile:** board scrolls horizontally with snap; drawer becomes a full-screen sheet; touch-friendly drag.
-- **Presence/empty states:** viewer avatars on the board header; friendly empty states for no-tickets / no-projects.
+- **Optimistic UI:** drag/drop, status change, and inline edits apply immediately via React Query optimistic updates; reconcile on server response; suppress self-echo (ignore WS events with `actorId === me`); **toasts** for success/error; **skeleton loaders** on first load.
+- **Inline quick-add:** "add ticket" at the top of each column. _(Cmd-K palette → Phase 2.5.)_
+- **Deep-link route:** `/:orgSlug/:projectSlug/ticket/:number` opens the board with the drawer pre-opened; closing returns to the board URL. (Public-vs-gated routing restructured first — see Round 2.)
+- **Markdown + mentions:** render sanitized markdown (**marked + DOMPurify**, raw HTML off) in description/comments; `@` opens an org-member picker; the mention is stored in a fixed token format and resolved server-side (org-bounded) into a notification.
+- **Presence / empty states:** viewer avatars (resolved via `api.listMembers`) on the board header; friendly empty states.
 
-## Testing additions (Stage E + E2E)
+> **Deferred to [Phase 2.5](phase-2.5-ux-hardening.md):** dark mode, i18n, mobile-perfect, Cmd-K palette.
 
-- API: tickets/sprints CRUD, numbering, RBAC 403, assignment/watcher/activity, invite accept, notification creation, pagination — hermetic-token harness (as Phase 1).
-- **Playwright E2E** against the docker stack: sign in → create ticket → drag to change status → comment with `@mention` → see the notification bell update.
+## Testing (Phase 2)
+
+Hermetic-token harness (as Phase 1), now with `REDIS_URL` set + `disposeEventBus()` in teardown and the `beforeEach` truncation extended to every new table in FK order:
+- tickets/sprints CRUD, atomic numbering, RBAC 403, assignment/watcher/activity, cross-scope rejection (label/sprint/watcher from another org → 400/403)
+- invite accept (single-use, role-cap, expiry), **notification scoping (IDOR: can't read/mark another user's)**
+- pagination round-trip (no dupes/drops; `nextCursor:null` at end), soft-delete exclusion
+- WS handshake (auth timeout → 4001, valid → `auth.ok`, bad token / non-member → 4001; a `publishEvent({projectId})` reaches a joined socket; `notification.new` reaches only the target user room)
+
+> **Playwright E2E → Phase 2.5** (needs Keycloak storageState + seeded users; CI wiring lands in Phase 3).
 
 ## Definition of Done
 
 - A user can create/edit/delete tickets with the full structured schema, organize them into sprints, and start/complete a sprint.
-- Tickets get sequential per-project numbers.
-- Dragging a card on the board updates status/position and the change appears live in another browser via WebSocket.
-- Status can be changed JIRA-style from the card dropdown (not only by drag).
-- A ticket can be **assigned** to a member and have **watchers (CC)** added/removed; both changes appear in the **activity timeline**.
+- Tickets get sequential per-project numbers (`AGP-42`).
+- Dragging a card updates status/position and appears live in another browser via WebSocket; status is also changeable JIRA-style from the card dropdown.
+- A ticket can be **assigned** to a member and have **watchers (CC)** added/removed; both appear in the **activity timeline**.
 - The **completion progress bar** reflects done/total on the sprint and project headers.
-- The UI feels clean and smooth (per the UX direction) — optimistic drag, toasts, skeletons, dark mode, mobile-responsive.
-- Search/filter/sort works on the board & list; all list endpoints paginate; `/documentation` (Swagger) and `/ready` respond.
-- Org invite link → accept adds a member; the **bell** shows in-app notifications to assignee/creator/watchers/@mentioned in real time.
+- The UI feels clean and smooth (per the UX direction) — optimistic drag, toasts, skeletons. _(Dark mode / mobile-perfect → 2.5.)_
+- Search/filter/sort works on the board & list; all list endpoints paginate; `/documentation` (Swagger) and `/ready` respond; graceful shutdown works.
+- Org invite link → accept adds a member (role-capped); the **bell** shows in-app notifications to assignee/creator/watchers/@mentioned in real time, scoped to the recipient.
 - Deep-link `/…/ticket/:number` opens the drawer directly; markdown is rendered sanitized.
-- The ticket CRUD test cases in [07-testing-strategy.md](../references/07-testing-strategy.md) pass, plus assignment/watcher/activity/invite/notification coverage, and the Playwright E2E core flow is green.
+- The Phase-2 test set in [07-testing-strategy.md](../references/07-testing-strategy.md) is green (CRUD, RBAC, pagination, soft-delete, invite, notification scoping, WS handshake). _(Playwright E2E is a Phase-2.5 gate.)_

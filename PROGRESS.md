@@ -16,8 +16,8 @@
 
 - **Current phase:** Phase 1 — Skeleton + Auth + Platform
 - **Now:** ✅ **Phase 1 COMPLETE (Stages A–E).** Stage E added a hermetic test harness (RSA/JWKS stand-in, no Keycloak) — **13 tests green** (auth 6, orgs 4, projects 2, health 1). `docker compose up` + full Keycloak→org→project flow verified in-browser. **Ready to copy to your other machine and push.**
-- **Next:** **Phase 2 — PM Core** (tickets/board/sprints/realtime). Then Phase 3 (deploy + CI/CD). Optional Phase-1 leftover: wire Google/Microsoft/GitHub IdP external apps.
-- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. CI test-DB env wiring (`TEST_DATABASE_URL`) finalized in Phase 3 (deploy).
+- **Next:** **Phase 2 — PM Core** (planned in detail; blockers resolved; sub-stages 2A–2E). Then **Phase 2.5 — UX hardening**, then Phase 3 (deploy + CI/CD). Optional Phase-1 leftover: wire Google/Microsoft/GitHub IdP external apps. **Not started coding — awaiting go.**
+- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. CI (Postgres+Redis+Playwright) finalized in Phase 3.
 
 ---
 
@@ -61,19 +61,24 @@ Tests (Stage E)
 ---
 
 ## Phase 2 — PM Core (tickets, board, sprints, realtime) → [plan](agentpm-plan/phases/phase-2-pm-core.md)
-**Status:** ⬜ not started
-- [ ] Migration: ticket/sprint/label/comment + `TicketWatcher` + `TicketActivity` + `OrgInvite` + `Notification` (in-app); ticket `dueDate` + `archivedAt`
-- [ ] Tickets CRUD + per-project numbering + status transitions + **due date** + **soft-delete**
-- [ ] Assignee + watchers/CC + activity timeline
-- [ ] Sprints CRUD + start/complete; completion progress bar (done/total)
-- [ ] Event bus (Redis pub/sub) + WebSocket server (project **+ user** rooms) + auth handshake + **presence**
-- [ ] **In-app notifications (bell)** → assignee/creator/watchers/@mentioned, live via WS
-- [ ] **Org invite links** (token; copy-link now, emailed in Phase 5)
-- [ ] **Search + filter + sort + pagination** (cursor) on lists
-- [ ] **OpenAPI/Swagger** `/documentation` + **`/ready`** probe + graceful shutdown + **seed script**
-- [ ] Kanban board (dnd-kit) + quick status change + ticket drawer + sprint view + live updates
-- [ ] Frontend polish: **optimistic UI + toasts + skeletons**, **quick-add + Cmd-K**, **deep-link ticket route**, **markdown + @mention (DOMPurify)**, **dark mode**, **i18n scaffold**, **mobile-responsive**
-- [ ] **Playwright E2E** core flow + API tests (assignment/watcher/activity/invite/notification)
+**Status:** ⬜ not started — **fully planned; audit blockers resolved; sub-stages 2A–2E defined.**
+- [ ] **2A** Migration: ticket/sprint/label(+org rel)/comment + `TicketWatcher`/`TicketActivity`/`OrgInvite`/in-app `Notification`; ticket `dueDate`/`archivedAt`; `Project.key`+`ticketCounter` (+backfill); onDelete clauses; soft-delete extension; idempotent seed
+- [ ] **2B** Tickets backend: transactional create + atomic numbering, `updateTicket` service + activity, comments, assignee/watchers, cross-scope validation, search/filter/sort (whitelist) + cursor pagination, Swagger (zod-provider), `/ready` + graceful shutdown
+- [ ] **2C** Sprints + completion counts; event bus init/dispose; WS server (project+user rooms, presence, hardened handshake) + shared `WSMessage`; caller-scoped in-app notifications; org invite tokens (role-capped, single-use)
+- [ ] **2D** Frontend foundation: **shadcn/ui**, routing restructure (public `/invite/:token` vs gated), members endpoint + `api.listMembers`, typed WS client (refresh + reconnect-refetch + echo-dedupe)
+- [ ] **2E** Board (dnd-kit + position) + quick-add + drawer (comments/activity/assignee/watchers/labels/due) + sprint view + completion bars + optimistic UI/toasts/skeletons + notification bell + deep-link; **verify in-browser**
+- [ ] API + WS tests (CRUD, RBAC, pagination round-trip, soft-delete, invite, notification IDOR, WS handshake); REDIS_URL + truncation order in harness
+- Dropped/deferred: `bulk-update` (deferred); dark mode/i18n/mobile/Cmd-K/Playwright → **Phase 2.5**
+
+---
+
+## Phase 2.5 — UX Hardening → [plan](agentpm-plan/phases/phase-2.5-ux-hardening.md)
+**Status:** ⬜ not started (after Phase 2 verified)
+- [ ] Dark mode (Tailwind `darkMode:'class'` + toggle; retrofit existing components)
+- [ ] i18n (react-i18next, `en` baseline, externalize all strings incl. Phase-1)
+- [ ] Mobile-responsive board + drawer
+- [ ] Cmd-K command palette
+- [ ] Playwright E2E (Keycloak storageState; CI wiring in Phase 3) + a11y pass
 
 ---
 
@@ -123,6 +128,8 @@ Tests (Stage E)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-23 | plan | Phase 2 audit (7-dim workflow, 62 findings) → folded Tier-1 fixes into plan: notification IDOR scoping, org-bounded @mention + server sanitize, invite token entropy/single-use/role-cap, sort whitelist + cursor tiebreaker, cross-scope validation, publish-after-commit + transactional create + `updateTicket` service, position scheme, onDelete + Label org relation, WS handshake hardening + self-echo dedupe + refetch-on-reconnect + shared `WSMessage`, public/gated routing, members endpoint, graceful shutdown, zod-provider scope, per-user rate limit. Defined sub-stages 2A–2E. Split **Phase 2.5 (UX hardening)**; dropped `bulk-update`; adopted shadcn. Updated phase-2, new phase-2.5, 03/04/06/07 refs, README, PROGRESS. | _pending_ |
+| 2026-06-23 | plan | Phase 2 blockers resolved in plan: (1) shared jose WS verifier + @fastify/websocket v11 `(socket,req)` signature; (2) lazy event bus init/dispose (tests use Redis); (3) atomic ticket numbering via `Project.ticketCounter`; (4) `Project.key` for AGP-42 + migration backfill; (5) `fastify-type-provider-zod` for validation+Swagger. Updated phase-2, 03-data-models, 04-api-reference. | _pending_ |
 | 2026-06-23 | plan | Phase 2 scope round 2: invite links, due date, soft-delete, search/filter/sort + cursor pagination, deep-link ticket route, optimistic UI/toasts/skeletons, quick-add + Cmd-K, markdown+@mention (DOMPurify), presence, in-app notification bell (WS user rooms → assignee/creator/watchers/mentioned), Swagger + /ready + seed, dark mode, i18n scaffold, mobile, Playwright E2E. Models: `OrgInvite` + in-app `Notification`, ticket `dueDate`/`archivedAt`. Decisions kept: org=project access, attachments deferred. | ae75857 |
 | 2026-06-23 | plan | Phase 2 scope additions (feedback): clean/smooth/creative UI guideline, JIRA-style quick status change, assignee, watchers/CC, activity timeline, completion progress bar. Added `TicketWatcher` + `TicketActivity` models + watcher/activity endpoints. Not yet implemented. | 585ff49 |
 | 2026-06-23 | plan | Re-sequenced phases: **Phase 2 = PM Core**, **Phase 3 = Deployment + CI/CD** (swapped). Renamed phase files + updated all headings, cross-refs, links, README flow/index, PROGRESS. | 9528d39 |

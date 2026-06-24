@@ -23,14 +23,46 @@ apps/web/__tests__/e2e/board.spec.ts            → Playwright E2E
 
 ## Critical test cases
 
+> **Phase 2 harness notes:** add `REDIS_URL` to `vitest.config.ts` env (buildServer now inits the event bus) and call `disposeEventBus()` in teardown; extend the `beforeEach` truncation to **every** new table in child→parent FK order (notification, ticketActivity, ticketWatcher, comment, ticketLabel, ticketDependency, ticket, sprint, label, orgInvite, orgMember, project, organization, user) or use `TRUNCATE … RESTART IDENTITY CASCADE`; reset the test DB when the `Project.key` backfill migration is introduced.
+
 ```typescript
 // Ticket routes (Phase 2)
 describe('POST /api/tickets', () => {
   it('creates ticket with all required fields')
   it('rejects ticket without projectId')
   it('rejects ticket without title')
-  it('assigns sequential ticket number per project')
+  it('assigns sequential ticket number per project (atomic, no dup under concurrency)')
   it('returns 403 if user not project member')
+  it('rejects a label/sprint/assignee/watcher from another org (400)')
+})
+
+describe('tickets list — search/filter/sort/pagination (Phase 2)', () => {
+  it('paginates a known N-row set with no dupes/drops; nextCursor null at end')
+  it('respects each whitelisted sort and rejects an unknown sort (400)')
+  it('excludes archived tickets by default; includes with includeArchived=true')
+})
+
+describe('activity & realtime contracts (Phase 2)', () => {
+  it('records TicketActivity on status/assignee/watcher/sprint change')
+  it('publishes ticket.updated only after commit')
+})
+
+describe('notifications (Phase 2)', () => {
+  it('returns 404 marking another user\'s notification read (caller-scoped, no IDOR)')
+  it('@mention of a non-member produces no notification')
+})
+
+describe('org invites (Phase 2)', () => {
+  it('accept adds an OrgMember at the invite role and is single-use')
+  it('rejects expired/used token (uniform 404) and an OWNER invite from an ADMIN')
+})
+
+// WebSocket handshake (Phase 2) — real ws client against app.listen on an ephemeral port
+describe('WS /ws', () => {
+  it('closes 4001 if no auth within timeout')
+  it('auth.ok on valid token + membership; 4001 on bad token / non-member')
+  it('delivers publishEvent({projectId}) to a joined socket')
+  it('delivers notification.new({userId}) only to that user\'s room')
 })
 
 // Agent assignment + concurrency (Phase 4)
