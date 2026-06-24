@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { logout } from '../lib/auth'
 import { useTheme } from '../lib/theme'
 import { Button } from '@/components/ui/button'
+import { CommandPalette } from '@/components/CommandPalette'
 
 export default function Layout() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
@@ -32,6 +33,7 @@ export default function Layout() {
       <main className="mx-auto w-full max-w-[1600px] px-6 py-8">
         <Outlet />
       </main>
+      <CommandPalette />
     </div>
   )
 }

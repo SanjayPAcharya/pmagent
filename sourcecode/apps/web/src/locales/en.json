@@ -148,5 +148,15 @@
     "title": "Notifications",
     "markAllRead": "Mark all read",
     "empty": "You’re all caught up."
+  },
+  "palette": {
+    "placeholder": "Search tickets, projects, orgs… or type to create",
+    "noResults": "No results.",
+    "actions": "Actions",
+    "createTicket": "Create ticket: “{{title}}”",
+    "tickets": "Tickets",
+    "projects": "Projects",
+    "organizations": "Organizations",
+    "dashboard": "Dashboard"
   }
 }
