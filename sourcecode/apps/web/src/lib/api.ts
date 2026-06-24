@@ -43,6 +43,24 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export interface User { id: string; email: string; name: string; avatarUrl: string | null }
 export interface Organization { id: string; name: string; slug: string; role?: string }
 export interface Project { id: string; orgId: string; name: string; slug: string; description: string | null }
+export interface Member {
+  userId: string
+  role: 'OWNER' | 'ADMIN' | 'MEMBER'
+  email: string
+  name: string
+  avatarUrl: string | null
+  initials: string
+  joinedAt: string
+}
+export type OrgRole = 'ADMIN' | 'MEMBER'
+export interface Invite {
+  id: string
+  token: string
+  role: OrgRole
+  email: string | null
+  expiresAt: string
+  url: string
+}
 
 export const api = {
   me: () => request<{ user: User }>('GET', '/api/me'),
@@ -53,4 +71,14 @@ export const api = {
     request<{ projects: Project[] }>('GET', `/api/projects?orgId=${encodeURIComponent(orgId)}`),
   createProject: (orgId: string, name: string) =>
     request<{ project: Project }>('POST', '/api/projects', { orgId, name }),
+
+  // Members & invites (Phase 2D)
+  listMembers: (slug: string) => request<{ members: Member[] }>('GET', `/api/orgs/${slug}/members`),
+  createInvite: (slug: string, body: { email?: string; role?: OrgRole }) =>
+    request<{ invite: Invite }>('POST', `/api/orgs/${slug}/invites`, body),
+  acceptInvite: (token: string) =>
+    request<{ org: { id: string; slug: string; name: string }; role: string }>(
+      'POST',
+      `/api/invites/${encodeURIComponent(token)}/accept`,
+    ),
 }

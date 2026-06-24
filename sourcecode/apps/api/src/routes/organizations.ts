@@ -24,6 +24,14 @@ const addMemberSchema = z.object({
 })
 const updateMemberSchema = z.object({ role: z.enum(['OWNER', 'ADMIN', 'MEMBER']) })
 
+/** Up to two initials for an avatar fallback; derived from name, else email. */
+function initialsOf(name: string, email: string): string {
+  const source = name.trim() || email
+  const parts = source.split(/[\s@.]+/).filter(Boolean)
+  const letters = (parts.length >= 2 ? parts[0][0] + parts[1][0] : source.slice(0, 2)) || '?'
+  return letters.toUpperCase()
+}
+
 async function uniqueOrgSlug(base: string): Promise<string> {
   let slug = base
   let n = 1
@@ -95,6 +103,8 @@ const routes: FastifyPluginAsync = async (app) => {
         role: m.role,
         email: m.user.email,
         name: m.user.name,
+        avatarUrl: m.user.avatarUrl,
+        initials: initialsOf(m.user.name, m.user.email),
         joinedAt: m.joinedAt,
       })),
     }
