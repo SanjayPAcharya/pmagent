@@ -27,6 +27,7 @@
 - **shadcn/ui is already adopted in Phase 2** (Dialog/Popover/Command/Toast) — 2.5 builds on it (the Cmd-K palette uses shadcn's `Command`).
 - **i18n is a retrofit, not just new surfaces:** every existing string (`Sign in`, `Create account`, `Sign out`, `New project name`, empty states, …) must move into resource files. Budget for touching all current pages.
 - **Playwright + Keycloak** is the fiddly bit: drive the real hosted login once in `globalSetup` and reuse `storageState`; don't log in per-spec. The realm export (`realm-agentpm.json`) or a seed step must provide the test users.
+- **Cross-user notification assertion:** rather than driving a second browser session, assert user B's bell via an API call (`GET /api/notifications` with B's token) — keeps the E2E single-context and stable.
 - **CI** to run the E2E (Postgres + Redis + Keycloak + Playwright browsers) is wired in **Phase 3**; in 2.5 the E2E runs locally against `docker compose up`.
 
 ---
