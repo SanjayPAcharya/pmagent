@@ -16,7 +16,7 @@
 
 - **Current phase:** Phase 2.5 — UX Hardening (complete)
 - **Now:** ✅ **Phase 2 + 2F + 2.5 all complete.** 2.5 shipped dark mode, full i18n (react-i18next/en), mobile-responsive board+drawer with touch dnd, ⌘K command palette, a11y pass, and a Playwright E2E scaffold (`test:e2e`, runs locally). theme + 2F verified in-browser by user. **35 API tests** + web typecheck/build green.
-- **Next:** **Phase 3 — Containerized deployment + CI/CD** (`docker-compose.prod.yml` + Caddy + Makefile; managed RDS/ElastiCache; VM + DNS; GitHub Actions CI lint/typecheck/test + CD; wire the Playwright E2E into CI). Optional first: run `pnpm --filter @agentpm/web test:e2e` locally + a clean `docker compose build web` once Docker Hub DNS is back (to bake in cmdk/i18n/playwright deps).
+- **Next:** **Phase 2.6 — UX delight (DRAFTED, not started)** — creative/agent-first polish backlog (28 items, groups A–H; see [draft](agentpm-plan/phases/phase-2.6-ux-delight.md) + checklist below), build selectively. OR **Phase 3 — deployment + CI/CD**. Optional housekeeping: clean `docker compose build web` once Docker Hub DNS is back (bakes in cmdk/i18n/playwright deps), and run `pnpm --filter @agentpm/web test:e2e` locally.
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -105,6 +105,57 @@ _Group C — polish / pre-existing:_
 - [x] Mobile-responsive board + drawer (board snap-scrolls, columns `85vw` on mobile; drawer already full-width sheet; Mouse+Touch(long-press 220ms)+Keyboard dnd sensors; header email hidden on small screens)
 - [x] Cmd-K command palette (`cmdk` + `components/ui/command.tsx`; `CommandPalette` mounted in Layout, ⌘/Ctrl-K; quick-create ticket from query, jump to ticket by #/title, switch project/org; context from URL)
 - [x] Playwright E2E scaffold (`playwright.config.ts` + `e2e/global-setup.ts` Keycloak login→storageState + `e2e/core-flow.spec.ts` create-org/project→add/open ticket→comment, + optional cross-user mention assertion via password-grant API; `test:e2e` script) — **runs locally** per docs (needs `pnpm exec playwright install` + seeded KC user + `docker compose up`); CI wiring → Phase 3. **a11y pass:** card keyboard activation (Enter/Space) + focus ring + aria-label; bell aria-label; radix dialogs trap/restore focus
+
+---
+
+## Phase 2.6 — UX Delight & Agent-First Polish (DRAFT) → [draft](agentpm-plan/phases/phase-2.6-ux-delight.md)
+**Status:** ⬜ **drafted, not started** — creative/delight backlog from the UI/UX brainstorm; build selectively (not a gate). Most items reuse existing primitives (WS/presence, ticket schema, palette, optimistic rollback). "Phase 4-dep" = UI now, action when the agent lands.
+
+_A — Agent-first signatures:_
+- [ ] **A1** Ticket "readiness meter" (goal/AC/constraints fill → ring) — S
+- [ ] **A2** `@agent` first-class in mention/assignee pickers — M, Phase 4-dep
+- [ ] **A3** "Draft with agent" goal/AC/constraints skeleton — M, Phase 4-dep
+- [ ] **A4** Agent swimlane/badge on the board — S–M, Phase 4-dep
+
+_B — Board:_
+- [ ] **B1** Live "ghost drag" via presence/WS — M
+- [ ] **B2** Column WIP-limit pulse — S
+- [ ] **B3** Swipe-to-advance (mobile) — S
+- [ ] **B4** Focus mode (`f`) — S
+- [ ] **B5** Time-decay card coloring (by `updatedAt`) — S
+
+_C — Drawer:_
+- [ ] **C1** Unified activity+comments "story" timeline — M
+- [ ] **C2** Acceptance-criteria checklist → completion — M (small backend)
+- [ ] **C3** In-editor slash commands — M
+- [ ] **C4** Relative time, exact on hover — S
+
+_D — Command palette:_
+- [ ] **D1** Full action surface (status/assign/sprint/label/theme) — M
+- [ ] **D2** Recent / frecency — S
+- [ ] **D3** Natural quick-create (`!high @user #sprint`) — M
+
+_E — Notifications / presence / realtime:_
+- [ ] **E1** Ticket-level presence (who's on which ticket) — M
+- [ ] **E2** Toast → Undo (reuse rollback snapshot) — S
+- [ ] **E3** Notification grouping + "catch me up" — M (small backend)
+
+_F — Sprints / planning:_
+- [ ] **F1** Burndown sparkline — M (daily snapshot)
+- [ ] **F2** Drag tickets into a sprint — M
+- [ ] **F3** Velocity-aware capacity bar — S
+
+_G — Delight / craft:_
+- [ ] **G1** "Done" confetti (reduced-motion aware) — S
+- [ ] **G2** Per-org accent color + theme tristate + `t` — M (small backend)
+- [ ] **G3** Layout-matched skeletons — S
+- [ ] **G4** Keyboard help overlay (`?`) — S
+
+_H — Onboarding / empty states:_
+- [ ] **H1** Guided first ticket (name→goal→column) — S
+- [ ] **H2** Invite nudge on empty members — S
+
+> Suggested first slice (quick, no backend): **E2 Undo · A1 readiness · G1 confetti · G3 skeletons · G4 `?` · C4 relative time · B4 focus**. Detail/effort per item in the [draft](agentpm-plan/phases/phase-2.6-ux-delight.md).
 
 ---
 
