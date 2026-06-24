@@ -32,7 +32,7 @@ export function NotificationBell({ slug, projectSlug }: { slug: string; projectS
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" aria-label={t('notifications.title')}>
           <Bell className="h-5 w-5" />
           {count > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">

@@ -9,7 +9,8 @@
     "preview": "vite preview --host --port 3000",
     "typecheck": "tsc --noEmit",
     "lint": "echo no-lint",
-    "test": "echo no-tests"
+    "test": "echo no-tests",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@agentpm/shared-types": "workspace:*",
@@ -40,6 +41,7 @@
     "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

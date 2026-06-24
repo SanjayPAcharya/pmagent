@@ -89,9 +89,19 @@ export function TicketCard({ ticket, onOpen, onStatusChange }: TicketCardProps) 
       {...attributes}
       {...listeners}
       onClick={() => onOpen(ticket)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(ticket)
+        }
+      }}
       role="button"
       tabIndex={0}
-      className={cn('group relative cursor-grab outline-none active:cursor-grabbing', isDragging && 'opacity-40')}
+      aria-label={`${ticket.key}: ${ticket.title}`}
+      className={cn(
+        'group relative cursor-grab outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing',
+        isDragging && 'opacity-40',
+      )}
     >
       <TicketCardBody ticket={ticket} />
       <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={stop} onClick={stop}>

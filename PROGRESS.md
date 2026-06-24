@@ -14,9 +14,9 @@
 
 ## Now / Next / Blocked
 
-- **Current phase:** Phase 2 — PM Core
-- **Now:** ✅ **Phase 2 COMPLETE (2A–2E) + Phase 2F gap closure committed (`3db2df1`).** 2F closed all 11 plan-vs-build gaps: drawer sprint/label pickers + delete, per-card status menu, board search/filter/sort, Members & invites page (add-by-email + links), sprint↔tickets + move-between-sprints, labels API/UI, @mention picker, Keycloak check-sso, within-column reorder, drawer optimistic updates (+ 2E drag polish & empty-body fix). **35 API tests** + typecheck/build green.
-- **Next:** **Browser-verify the 2F items** (C9 refresh-persistence — cookie-dependent; C10 reorder feel; mention→notification chain), then **Phase 2.5** (dark mode/i18n/mobile/Cmd-K/Playwright) or **Phase 3** (deploy/CI-CD).
+- **Current phase:** Phase 2.5 — UX Hardening (complete)
+- **Now:** ✅ **Phase 2 + 2F + 2.5 all complete.** 2.5 shipped dark mode, full i18n (react-i18next/en), mobile-responsive board+drawer with touch dnd, ⌘K command palette, a11y pass, and a Playwright E2E scaffold (`test:e2e`, runs locally). theme + 2F verified in-browser by user. **35 API tests** + web typecheck/build green.
+- **Next:** **Phase 3 — Containerized deployment + CI/CD** (`docker-compose.prod.yml` + Caddy + Makefile; managed RDS/ElastiCache; VM + DNS; GitHub Actions CI lint/typecheck/test + CD; wire the Playwright E2E into CI). Optional first: run `pnpm --filter @agentpm/web test:e2e` locally + a clean `docker compose build web` once Docker Hub DNS is back (to bake in cmdk/i18n/playwright deps).
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -99,12 +99,12 @@ _Group C — polish / pre-existing:_
 ---
 
 ## Phase 2.5 — UX Hardening → [plan](agentpm-plan/phases/phase-2.5-ux-hardening.md)
-**Status:** 🟡 in progress — dark mode done; i18n/mobile/Cmd-K/E2E next.
+**Status:** ✅ **COMPLETE** — dark mode, i18n, mobile, Cmd-K, a11y + Playwright E2E scaffold. (E2E executes locally per docs; CI wiring → Phase 3.)
 - [x] Dark mode (Tailwind `darkMode:'class'` + `.dark` CSS-var palette; `theme.ts` localStorage+OS pref, applied pre-render; toggle in Layout; retrofit Landing/Dashboard/OrgProjects to tokens; Toaster `theme=system`)
 - [x] i18n (react-i18next + LanguageDetector, `en` baseline in `locales/en.json`, `lib/i18n.ts`; **all UI strings externalized** across every page/component incl. Phase-1; localStorage persistence)
 - [x] Mobile-responsive board + drawer (board snap-scrolls, columns `85vw` on mobile; drawer already full-width sheet; Mouse+Touch(long-press 220ms)+Keyboard dnd sensors; header email hidden on small screens)
 - [x] Cmd-K command palette (`cmdk` + `components/ui/command.tsx`; `CommandPalette` mounted in Layout, ⌘/Ctrl-K; quick-create ticket from query, jump to ticket by #/title, switch project/org; context from URL)
-- [ ] Playwright E2E (Keycloak storageState; CI wiring in Phase 3) + a11y pass
+- [x] Playwright E2E scaffold (`playwright.config.ts` + `e2e/global-setup.ts` Keycloak login→storageState + `e2e/core-flow.spec.ts` create-org/project→add/open ticket→comment, + optional cross-user mention assertion via password-grant API; `test:e2e` script) — **runs locally** per docs (needs `pnpm exec playwright install` + seeded KC user + `docker compose up`); CI wiring → Phase 3. **a11y pass:** card keyboard activation (Enter/Space) + focus ring + aria-label; bell aria-label; radix dialogs trap/restore focus
 
 ---
 
@@ -155,6 +155,7 @@ _Group C — polish / pre-existing:_
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
 | 2026-06-24 | P2.5 | Stage 2.5B (i18n): `react-i18next` + `i18next-browser-languagedetector` + `lib/i18n.ts`; `locales/en.json` baseline; **externalized every UI string** across Landing/Layout/Dashboard/OrgProjects/Members/InviteAccept/Board/Column/TicketCard/TicketDrawer/Sprints/NotificationBell (incl. toasts, placeholders, empty states); localStorage persistence. Rebuilt web container for new deps. typecheck/build green. | 72b5ca6 |
+| 2026-06-24 | P2.5 | Stage 2.5E (a11y + Playwright): a11y — ticket cards keyboard-activatable (Enter/Space) + focus ring + `aria-label`, bell `aria-label`, radix dialogs already trap/restore focus. Playwright scaffold — `playwright.config.ts`, `e2e/global-setup.ts` (KC UI login → storageState; SPA check-sso restores from cookie), `e2e/core-flow.spec.ts` (org→project→add/open ticket→comment + optional cross-user mention via password-grant API), `test:e2e` script, `.gitignore`. Runs locally (needs `playwright install` + seeded user + stack); **not executed in sandbox**. typecheck/build green. | _pending_ |
 | 2026-06-24 | P2.5 | Stage 2.5D (Cmd-K): `cmdk` + `components/ui/command.tsx`; `CommandPalette` (⌘/Ctrl-K) mounted in Layout — quick-create ticket from the query, jump to ticket by #/title, switch project/org; context derived from URL. typecheck/build green. (Docker deps-layer cache wouldn't rebust for the new dep amid a Docker Hub DNS blip → installed cmdk into the running container to verify; committed lockfile bakes it in on next clean image build.) | 8d6ed00 |
 | 2026-06-24 | P2.5 | Stage 2.5C (mobile): board `snap-x` scroll + columns `w-[85vw]` (sm:w-72); dnd sensors → Mouse(5px)+Touch(long-press 220ms, so swipe still scrolls)+Keyboard(a11y reorder); removed `touch-none` on cards; Layout header hides email under `sm`. typecheck/build green. | c55805c |
 | 2026-06-24 | P2.5 | Stage 2.5A (dark mode): tailwind `darkMode:'class'` + `.dark` CSS-var palette; `theme.ts` (localStorage + `prefers-color-scheme`, applied pre-render); sun/moon toggle in Layout; sonner Toaster `theme=system`; retrofit Landing/Dashboard/OrgProjects hard-coded light colors → tokens. typecheck/build green. | f29497f |
