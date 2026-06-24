@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
 
 export default function Dashboard() {
   const qc = useQueryClient()
+  const { t } = useTranslation()
   const orgs = useQuery({ queryKey: ['orgs'], queryFn: api.listOrgs })
   const [name, setName] = useState('')
   const create = useMutation({
@@ -17,7 +19,7 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h2 className="text-xl font-semibold text-foreground">Your organizations</h2>
+      <h2 className="text-xl font-semibold text-foreground">{t('dashboard.title')}</h2>
 
       <form
         onSubmit={(e) => {
@@ -29,14 +31,14 @@ export default function Dashboard() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="New organization name"
+          placeholder={t('dashboard.newOrgPlaceholder')}
           className="flex-1 rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
         />
         <button
           disabled={!name.trim() || create.isPending}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
-          Create
+          {t('common.create')}
         </button>
       </form>
       {create.isError && <p className="mt-2 text-sm text-destructive">{(create.error as Error).message}</p>}
@@ -51,9 +53,7 @@ export default function Dashboard() {
           </li>
         ))}
         {orgs.data?.organizations.length === 0 && (
-          <li className="px-4 py-6 text-center text-sm text-muted-foreground">
-            No organizations yet — create one above.
-          </li>
+          <li className="px-4 py-6 text-center text-sm text-muted-foreground">{t('dashboard.empty')}</li>
         )}
       </ul>
     </div>

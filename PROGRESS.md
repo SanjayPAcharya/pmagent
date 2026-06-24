@@ -101,7 +101,7 @@ _Group C — polish / pre-existing:_
 ## Phase 2.5 — UX Hardening → [plan](agentpm-plan/phases/phase-2.5-ux-hardening.md)
 **Status:** 🟡 in progress — dark mode done; i18n/mobile/Cmd-K/E2E next.
 - [x] Dark mode (Tailwind `darkMode:'class'` + `.dark` CSS-var palette; `theme.ts` localStorage+OS pref, applied pre-render; toggle in Layout; retrofit Landing/Dashboard/OrgProjects to tokens; Toaster `theme=system`)
-- [ ] i18n (react-i18next, `en` baseline, externalize all strings incl. Phase-1)
+- [x] i18n (react-i18next + LanguageDetector, `en` baseline in `locales/en.json`, `lib/i18n.ts`; **all UI strings externalized** across every page/component incl. Phase-1; localStorage persistence)
 - [ ] Mobile-responsive board + drawer
 - [ ] Cmd-K command palette
 - [ ] Playwright E2E (Keycloak storageState; CI wiring in Phase 3) + a11y pass
@@ -154,6 +154,8 @@ _Group C — polish / pre-existing:_
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-24 | P2.5 | Stage 2.5B (i18n): `react-i18next` + `i18next-browser-languagedetector` + `lib/i18n.ts`; `locales/en.json` baseline; **externalized every UI string** across Landing/Layout/Dashboard/OrgProjects/Members/InviteAccept/Board/Column/TicketCard/TicketDrawer/Sprints/NotificationBell (incl. toasts, placeholders, empty states); localStorage persistence. Rebuilt web container for new deps. typecheck/build green. | _pending_ |
+| 2026-06-24 | P2.5 | Stage 2.5A (dark mode): tailwind `darkMode:'class'` + `.dark` CSS-var palette; `theme.ts` (localStorage + `prefers-color-scheme`, applied pre-render); sun/moon toggle in Layout; sonner Toaster `theme=system`; retrofit Landing/Dashboard/OrgProjects hard-coded light colors → tokens. typecheck/build green. | f29497f |
 | 2026-06-24 | P2/F | Stage 2F (gap closure, all 11): **A** — sprint picker in drawer, per-card status menu (hover ⋯), delete-ticket in drawer, board search/filter/sort bar, **Members & invites page** (add-by-email + create/copy/revoke invite links), sprint↔tickets on Sprints page + move-between-sprints. **B** — labels: `routes/labels.ts` CRUD (org-scoped) + assignment via `PATCH /tickets/:id` `labelIds` (replace-set, cross-scope guard) + drawer picker; @mention picker (editor shows `@Name`, sends `@[uuid]`). **C** — Keycloak `check-sso` + `public/silent-check-sso.html` (refresh keeps session); within-column reorder (`useSortable`/`SortableContext`, fractional `positionBetween`); drawer optimistic updates. +2 API tests (label assign/cross-scope, body-less DELETE). **35 API tests** + typecheck/build green. Browser-verify pending (C9 cookies, C10 reorder feel, mention→notify). | 3db2df1 |
 | 2026-06-24 | P2 fix | Body-less requests 400'd (`Body cannot be empty when content-type is application/json`) — broke DELETE watcher / delete ticket / remove-from-sprint and body-less POSTs (start/complete sprint, mark-read). Fix: web `request()` omits `Content-Type` when there's no body; api adds a tolerant `application/json` parser (empty → undefined). +1 regression test (DELETE watcher w/ json content-type → 204). 34 tests green. | 3db2df1 |
 | 2026-06-24 | plan | Phase 2F gap-closure draft: 11 gaps between the Phase-2 plan (drawer/board/UX/DoD) and 2A–2E, found in in-browser verification; grouped A (UI over existing APIs) / B (new backend) / C (polish), with approach + effort per item. | f37a9e9 |

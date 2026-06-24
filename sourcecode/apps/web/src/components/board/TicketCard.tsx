@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { useTranslation } from 'react-i18next'
 import { Eye, MoreHorizontal } from 'lucide-react'
 import type { Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
@@ -72,6 +73,7 @@ interface TicketCardProps {
 }
 
 export function TicketCard({ ticket, onOpen, onStatusChange }: TicketCardProps) {
+  const { t } = useTranslation()
   // useSortable gives within-column reordering (cards shift to make room) plus
   // cross-column moves. The 5px activation distance (set on the board) lets a
   // plain click through to onOpen; a real drag is mirrored by the DragOverlay.
@@ -95,7 +97,7 @@ export function TicketCard({ ticket, onOpen, onStatusChange }: TicketCardProps) 
       <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={stop} onClick={stop}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="rounded bg-card p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground" title="Change status">
+            <button className="rounded bg-card p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground" title={t('board.changeStatus')}>
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>

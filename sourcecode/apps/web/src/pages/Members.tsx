@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, type OrgRole } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ function inviteLink(token: string) {
 export default function Members() {
   const { slug = '' } = useParams()
   const qc = useQueryClient()
+  const { t } = useTranslation()
   const members = useQuery({ queryKey: ['members', slug], queryFn: () => api.listMembers(slug) })
   const invites = useQuery({ queryKey: ['invites', slug], queryFn: () => api.listInvites(slug) })
   const [role, setRole] = useState<OrgRole>('MEMBER')
@@ -28,7 +30,7 @@ export default function Members() {
     try {
       const { invite } = await api.createInvite(slug, { role })
       await navigator.clipboard.writeText(invite.url ?? inviteLink(invite.token)).catch(() => undefined)
-      toast.success('Invite link created and copied to clipboard')
+      toast.success(t('members.inviteCreated'))
       refreshInvites()
     } catch (e) {
       toast.error((e as Error).message)
@@ -38,14 +40,14 @@ export default function Members() {
     try {
       await api.revokeInvite(slug, id)
       refreshInvites()
-      toast.success('Invite revoked')
+      toast.success(t('members.inviteRevoked'))
     } catch (e) {
       toast.error((e as Error).message)
     }
   }
   const copy = async (token: string) => {
     await navigator.clipboard.writeText(inviteLink(token)).catch(() => undefined)
-    toast.success('Link copied')
+    toast.success(t('members.linkCopied'))
   }
   const addByEmail = async () => {
     const e = email.trim()
@@ -54,7 +56,7 @@ export default function Members() {
       await api.addMember(slug, e, addRole)
       setEmail('')
       qc.invalidateQueries({ queryKey: ['members', slug] })
-      toast.success('Member added')
+      toast.success(t('members.memberAdded'))
     } catch (err) {
       toast.error((err as Error).message) // e.g. "No user with that email has signed up yet."
     }
@@ -64,14 +66,14 @@ export default function Members() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <Link to={`/orgs/${slug}`} className="text-sm text-muted-foreground hover:underline">
-          ← projects
+          {t('members.backToProjects')}
         </Link>
-        <h2 className="text-xl font-semibold text-foreground">Members &amp; invites</h2>
+        <h2 className="text-xl font-semibold text-foreground">{t('members.title')}</h2>
       </div>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Add an existing user by email</CardTitle>
+          <CardTitle className="text-base">{t('members.addByEmailTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center gap-2">
           <Input
@@ -79,7 +81,7 @@ export default function Members() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addByEmail()}
-            placeholder="teammate@company.com"
+            placeholder={t('members.emailPlaceholder')}
             className="max-w-xs"
           />
           <select
@@ -87,19 +89,19 @@ export default function Members() {
             onChange={(e) => setAddRole(e.target.value as OrgRole)}
             className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
           >
-            <option value="MEMBER">Member</option>
-            <option value="ADMIN">Admin</option>
+            <option value="MEMBER">{t('members.roleMember')}</option>
+            <option value="ADMIN">{t('members.roleAdmin')}</option>
           </select>
           <Button onClick={addByEmail} disabled={!email.trim()}>
-            Add member
+            {t('members.addMember')}
           </Button>
-          <span className="text-xs text-muted-foreground">They must have signed up already.</span>
+          <span className="text-xs text-muted-foreground">{t('members.addHint')}</span>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Invite a teammate (link)</CardTitle>
+          <CardTitle className="text-base">{t('members.inviteTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center gap-2">
           <select
@@ -107,16 +109,16 @@ export default function Members() {
             onChange={(e) => setRole(e.target.value as OrgRole)}
             className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
           >
-            <option value="MEMBER">Member</option>
-            <option value="ADMIN">Admin</option>
+            <option value="MEMBER">{t('members.roleMember')}</option>
+            <option value="ADMIN">{t('members.roleAdmin')}</option>
           </select>
-          <Button onClick={create}>Create invite link</Button>
-          <span className="text-xs text-muted-foreground">Link is copied to your clipboard — share it with anyone to join.</span>
+          <Button onClick={create}>{t('members.createInvite')}</Button>
+          <span className="text-xs text-muted-foreground">{t('members.inviteHint')}</span>
         </CardContent>
       </Card>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-foreground">Members</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">{t('members.membersHeading')}</h3>
         <ul className="divide-y rounded-lg border">
           {members.data?.members.map((m) => (
             <li key={m.userId} className="flex items-center justify-between px-4 py-3">
@@ -137,27 +139,27 @@ export default function Members() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-foreground">Pending invites</h3>
+        <h3 className="mb-2 text-sm font-semibold text-foreground">{t('members.pendingHeading')}</h3>
         <ul className="divide-y rounded-lg border">
           {invites.data?.invites.map((inv) => (
             <li key={inv.id} className="flex items-center justify-between px-4 py-3">
               <div className="text-sm">
-                <span className="font-medium text-foreground">{inv.email ?? 'Anyone with the link'}</span>{' '}
+                <span className="font-medium text-foreground">{inv.email ?? t('members.anyoneWithLink')}</span>{' '}
                 <Badge variant="secondary" className="ml-1">{inv.role}</Badge>
-                <div className="text-xs text-muted-foreground">expires {new Date(inv.expiresAt).toLocaleDateString()}</div>
+                <div className="text-xs text-muted-foreground">{t('members.expires', { date: new Date(inv.expiresAt).toLocaleDateString() })}</div>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => copy(inv.token)}>
-                  Copy link
+                  {t('members.copyLink')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => revoke(inv.id)}>
-                  Revoke
+                  {t('members.revoke')}
                 </Button>
               </div>
             </li>
           ))}
           {invites.data?.invites.length === 0 && (
-            <li className="px-4 py-6 text-center text-sm text-muted-foreground">No pending invites.</li>
+            <li className="px-4 py-6 text-center text-sm text-muted-foreground">{t('members.noPending')}</li>
           )}
         </ul>
       </div>

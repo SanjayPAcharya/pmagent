@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ChevronDown, X } from 'lucide-react'
 import { api, type Member, type Priority, type Ticket, type TicketStatus, type UpdateTicketInput } from '@/lib/api'
@@ -25,6 +26,7 @@ interface Props {
 
 export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: Props) {
   const qc = useQueryClient()
+  const { t } = useTranslation()
   const ticketQ = useQuery({ queryKey: ['ticket', ticketId], queryFn: () => api.getTicket(ticketId) })
   const comments = useQuery({ queryKey: ['comments', ticketId], queryFn: () => api.listComments(ticketId) })
   const activity = useQuery({ queryKey: ['activity', ticketId], queryFn: () => api.listActivity(ticketId) })
@@ -53,7 +55,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
     onChanged()
   }
 
-  async function patch(input: UpdateTicketInput, ok = 'Saved') {
+  async function patch(input: UpdateTicketInput, ok = t('drawer.saved')) {
     const key = ['ticket', ticketId]
     const prev = qc.getQueryData<{ ticket: Ticket }>(key)
     // Optimistically merge scalar fields for instant feedback (labels reconcile on
@@ -73,10 +75,10 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
   }
 
   async function remove() {
-    if (!window.confirm('Delete this ticket? It will be archived and removed from the board.')) return
+    if (!window.confirm(t('drawer.deleteConfirm'))) return
     try {
       await api.deleteTicket(ticketId)
-      toast.success('Ticket deleted')
+      toast.success(t('drawer.ticketDeleted'))
       onChanged()
       onClose()
     } catch (err) {
@@ -114,7 +116,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
   const availableLabels = (labels.data?.labels ?? []).filter((l) => !labelIds.includes(l.id))
   const [newLabel, setNewLabel] = useState('')
   const [newColor, setNewColor] = useState('#64748b')
-  const setLabels = (ids: string[]) => patch({ labelIds: ids }, 'Labels updated')
+  const setLabels = (ids: string[]) => patch({ labelIds: ids }, t('drawer.labelsUpdated'))
   async function createAndAddLabel() {
     const name = newLabel.trim()
     if (!name) return
@@ -157,7 +159,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full sm:max-w-xl">
         {!ticket ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
         ) : (
           <>
             <SheetHeader>
@@ -209,17 +211,17 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
             {/* Metadata grid */}
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div>
-                <Label>Assignee</Label>
+                <Label>{t('drawer.assignee')}</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="mt-1 w-full justify-between">
-                      {assignee?.name ?? 'Unassigned'} <ChevronDown className="h-3 w-3" />
+                      {assignee?.name ?? t('drawer.unassigned')} <ChevronDown className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => patch({ assignedToId: null }, 'Unassigned')}>Unassigned</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => patch({ assignedToId: null }, t('drawer.unassigned'))}>{t('drawer.unassigned')}</DropdownMenuItem>
                     {members.map((m) => (
-                      <DropdownMenuItem key={m.userId} onClick={() => patch({ assignedToId: m.userId }, 'Assigned')}>
+                      <DropdownMenuItem key={m.userId} onClick={() => patch({ assignedToId: m.userId }, t('drawer.assigned'))}>
                         {m.name}
                       </DropdownMenuItem>
                     ))}
@@ -227,7 +229,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                 </DropdownMenu>
               </div>
               <div>
-                <Label>Story points</Label>
+                <Label>{t('drawer.storyPoints')}</Label>
                 <Input
                   type="number"
                   min={0}
@@ -240,7 +242,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                 />
               </div>
               <div>
-                <Label>Due date</Label>
+                <Label>{t('drawer.dueDate')}</Label>
                 <Input
                   type="date"
                   defaultValue={ticket.dueDate ? ticket.dueDate.slice(0, 10) : ''}
@@ -252,19 +254,19 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                 />
               </div>
               <div>
-                <Label>Sprint</Label>
+                <Label>{t('drawer.sprint')}</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="mt-1 w-full justify-between">
-                      {currentSprint?.name ?? (ticket.sprintId ? '…' : 'No sprint')} <ChevronDown className="h-3 w-3" />
+                      {currentSprint?.name ?? (ticket.sprintId ? '…' : t('drawer.noSprint'))} <ChevronDown className="h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => ticket.sprintId && patch({ sprintId: null }, 'Removed from sprint')}>
-                      No sprint
+                    <DropdownMenuItem onClick={() => ticket.sprintId && patch({ sprintId: null }, t('drawer.removedFromSprint'))}>
+                      {t('drawer.noSprint')}
                     </DropdownMenuItem>
                     {sprints.data?.sprints.map((s) => (
-                      <DropdownMenuItem key={s.id} onClick={() => s.id !== ticket.sprintId && patch({ sprintId: s.id }, 'Added to sprint')}>
+                      <DropdownMenuItem key={s.id} onClick={() => s.id !== ticket.sprintId && patch({ sprintId: s.id }, t('drawer.addedToSprint'))}>
                         {s.name}
                       </DropdownMenuItem>
                     ))}
@@ -275,7 +277,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
 
             {/* Watchers */}
             <div className="mt-4">
-              <Label>Watchers / CC</Label>
+              <Label>{t('drawer.watchers')}</Label>
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 {watchers.map((w) => (
                   <Badge key={w.userId} variant="secondary" className="gap-1">
@@ -294,7 +296,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
-                        + Add
+                        + {t('common.add')}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
@@ -317,7 +319,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
 
             {/* Labels */}
             <div className="mt-4">
-              <Label>Labels</Label>
+              <Label>{t('drawer.labels')}</Label>
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 {(ticket.labels ?? []).map((l) => (
                   <span
@@ -335,7 +337,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
-                        + Add
+                        + {t('common.add')}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
@@ -355,17 +357,17 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                   value={newColor}
                   onChange={(e) => setNewColor(e.target.value)}
                   className="h-8 w-8 cursor-pointer rounded border border-input bg-transparent p-0.5"
-                  title="Label color"
+                  title={t('drawer.labels')}
                 />
                 <Input
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && createAndAddLabel()}
-                  placeholder="New label name…"
+                  placeholder={t('drawer.newLabelPlaceholder')}
                   className="h-8 flex-1"
                 />
                 <Button size="sm" variant="outline" onClick={createAndAddLabel} disabled={!newLabel.trim()}>
-                  Create
+                  {t('common.create')}
                 </Button>
               </div>
             </div>
@@ -373,15 +375,15 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
             {/* Description */}
             <div className="mt-4">
               <div className="flex items-center justify-between">
-                <Label>Description</Label>
+                <Label>{t('drawer.description')}</Label>
                 <Button variant="ghost" size="sm" onClick={() => setEditingDesc((v) => !v)}>
-                  {editingDesc ? 'Preview' : 'Edit'}
+                  {editingDesc ? t('common.preview') : t('common.edit')}
                 </Button>
               </div>
               {editingDesc ? (
                 <div className="mt-1 space-y-2">
-                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder="Markdown supported…" />
-                  <Textarea value={ac} onChange={(e) => setAc(e.target.value)} rows={3} placeholder="Acceptance criteria…" />
+                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder={t('drawer.descriptionPlaceholder')} />
+                  <Textarea value={ac} onChange={(e) => setAc(e.target.value)} rows={3} placeholder={t('drawer.acPlaceholder')} />
                   <Button
                     size="sm"
                     onClick={() => {
@@ -389,13 +391,13 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                       setEditingDesc(false)
                     }}
                   >
-                    Save
+                    {t('common.save')}
                   </Button>
                 </div>
               ) : (
                 <div
                   className="prose prose-sm mt-1 max-w-none rounded-md border bg-muted/30 p-3 text-sm"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(desc || '_No description_') }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(desc || `_${t('drawer.noDescription')}_`) }}
                 />
               )}
             </div>
@@ -403,8 +405,8 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
             {/* Comments / Activity */}
             <Tabs defaultValue="comments" className="mt-6">
               <TabsList>
-                <TabsTrigger value="comments">Comments</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="comments">{t('drawer.comments')}</TabsTrigger>
+                <TabsTrigger value="activity">{t('drawer.activity')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="comments" className="space-y-3">
@@ -414,7 +416,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       rows={2}
-                      placeholder="Add a comment… type @ to mention"
+                      placeholder={t('drawer.commentPlaceholder')}
                     />
                     {mentionCandidates.length > 0 && (
                       <div className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-md border bg-popover p-1 shadow-md">
@@ -433,7 +435,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                     )}
                   </div>
                   <Button size="sm" onClick={submitComment} disabled={!comment.trim()}>
-                    Send
+                    {t('common.send')}
                   </Button>
                 </div>
                 {comments.data?.comments.map((c) => (
@@ -444,7 +446,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                     <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body) }} />
                   </div>
                 ))}
-                {comments.data?.comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
+                {comments.data?.comments.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noComments')}</p>}
               </TabsContent>
 
               <TabsContent value="activity" className="space-y-2">
@@ -458,13 +460,13 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                     <span>· {new Date(a.createdAt).toLocaleString()}</span>
                   </div>
                 ))}
-                {activity.data?.activity.length === 0 && <p className="text-sm text-muted-foreground">No activity yet.</p>}
+                {activity.data?.activity.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noActivity')}</p>}
               </TabsContent>
             </Tabs>
 
             <div className="mt-8 border-t pt-4">
               <Button variant="destructive" size="sm" onClick={remove}>
-                Delete ticket
+                {t('drawer.deleteTicket')}
               </Button>
             </div>
           </>

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
 import { keycloak, login } from '../lib/auth'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default function InviteAccept() {
   const { token = '' } = useParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const started = useRef(false)
 
   const accept = useMutation({
@@ -30,25 +32,23 @@ export default function InviteAccept() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>You’ve been invited to AgentPM</CardTitle>
+          <CardTitle>{t('invite.title')}</CardTitle>
           <CardDescription>
-            {keycloak.authenticated
-              ? 'Joining the organization…'
-              : 'Sign in or create an account to accept this invitation.'}
+            {keycloak.authenticated ? t('invite.joining') : t('invite.signInToAccept')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {!keycloak.authenticated && (
             <Button className="w-full" onClick={() => login()}>
-              Sign in to accept
+              {t('invite.signInButton')}
             </Button>
           )}
-          {accept.isPending && <p className="text-sm text-muted-foreground">Accepting invitation…</p>}
+          {accept.isPending && <p className="text-sm text-muted-foreground">{t('invite.accepting')}</p>}
           {accept.isError && (
             <div className="space-y-2">
               <p className="text-sm text-destructive">{(accept.error as Error).message}</p>
               <Button variant="outline" className="w-full" onClick={() => navigate('/', { replace: true })}>
-                Go to dashboard
+                {t('invite.goToDashboard')}
               </Button>
             </div>
           )}

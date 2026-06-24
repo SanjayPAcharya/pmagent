@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import type { Ticket, TicketStatus } from '@/lib/api'
 import { STATUS_LABEL } from '@/lib/board'
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange }: Props) {
+  const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -60,7 +62,7 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange }: 
                 setAdding(false)
               }
             }}
-            placeholder="Ticket title…"
+            placeholder={t('board.addTicketTitle')}
             className="bg-background"
           />
         )}
@@ -70,7 +72,7 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange }: 
           ))}
         </SortableContext>
         {tickets.length === 0 && !adding && (
-          <p className="px-1 py-6 text-center text-xs text-muted-foreground">No tickets</p>
+          <p className="px-1 py-6 text-center text-xs text-muted-foreground">{t('board.noTickets')}</p>
         )}
       </div>
     </div>

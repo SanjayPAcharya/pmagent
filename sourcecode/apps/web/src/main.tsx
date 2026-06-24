@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { keycloak } from './lib/auth'
 import { applyTheme, getInitialTheme } from './lib/theme'
+import './lib/i18n'
 import App from './App'
 import './index.css'
 

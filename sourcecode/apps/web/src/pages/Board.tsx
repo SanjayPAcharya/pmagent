@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   DndContext,
   DragOverlay,
@@ -35,6 +36,7 @@ export default function Board() {
   const { slug = '', projectSlug = '', number } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { t } = useTranslation()
 
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
   const org = useQuery({ queryKey: ['org', slug], queryFn: () => api.getOrg(slug) })
@@ -173,7 +175,7 @@ export default function Board() {
     try {
       await api.updateTicket(id, { status: target, position })
     } catch (err) {
-      toast.error(`Move failed: ${(err as Error).message}`)
+      toast.error(t('board.moveFailed', { message: (err as Error).message }))
       qc.invalidateQueries({ queryKey: ticketsPrefix })
     }
   }
@@ -183,9 +185,9 @@ export default function Board() {
     try {
       await api.createTicket({ projectId, title, status })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
-      toast.success('Ticket created')
+      toast.success(t('board.ticketCreated'))
     } catch (err) {
-      toast.error(`Create failed: ${(err as Error).message}`)
+      toast.error(t('board.createFailed', { message: (err as Error).message }))
     }
   }
 
@@ -212,7 +214,7 @@ export default function Board() {
             to={`/orgs/${slug}/projects/${projectSlug}/sprints`}
             className="text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
-            Sprints
+            {t('board.sprints')}
           </Link>
           {viewers.length > 0 && (
             <div className="flex -space-x-2">
@@ -233,10 +235,8 @@ export default function Board() {
       {/* completion bar */}
       <div className="mb-4">
         <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-          <span>Project completion</span>
-          <span>
-            {counts.done}/{counts.total} done · {pct}%
-          </span>
+          <span>{t('board.completion')}</span>
+          <span>{t('board.completionSummary', { done: counts.done, total: counts.total, pct })}</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
@@ -248,11 +248,11 @@ export default function Board() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search title or #number…"
+          placeholder={t('board.search')}
           className="h-8 w-56 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
         <select value={priority} onChange={(e) => setPriority(e.target.value as Priority | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">Priority: any</option>
+          <option value="">{t('board.priorityAny')}</option>
           {PRIORITIES.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -260,15 +260,15 @@ export default function Board() {
           ))}
         </select>
         <select value={type} onChange={(e) => setType(e.target.value as TicketType | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">Type: any</option>
-          {(['FEATURE', 'BUG', 'CHORE', 'SPIKE'] as TicketType[]).map((t) => (
-            <option key={t} value={t}>
-              {t}
+          <option value="">{t('board.typeAny')}</option>
+          {(['FEATURE', 'BUG', 'CHORE', 'SPIKE'] as TicketType[]).map((ty) => (
+            <option key={ty} value={ty}>
+              {ty}
             </option>
           ))}
         </select>
         <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">Assignee: any</option>
+          <option value="">{t('board.assigneeAny')}</option>
           {members.data?.members.map((m) => (
             <option key={m.userId} value={m.userId}>
               {m.name}
@@ -276,7 +276,7 @@ export default function Board() {
           ))}
         </select>
         <select value={sprintFilter} onChange={(e) => setSprintFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">Sprint: any</option>
+          <option value="">{t('board.sprintAny')}</option>
           {sprints.data?.sprints.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -284,23 +284,23 @@ export default function Board() {
           ))}
         </select>
         <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="position">Sort: manual</option>
-          <option value="-updatedAt">Recently updated</option>
-          <option value="priority">Priority ↑</option>
-          <option value="-priority">Priority ↓</option>
-          <option value="number">Oldest</option>
-          <option value="-number">Newest</option>
+          <option value="position">{t('board.sortManual')}</option>
+          <option value="-updatedAt">{t('board.sortUpdated')}</option>
+          <option value="priority">{t('board.sortPriorityAsc')}</option>
+          <option value="-priority">{t('board.sortPriorityDesc')}</option>
+          <option value="number">{t('board.sortOldest')}</option>
+          <option value="-number">{t('board.sortNewest')}</option>
         </select>
         {hasFilters && (
           <button onClick={clearFilters} className="h-8 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground">
-            Clear
+            {t('board.clear')}
           </button>
         )}
       </div>
 
       {tickets.isError ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          Failed to load tickets: {(tickets.error as Error).message}
+          {t('board.loadError', { message: (tickets.error as Error).message })}
         </div>
       ) : tickets.isLoading ? (
         <div className="flex gap-4">
