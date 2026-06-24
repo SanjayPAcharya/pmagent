@@ -8,15 +8,39 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-function SprintRow({ sprint, onChanged }: { sprint: Sprint; onChanged: () => void }) {
+function SprintRow({
+  sprint,
+  projectId,
+  allSprints,
+  onChanged,
+}: {
+  sprint: Sprint
+  projectId: string
+  allSprints: Sprint[]
+  onChanged: () => void
+}) {
+  const qc = useQueryClient()
+  const [expanded, setExpanded] = useState(false)
   const detail = useQuery({ queryKey: ['sprint', sprint.id], queryFn: () => api.getSprint(sprint.id) })
+  // Candidate tickets to add = project tickets not already in this sprint.
+  const allTickets = useQuery({
+    queryKey: ['tickets', projectId, { sort: 'number' }],
+    queryFn: () => api.listTickets(projectId, { sort: 'number' }),
+    enabled: expanded,
+  })
   const counts = detail.data?.counts
   const pct = counts && counts.total ? Math.round((counts.done / counts.total) * 100) : 0
+  const candidates = (allTickets.data?.items ?? []).filter((t) => t.sprintId !== sprint.id)
 
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['sprint', sprint.id] })
+    qc.invalidateQueries({ queryKey: ['tickets', projectId] })
+    onChanged()
+  }
   const act = async (fn: () => Promise<unknown>, ok: string) => {
     try {
       await fn()
-      onChanged()
+      refresh()
       toast.success(ok)
     } catch (e) {
       toast.error((e as Error).message)
@@ -32,6 +56,9 @@ function SprintRow({ sprint, onChanged }: { sprint: Sprint; onChanged: () => voi
           {sprint.velocity != null && <span className="text-xs text-muted-foreground">velocity {sprint.velocity}</span>}
         </CardTitle>
         <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Hide tickets' : `Tickets (${counts?.total ?? 0})`}
+          </Button>
           {sprint.status === 'PLANNING' && (
             <Button size="sm" variant="outline" onClick={() => act(() => api.startSprint(sprint.id), 'Sprint started')}>
               Start
@@ -55,6 +82,59 @@ function SprintRow({ sprint, onChanged }: { sprint: Sprint; onChanged: () => voi
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
         </div>
+
+        {expanded && (
+          <div className="mt-4 space-y-3">
+            <div>
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">In this sprint</div>
+              <ul className="divide-y rounded-md border">
+                {detail.data?.tickets.map((t) => (
+                  <li key={t.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                    <span className="truncate">
+                      <span className="font-mono text-xs text-muted-foreground">{t.key}</span> {t.title}
+                    </span>
+                    {/* Move this ticket to another sprint, or back to the backlog. */}
+                    <select
+                      className="h-8 shrink-0 rounded-md border border-input bg-transparent px-2 text-xs"
+                      value={sprint.id}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === sprint.id) return
+                        if (v === '__backlog__') act(() => api.removeFromSprint(sprint.id, t.id), 'Moved to backlog')
+                        else act(() => api.addToSprint(v, [t.id]), 'Moved to sprint')
+                      }}
+                    >
+                      {allSprints.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.id === sprint.id ? `${s.name} (current)` : `Move to ${s.name}`}
+                        </option>
+                      ))}
+                      <option value="__backlog__">Move to backlog</option>
+                    </select>
+                  </li>
+                ))}
+                {detail.data?.tickets.length === 0 && (
+                  <li className="px-3 py-3 text-center text-xs text-muted-foreground">No tickets in this sprint.</li>
+                )}
+              </ul>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add tickets</div>
+              <select
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                value=""
+                onChange={(e) => e.target.value && act(() => api.addToSprint(sprint.id, [e.target.value]), 'Added to sprint')}
+              >
+                <option value="">Select a ticket to add…</option>
+                {candidates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.key} — {t.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -113,9 +193,10 @@ export default function Sprints() {
       </form>
 
       <div className="space-y-3">
-        {sprints.data?.sprints.map((s) => (
-          <SprintRow key={s.id} sprint={s} onChanged={refresh} />
-        ))}
+        {projectId &&
+          sprints.data?.sprints.map((s) => (
+            <SprintRow key={s.id} sprint={s} projectId={projectId} allSprints={sprints.data!.sprints} onChanged={refresh} />
+          ))}
         {sprints.data?.sprints.length === 0 && <p className="text-sm text-muted-foreground">No sprints yet.</p>}
       </div>
     </div>

@@ -175,6 +175,7 @@ export interface UpdateTicketInput {
   position?: number
   sprintId?: string | null
   assignedToId?: string | null
+  labelIds?: string[]
 }
 
 /**
@@ -192,11 +193,13 @@ export async function updateTicket(
     const before = await tx.ticket.findUnique({ where: { id: ticketId } })
     if (!before) throw new ApiError(404, 'Ticket not found')
 
+    const has = <K extends keyof UpdateTicketInput>(k: K) => Object.prototype.hasOwnProperty.call(input, k)
+
     if (input.assignedToId) await assertOrgMember(tx, orgId, input.assignedToId, 'Assignee')
     if (input.sprintId) await assertSprintInProject(tx, before.projectId, input.sprintId)
+    if (has('labelIds')) await assertLabelsInOrg(tx, orgId, input.labelIds ?? [])
 
     const activity: { type: TicketActivityType; fromValue: string | null; toValue: string | null }[] = []
-    const has = <K extends keyof UpdateTicketInput>(k: K) => Object.prototype.hasOwnProperty.call(input, k)
 
     if (has('status') && input.status !== before.status)
       activity.push({ type: 'STATUS_CHANGED', fromValue: before.status, toValue: input.status! })
@@ -232,6 +235,10 @@ export async function updateTicket(
         dueDate: has('dueDate') ? (input.dueDate ? new Date(input.dueDate) : null) : undefined,
         sprintId: has('sprintId') ? input.sprintId : undefined,
         assignedToId: has('assignedToId') ? input.assignedToId : undefined,
+        // Replace the whole label set when labelIds is provided.
+        labels: has('labelIds')
+          ? { deleteMany: {}, create: (input.labelIds ?? []).map((labelId) => ({ labelId })) }
+          : undefined,
         activity: activity.length ? { create: activity.map((a) => ({ ...a, actorId })) } : undefined,
       },
       include: ticketInclude,

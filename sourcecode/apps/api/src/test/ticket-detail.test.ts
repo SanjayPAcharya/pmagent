@@ -60,6 +60,24 @@ describe('ticket comments / watchers / update', () => {
     expect(types).toContain('WATCHER_REMOVED')
   })
 
+  it('handles a body-less DELETE sent with Content-Type: application/json (no 400)', async () => {
+    const owner = await tokenFor('d-owner-ct')
+    const { slug, projectId } = await setup(owner)
+    const dev = await tokenFor('d-dev-ct')
+    const devId = await provision(dev)
+    await app.inject({ method: 'POST', url: `/api/orgs/${slug}/members`, headers: bearer(owner), payload: { email: 'd-dev-ct@x.com' } })
+    const ticketId = (await createTicket(owner, projectId, 'CT')).json().ticket.id
+    await app.inject({ method: 'POST', url: `/api/tickets/${ticketId}/watchers`, headers: bearer(owner), payload: { userId: devId } })
+
+    // Browsers send this header even with no body; must not be a 400.
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/tickets/${ticketId}/watchers/${devId}`,
+      headers: { ...bearer(owner), 'content-type': 'application/json' },
+    })
+    expect(res.statusCode).toBe(204)
+  })
+
   it('rejects a watcher who is not an org member (cross-scope 400)', async () => {
     const owner = await tokenFor('d-owner3')
     const { projectId } = await setup(owner)
@@ -70,6 +88,30 @@ describe('ticket comments / watchers / update', () => {
     const res = await app.inject({ method: 'POST', url: `/api/tickets/${ticketId}/watchers`, headers: bearer(owner), payload: { userId: strangerId } })
     expect(res.statusCode).toBe(400)
     expect(res.json().code).toBe('CROSS_SCOPE')
+  })
+
+  it('creates labels, assigns them to a ticket, and rejects a foreign label', async () => {
+    const owner = await tokenFor('d-owner-lbl')
+    const { projectId } = await setup(owner)
+    const orgId = (await app.inject({ method: 'GET', url: `/api/projects/${projectId}`, headers: bearer(owner) })).json().project.orgId
+    const ticketId = (await createTicket(owner, projectId, 'Labelled')).json().ticket.id
+
+    const label = await app.inject({ method: 'POST', url: '/api/labels', headers: bearer(owner), payload: { orgId, name: 'urgent', color: '#ff0000' } })
+    expect(label.statusCode).toBe(201)
+    const labelId = label.json().label.id
+
+    const list = await app.inject({ method: 'GET', url: `/api/labels?orgId=${orgId}`, headers: bearer(owner) })
+    expect(list.json().labels.map((l: { name: string }) => l.name)).toContain('urgent')
+
+    const assigned = await app.inject({ method: 'PATCH', url: `/api/tickets/${ticketId}`, headers: bearer(owner), payload: { labelIds: [labelId] } })
+    expect(assigned.statusCode).toBe(200)
+    expect(assigned.json().ticket.labels.map((l: { id: string }) => l.id)).toEqual([labelId])
+
+    // a label from another org → 400 cross-scope
+    const other = await prisma.organization.create({ data: { name: 'Other Lbl', slug: 'other-lbl' } })
+    const foreign = await prisma.label.create({ data: { orgId: other.id, name: 'x', color: '#00ff00' } })
+    const bad = await app.inject({ method: 'PATCH', url: `/api/tickets/${ticketId}`, headers: bearer(owner), payload: { labelIds: [foreign.id] } })
+    expect(bad.statusCode).toBe(400)
   })
 
   it('updates a ticket and records a PRIORITY_CHANGED activity', async () => {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChevronDown, X } from 'lucide-react'
-import { api, type Member, type Priority, type TicketStatus, type UpdateTicketInput } from '@/lib/api'
+import { api, type Member, type Priority, type Ticket, type TicketStatus, type UpdateTicketInput } from '@/lib/api'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { renderMarkdown } from '@/lib/markdown'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -17,12 +17,13 @@ import { cn } from '@/lib/utils'
 
 interface Props {
   ticketId: string
+  orgId: string
   members: Member[]
   onClose: () => void
   onChanged: () => void
 }
 
-export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
+export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: Props) {
   const qc = useQueryClient()
   const ticketQ = useQuery({ queryKey: ['ticket', ticketId], queryFn: () => api.getTicket(ticketId) })
   const comments = useQuery({ queryKey: ['comments', ticketId], queryFn: () => api.listComments(ticketId) })
@@ -34,6 +35,9 @@ export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
   const [ac, setAc] = useState('')
   const [editingDesc, setEditingDesc] = useState(false)
   const [comment, setComment] = useState('')
+  // Mentions inserted via the picker: the editor shows "@Display Name", and we
+  // remember name→userId so we can convert to the server token "@[uuid]" on send.
+  const [mentions, setMentions] = useState<{ label: string; userId: string }[]>([])
 
   useEffect(() => {
     if (ticket) {
@@ -50,28 +54,102 @@ export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
   }
 
   async function patch(input: UpdateTicketInput, ok = 'Saved') {
+    const key = ['ticket', ticketId]
+    const prev = qc.getQueryData<{ ticket: Ticket }>(key)
+    // Optimistically merge scalar fields for instant feedback (labels reconcile on
+    // refetch since their shape differs from labelIds); roll back on error.
+    if (prev?.ticket) {
+      const { labelIds: _labelIds, ...scalar } = input
+      qc.setQueryData(key, { ticket: { ...prev.ticket, ...scalar } })
+    }
     try {
       await api.updateTicket(ticketId, input)
       refresh()
       toast.success(ok)
+    } catch (err) {
+      if (prev) qc.setQueryData(key, prev)
+      toast.error((err as Error).message)
+    }
+  }
+
+  async function remove() {
+    if (!window.confirm('Delete this ticket? It will be archived and removed from the board.')) return
+    try {
+      await api.deleteTicket(ticketId)
+      toast.success('Ticket deleted')
+      onChanged()
+      onClose()
     } catch (err) {
       toast.error((err as Error).message)
     }
   }
 
   async function submitComment() {
-    const body = comment.trim()
-    if (!body) return
+    const display = comment.trim()
+    if (!display) return
+    // Convert each "@Display Name" back to the "@[uuid]" token the server resolves.
+    // Longest labels first so one name can't partially match inside another.
+    let body = display
+    for (const { label, userId } of [...mentions].sort((a, b) => b.label.length - a.label.length)) {
+      body = body.split(`@${label}`).join(`@[${userId}]`)
+    }
     try {
       await api.addComment(ticketId, body)
       setComment('')
+      setMentions([])
       qc.invalidateQueries({ queryKey: ['comments', ticketId] })
     } catch (err) {
       toast.error((err as Error).message)
     }
   }
 
+  const sprints = useQuery({
+    queryKey: ['sprints', ticket?.projectId],
+    queryFn: () => api.listSprints(ticket!.projectId),
+    enabled: Boolean(ticket?.projectId),
+  })
+  const labels = useQuery({ queryKey: ['labels', orgId], queryFn: () => api.listLabels(orgId), enabled: Boolean(orgId) })
+
+  const labelIds = (ticket?.labels ?? []).map((l) => l.id)
+  const availableLabels = (labels.data?.labels ?? []).filter((l) => !labelIds.includes(l.id))
+  const [newLabel, setNewLabel] = useState('')
+  const [newColor, setNewColor] = useState('#64748b')
+  const setLabels = (ids: string[]) => patch({ labelIds: ids }, 'Labels updated')
+  async function createAndAddLabel() {
+    const name = newLabel.trim()
+    if (!name) return
+    try {
+      const { label } = await api.createLabel(orgId, name, newColor)
+      setNewLabel('')
+      qc.invalidateQueries({ queryKey: ['labels', orgId] })
+      await api.updateTicket(ticketId, { labelIds: [...labelIds, label.id] })
+      refresh()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  // @mention: a trailing "@query" in the comment box opens a member picker; the
+  // selection is stored as the server-resolved token `@[uuid]` and rendered back
+  // as "@Name".
+  const mentionMatch = comment.match(/@([\w.]*)$/)
+  const mentionCandidates = mentionMatch
+    ? members
+        .filter((m) => {
+          const qy = mentionMatch[1].toLowerCase()
+          return m.name.toLowerCase().includes(qy) || m.email.toLowerCase().includes(qy)
+        })
+        .slice(0, 6)
+    : []
+  const insertMention = (m: Member) => {
+    setComment((prev) => prev.replace(/@([\w.]*)$/, `@${m.name} `))
+    setMentions((prev) => [...prev.filter((x) => x.label !== m.name), { label: m.name, userId: m.userId }])
+  }
+  const renderCommentBody = (body: string) =>
+    renderMarkdown(body.replace(/@\[([0-9a-f-]{36})\]/gi, (_m, id) => '@' + (members.find((x) => x.userId === id)?.name ?? 'user')))
+
   const assignee = members.find((m) => m.userId === ticket?.assignedToId)
+  const currentSprint = sprints.data?.sprints.find((s) => s.id === ticket?.sprintId)
   const watchers = (ticket?.watcherIds ?? []).map((id) => members.find((m) => m.userId === id)).filter(Boolean) as Member[]
   const nonWatchers = members.filter((m) => !ticket?.watcherIds.includes(m.userId))
 
@@ -173,6 +251,26 @@ export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
                   className="mt-1"
                 />
               </div>
+              <div>
+                <Label>Sprint</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="mt-1 w-full justify-between">
+                      {currentSprint?.name ?? (ticket.sprintId ? '…' : 'No sprint')} <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => ticket.sprintId && patch({ sprintId: null }, 'Removed from sprint')}>
+                      No sprint
+                    </DropdownMenuItem>
+                    {sprints.data?.sprints.map((s) => (
+                      <DropdownMenuItem key={s.id} onClick={() => s.id !== ticket.sprintId && patch({ sprintId: s.id }, 'Added to sprint')}>
+                        {s.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             {/* Watchers */}
@@ -217,6 +315,61 @@ export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
               </div>
             </div>
 
+            {/* Labels */}
+            <div className="mt-4">
+              <Label>Labels</Label>
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                {(ticket.labels ?? []).map((l) => (
+                  <span
+                    key={l.id}
+                    className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium"
+                    style={{ backgroundColor: `${l.color}22`, color: l.color }}
+                  >
+                    {l.name}
+                    <button onClick={() => setLabels(labelIds.filter((id) => id !== l.id))}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {availableLabels.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        + Add
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {availableLabels.map((l) => (
+                        <DropdownMenuItem key={l.id} onClick={() => setLabels([...labelIds, l.id])}>
+                          <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: l.color }} />
+                          {l.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="color"
+                  value={newColor}
+                  onChange={(e) => setNewColor(e.target.value)}
+                  className="h-8 w-8 cursor-pointer rounded border border-input bg-transparent p-0.5"
+                  title="Label color"
+                />
+                <Input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && createAndAddLabel()}
+                  placeholder="New label name…"
+                  className="h-8 flex-1"
+                />
+                <Button size="sm" variant="outline" onClick={createAndAddLabel} disabled={!newLabel.trim()}>
+                  Create
+                </Button>
+              </div>
+            </div>
+
             {/* Description */}
             <div className="mt-4">
               <div className="flex items-center justify-between">
@@ -256,12 +409,29 @@ export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
 
               <TabsContent value="comments" className="space-y-3">
                 <div className="flex gap-2">
-                  <Textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    rows={2}
-                    placeholder="Add a comment… (@[userId] to mention)"
-                  />
+                  <div className="relative flex-1">
+                    <Textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      rows={2}
+                      placeholder="Add a comment… type @ to mention"
+                    />
+                    {mentionCandidates.length > 0 && (
+                      <div className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-md border bg-popover p-1 shadow-md">
+                        {mentionCandidates.map((m) => (
+                          <button
+                            key={m.userId}
+                            type="button"
+                            onClick={() => insertMention(m)}
+                            className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left hover:bg-accent"
+                          >
+                            <span className="w-full truncate text-sm font-medium text-foreground">{m.name}</span>
+                            <span className="w-full truncate text-xs text-muted-foreground">{m.email}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <Button size="sm" onClick={submitComment} disabled={!comment.trim()}>
                     Send
                   </Button>
@@ -271,7 +441,7 @@ export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
                     <div className="mb-1 text-xs font-medium text-foreground">
                       {c.author?.name ?? 'System'} <span className="text-muted-foreground">· {new Date(c.createdAt).toLocaleString()}</span>
                     </div>
-                    <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(c.body) }} />
+                    <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body) }} />
                   </div>
                 ))}
                 {comments.data?.comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
@@ -291,6 +461,12 @@ export function TicketDrawer({ ticketId, members, onClose, onChanged }: Props) {
                 {activity.data?.activity.length === 0 && <p className="text-sm text-muted-foreground">No activity yet.</p>}
               </TabsContent>
             </Tabs>
+
+            <div className="mt-8 border-t pt-4">
+              <Button variant="destructive" size="sm" onClick={remove}>
+                Delete ticket
+              </Button>
+            </div>
           </>
         )}
       </SheetContent>

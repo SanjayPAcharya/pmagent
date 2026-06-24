@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import OrgProjects from './pages/OrgProjects'
 import Board from './pages/Board'
 import Sprints from './pages/Sprints'
+import Members from './pages/Members'
 import InviteAccept from './pages/InviteAccept'
 
 // Public routes render regardless of auth; gated routes sit behind RequireAuth.
@@ -27,6 +28,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/orgs/:slug" element={<OrgProjects />} />
+            <Route path="/orgs/:slug/members" element={<Members />} />
             <Route path="/orgs/:slug/projects/:projectSlug" element={<Board />} />
             <Route path="/orgs/:slug/projects/:projectSlug/ticket/:number" element={<Board />} />
             <Route path="/orgs/:slug/projects/:projectSlug/sprints" element={<Sprints />} />

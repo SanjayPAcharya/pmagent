@@ -27,6 +27,22 @@ export async function buildServer() {
     },
   })
 
+  // Tolerate an empty body on `Content-Type: application/json` requests. Browsers
+  // (and our fetch client) often send this header on body-less DELETE/POST calls;
+  // Fastify's default JSON parser would 400 ("Body cannot be empty"). Treat empty
+  // as no body so body-less endpoints (remove watcher, start/complete sprint,
+  // mark-read) work regardless of the header.
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+    const raw = body as string
+    if (!raw || raw.trim().length === 0) return done(null, undefined)
+    try {
+      done(null, JSON.parse(raw))
+    } catch {
+      const err = new ApiError(400, 'Invalid JSON body')
+      done(err, undefined)
+    }
+  })
+
   await app.register(cors, { origin: config.ALLOWED_ORIGINS, credentials: true })
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
   await app.register(websocket)
@@ -118,6 +134,7 @@ export async function buildServer() {
   await app.register(import('./routes/organizations.js'), { prefix: '/api/orgs' })
   await app.register(import('./routes/projects.js'), { prefix: '/api/projects' })
   await app.register(import('./routes/tickets.js'), { prefix: '/api/tickets' })
+  await app.register(import('./routes/labels.js'), { prefix: '/api/labels' })
   await app.register(import('./routes/sprints.js'), { prefix: '/api/sprints' })
   await app.register(import('./routes/notifications.js'), { prefix: '/api/notifications' })
   await app.register(import('./routes/invites.js'), { prefix: '/api/invites' })

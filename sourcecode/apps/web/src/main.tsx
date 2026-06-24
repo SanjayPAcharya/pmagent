@@ -15,7 +15,13 @@ const root = ReactDOM.createRoot(document.getElementById('root')!)
 // Initialize Keycloak once, then render. Returning from the hosted login (code
 // in the URL) is processed here and flips keycloak.authenticated to true.
 keycloak
-  .init({ pkceMethod: 'S256' })
+  .init({
+    pkceMethod: 'S256',
+    // Silently restore an existing Keycloak session on load (e.g. after a hard
+    // refresh or opening a deep link) via a hidden iframe — no visible redirect.
+    onLoad: 'check-sso',
+    silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
+  })
   .then((authenticated) => {
     if (authenticated) {
       keycloak.onTokenExpired = () => {

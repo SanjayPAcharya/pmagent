@@ -19,7 +19,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     fetch(`${API_URL}${path}`, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        // Only declare a JSON body when we actually send one — Fastify rejects
+        // `Content-Type: application/json` with an empty body (400), which breaks
+        // body-less calls (DELETE, start/complete sprint, mark-read).
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(keycloak.token ? { Authorization: `Bearer ${keycloak.token}` } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -59,7 +62,7 @@ export interface Invite {
   role: OrgRole
   email: string | null
   expiresAt: string
-  url: string
+  url?: string // present on create; build from token elsewhere
 }
 
 export type TicketStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE' | 'CANCELLED'
@@ -160,6 +163,7 @@ export interface UpdateTicketInput {
   position?: number
   sprintId?: string | null
   assignedToId?: string | null
+  labelIds?: string[]
 }
 
 export const api = {
@@ -174,8 +178,16 @@ export const api = {
 
   // Members & invites (Phase 2D)
   listMembers: (slug: string) => request<{ members: Member[] }>('GET', `/api/orgs/${slug}/members`),
+  addMember: (slug: string, email: string, role: OrgRole) =>
+    request<{ member: { userId: string; role: string; email: string; name: string } }>(
+      'POST',
+      `/api/orgs/${slug}/members`,
+      { email, role },
+    ),
   createInvite: (slug: string, body: { email?: string; role?: OrgRole }) =>
     request<{ invite: Invite }>('POST', `/api/orgs/${slug}/invites`, body),
+  listInvites: (slug: string) => request<{ invites: Invite[] }>('GET', `/api/orgs/${slug}/invites`),
+  revokeInvite: (slug: string, id: string) => request<void>('DELETE', `/api/orgs/${slug}/invites/${id}`),
   acceptInvite: (token: string) =>
     request<{ org: { id: string; slug: string; name: string }; role: string }>(
       'POST',
@@ -202,6 +214,12 @@ export const api = {
     request<{ ok: true }>('POST', `/api/tickets/${id}/watchers`, { userId }),
   removeWatcher: (id: string, userId: string) =>
     request<void>('DELETE', `/api/tickets/${id}/watchers/${userId}`),
+
+  // Labels (Phase 2F)
+  listLabels: (orgId: string) => request<{ labels: Label[] }>('GET', `/api/labels?orgId=${encodeURIComponent(orgId)}`),
+  createLabel: (orgId: string, name: string, color: string) =>
+    request<{ label: Label }>('POST', '/api/labels', { orgId, name, color }),
+  deleteLabel: (id: string) => request<void>('DELETE', `/api/labels/${id}`),
 
   // Sprints (Phase 2E)
   listSprints: (projectId: string) =>

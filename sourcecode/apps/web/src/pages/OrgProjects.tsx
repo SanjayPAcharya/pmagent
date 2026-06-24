@@ -27,9 +27,12 @@ export default function OrgProjects() {
       <Link to="/" className="text-sm text-slate-500 hover:underline">
         ← organizations
       </Link>
-      <h2 className="mt-2 text-xl font-semibold text-slate-900">
-        {org.data?.org.name ?? slug} · projects
-      </h2>
+      <div className="mt-2 flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-slate-900">{org.data?.org.name ?? slug} · projects</h2>
+        <Link to={`/orgs/${slug}/members`} className="text-sm text-slate-500 hover:underline">
+          Members &amp; invites →
+        </Link>
+      </div>
 
       <form
         onSubmit={(e) => {

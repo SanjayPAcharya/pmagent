@@ -1,0 +1,11 @@
+<!doctype html>
+<html>
+  <body>
+    <script>
+      // Keycloak silent SSO check: this page loads in a hidden iframe and posts
+      // the auth result back to the main app so a page refresh restores the
+      // existing session without a visible redirect.
+      parent.postMessage(location.href, location.origin)
+    </script>
+  </body>
+</html>

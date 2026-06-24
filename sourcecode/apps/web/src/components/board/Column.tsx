@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Plus } from 'lucide-react'
 import type { Ticket, TicketStatus } from '@/lib/api'
 import { STATUS_LABEL } from '@/lib/board'
@@ -12,9 +13,10 @@ interface Props {
   tickets: Ticket[]
   onOpen: (t: Ticket) => void
   onQuickAdd: (status: TicketStatus, title: string) => void
+  onStatusChange: (id: string, status: TicketStatus) => void
 }
 
-export function Column({ status, tickets, onOpen, onQuickAdd }: Props) {
+export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -62,9 +64,11 @@ export function Column({ status, tickets, onOpen, onQuickAdd }: Props) {
             className="bg-background"
           />
         )}
-        {tickets.map((t) => (
-          <TicketCard key={t.id} ticket={t} onOpen={onOpen} />
-        ))}
+        <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          {tickets.map((t) => (
+            <TicketCard key={t.id} ticket={t} onOpen={onOpen} onStatusChange={onStatusChange} />
+          ))}
+        </SortableContext>
         {tickets.length === 0 && !adding && (
           <p className="px-1 py-6 text-center text-xs text-muted-foreground">No tickets</p>
         )}

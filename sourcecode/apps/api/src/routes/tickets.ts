@@ -58,6 +58,7 @@ const updateTicketSchema = z
     position: z.number(),
     sprintId: z.string().uuid().nullable(),
     assignedToId: z.string().uuid().nullable(),
+    labelIds: z.array(z.string().uuid()),
   })
   .partial()
 
