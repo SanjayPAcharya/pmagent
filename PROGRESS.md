@@ -15,8 +15,8 @@
 ## Now / Next / Blocked
 
 - **Current phase:** Phase 2 — PM Core
-- **Now:** ✅ **Phase 2 COMPLETE (2A–2E), verified in-browser.** 2E adds the Kanban board (dnd-kit drag→status+position, quick-add per column, JIRA status dropdown, priority/watcher/key on cards), full-width layout, project completion bar, presence avatars; ticket drawer (deep-link `/…/ticket/:number`; editable title/desc/AC, status+priority dropdowns, assignee picker, watcher chips, story points, due date, Comments|Activity tabs, sanitized markdown via marked+DOMPurify); notification bell (unread badge, live via WS, deep-link); Sprints view (create/start/complete + completion bars); optimistic UI + sonner toasts + skeletons; WS live board updates + echo-dedupe. Verified in Chrome: create/list/drag/status/drawer/sprint all work. **33 API tests** + web build green.
-- **Next:** **Phase 2.5 — UX hardening** (dark mode, i18n, mobile-responsive, Cmd-K, Playwright E2E) OR **Phase 3 — deployment/CI-CD**. Known follow-up: hard browser refresh drops to Landing (Keycloak SSO not silently restored — needs `check-sso`; app works via Sign-in click). Board >200 tickets needs per-column pagination (deferred 2.5).
+- **Now:** ✅ **Phase 2 COMPLETE (2A–2E) + Phase 2F gap closure committed (`3db2df1`).** 2F closed all 11 plan-vs-build gaps: drawer sprint/label pickers + delete, per-card status menu, board search/filter/sort, Members & invites page (add-by-email + links), sprint↔tickets + move-between-sprints, labels API/UI, @mention picker, Keycloak check-sso, within-column reorder, drawer optimistic updates (+ 2E drag polish & empty-body fix). **35 API tests** + typecheck/build green.
+- **Next:** **Browser-verify the 2F items** (C9 refresh-persistence — cookie-dependent; C10 reorder feel; mention→notification chain), then **Phase 2.5** (dark mode/i18n/mobile/Cmd-K/Playwright) or **Phase 3** (deploy/CI-CD).
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -67,8 +67,34 @@ Tests (Stage E)
 - [x] **2C** Sprints + completion counts; event bus init/dispose; WS server (project+user rooms, presence, hardened handshake) + shared `WSMessage`; caller-scoped in-app notifications; org invite tokens (role-capped, single-use)
 - [x] **2D** Frontend foundation: **shadcn/ui**, routing restructure (public `/invite/:token` vs gated), members endpoint + `api.listMembers`, typed WS client (refresh + reconnect-refetch + echo-dedupe)
 - [x] **2E** Board (dnd-kit + position) + quick-add + drawer (comments/activity/assignee/watchers/labels/due) + sprint view + completion bars + optimistic UI/toasts/skeletons + notification bell + deep-link; **verified in-browser**
-- [ ] API + WS tests (CRUD, RBAC, pagination round-trip, soft-delete, invite, notification IDOR, WS handshake); REDIS_URL + truncation order in harness
+- [x] API + WS tests (CRUD, RBAC, pagination round-trip, soft-delete, invite, notification IDOR, WS handshake); REDIS_URL + truncation order in harness — **34 tests** across tickets/ticket-detail/sprints/invites/notifications/realtime; harness `setup.ts` truncates in FK order, realtime.test sets `REDIS_URL`
 - Dropped/deferred: `bulk-update` (deferred); dark mode/i18n/mobile/Cmd-K/Playwright → **Phase 2.5**
+
+---
+
+## Phase 2F — Gap closure → [draft](agentpm-plan/phases/phase-2f-gap-closure.md)
+**Status:** 🟢 **all 11 items implemented (A+B+C)** — gaps between the Phase 2 plan (drawer/board/UX/DoD) and what 2A–2E shipped. typecheck/build/35 API tests green; **in-browser verification pending** (uncommitted).
+
+**Status:** ✅ **all 11 implemented (A+B+C); typecheck/build/35 API tests green; browser-verify pending.**
+
+_Group A — backend ready, UI wiring only:_
+- [x] **A1** Sprint picker in the ticket drawer (associate ticket↔sprint via `updateTicket({sprintId})`)
+- [x] **A2** Per-card JIRA-style status dropdown on the board (hover ⋯ menu; stopPropagation so it doesn't drag/open)
+- [x] **A3** Delete/archive ticket from the drawer (confirm → `deleteTicket` → close + refetch)
+- [x] **A4** Search/filter/sort bar on the board (q debounced + priority/type/assignee/sprint/sort; query key includes params)
+- [x] **A5** Invite-member UI: new `/orgs/:slug/members` page — members list + create/copy invite link + list/revoke pending
+- [x] **A6** Sprint↔tickets on the Sprints page (expand row → list tickets + remove + add-ticket picker)
+
+_Group B — needs new backend + UI:_ ✅ **done (typecheck+build+35 tests; not browser-verified)**
+- [x] **B7** Labels: `/api/labels` CRUD (org-scoped) + label-assignment via `PATCH /tickets/:id` (`labelIds` replace-set, cross-scope guard) + drawer picker (chips/add/create-with-color) + API test
+- [x] **B8** @mention member picker in the comment box (trailing `@` → member autocomplete → `@[uuid]` token; renders back as `@Name`)
+
+_Group C — polish / pre-existing:_
+- [x] **C9** Hard-refresh → Landing: Keycloak `check-sso` + `public/silent-check-sso.html` _(needs browser check — silent iframe can be blocked by third-party-cookie rules)_
+- [x] **C10** Within-column drag reordering — cards use `useSortable`+`SortableContext` (closestCorners); drop computes target column + insert index → fractional `positionBetween` neighbours; DragOverlay kept _(implemented; **reorder feel needs an in-browser check**)_
+- [x] **C11** Drawer optimistic updates (scalar fields merge into the `['ticket']` cache instantly, rollback on error)
+
+> **All 11 implemented** (A1–A6, B7, B8, C9, C10, C11) + extras: move-ticket-between-sprints, add-member-by-email on Members page, mention shows display name (not UUID), card hover-overlap fix. Verified by typecheck/build/35 API tests. **Browser-verify pending** — especially C9 (cookie-dependent), C10 (reorder feel), and the mention→notification chain.
 
 ---
 
@@ -128,6 +154,9 @@ Tests (Stage E)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-24 | P2/F | Stage 2F (gap closure, all 11): **A** — sprint picker in drawer, per-card status menu (hover ⋯), delete-ticket in drawer, board search/filter/sort bar, **Members & invites page** (add-by-email + create/copy/revoke invite links), sprint↔tickets on Sprints page + move-between-sprints. **B** — labels: `routes/labels.ts` CRUD (org-scoped) + assignment via `PATCH /tickets/:id` `labelIds` (replace-set, cross-scope guard) + drawer picker; @mention picker (editor shows `@Name`, sends `@[uuid]`). **C** — Keycloak `check-sso` + `public/silent-check-sso.html` (refresh keeps session); within-column reorder (`useSortable`/`SortableContext`, fractional `positionBetween`); drawer optimistic updates. +2 API tests (label assign/cross-scope, body-less DELETE). **35 API tests** + typecheck/build green. Browser-verify pending (C9 cookies, C10 reorder feel, mention→notify). | 3db2df1 |
+| 2026-06-24 | P2 fix | Body-less requests 400'd (`Body cannot be empty when content-type is application/json`) — broke DELETE watcher / delete ticket / remove-from-sprint and body-less POSTs (start/complete sprint, mark-read). Fix: web `request()` omits `Content-Type` when there's no body; api adds a tolerant `application/json` parser (empty → undefined). +1 regression test (DELETE watcher w/ json content-type → 204). 34 tests green. | 3db2df1 |
+| 2026-06-24 | plan | Phase 2F gap-closure draft: 11 gaps between the Phase-2 plan (drawer/board/UX/DoD) and 2A–2E, found in in-browser verification; grouped A (UI over existing APIs) / B (new backend) / C (polish), with approach + effort per item. | f37a9e9 |
 | 2026-06-24 | P2/E | Stage 2E (board/drawer/sprints/bell + **Phase 2 complete**): Kanban `Board` (dnd-kit drag→status+position, quick-add per column, JIRA status dropdown, completion bar, presence avatars), `TicketCard`/`Column`, `TicketDrawer` (deep-link `/ticket/:number`; title/desc/AC edit, status+priority, assignee picker, watcher chips, story points, due date, Comments\|Activity tabs, marked+DOMPurify markdown), `NotificationBell` (WS-live unread badge + deep-link), `Sprints` (create/start/complete + completion bars). shadcn ui added: sheet/dropdown-menu/tabs/textarea/skeleton/label; deps dnd-kit/radix/marked/dompurify/sonner; Toaster mounted; full-width layout. API client extended (tickets/sprints/notifications/comments/watchers/activity). Backend: ticket-create accepts `status` (quick-add into column); **`MAX_LIMIT` 100→200** (board fetches whole project — was silently 400ing the board). +4 API tests (comments/watchers/cross-scope/update). **Verified in Chrome** (create/list/drag/status/drawer/sprint). 33 tests + web build green. | 36ee154 |
 | 2026-06-24 | P2/D | Stage 2D (frontend foundation): shadcn/ui infra (`components.json`, `lib/utils.ts` cn, `@/*` paths in web tsconfig, tailwind theme tokens + `index.css` CSS vars, base ui: button/input/card/badge/avatar; deps cva/clsx/tailwind-merge/tailwindcss-animate/lucide-react/radix slot+avatar + `@agentpm/shared-types`). Routing restructure in `App.tsx` (always-on Router; public `/invite/:token`; gated via `RequireAuth`→Landing). `pages/InviteAccept.tsx` (unauth → sign-in-to-accept returns to token; authed → auto-accept → redirect to org). Backend `GET /orgs/:slug/members` enhanced (+`avatarUrl`, `initials` fallback). `lib/api.ts` +Member/Invite types +`listMembers`/`createInvite`/`acceptInvite`. `lib/websocket.ts` `useProjectWebSocket` (refresh-before-connect, backoff reconnect, refetch-on-reconnect, self-echo dedupe) on shared `WSMessage`. Layout sign-out → Button. Verified: web typecheck + vite build, api typecheck + 29 tests; full docker stack healthy (in-browser confirmed). | aec19c5 |
 | 2026-06-24 | P2/C | Stage 2C (sprints + realtime + notifications + invites, backend): `routes/sprints.ts` (CRUD, start/complete+velocity, add/remove tickets w/ cross-scope guard, completion counts via groupBy); `websocket/ws-server.ts` (`/ws` handshake: auth-timeout→4001, `auth/verify-token.ts` shared jose JWKS verifier, project-membership gate, project+user rooms, presence, fan-out by projectId/userId); `services/notifications.service.ts` (subscribe ticket.* → recipients assignee/creator/watchers/@mentioned − actor → `Notification` rows + `notification.new`); org invites (CSPRNG token, role-cap, single-use, expiry) on org routes + `routes/invites.ts` accept; `routes/notifications.ts` caller-scoped (IDOR-safe). Event bus refactored to single Redis subscription → multi-handler dispatch; wired in `buildServer` + `onClose` dispose. Shared `WSMessage`/`WSEventType`. +10 tests (sprints, invites single-use/expiry, notification IDOR, WS timeout/auth/delivery). Verified: typecheck, build, **29 tests**. | 25c278d |
