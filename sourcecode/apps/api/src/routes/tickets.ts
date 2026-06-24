@@ -16,6 +16,7 @@ import {
   type CreateTicketInput,
   type UpdateTicketInput,
 } from '../services/tickets.service.js'
+import { parseMentions, filterOrgMembers } from '../services/notifications.service.js'
 
 const priorityEnum = z.enum(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 const typeEnum = z.enum(['FEATURE', 'BUG', 'CHORE', 'SPIKE'])
@@ -186,7 +187,14 @@ const routes: FastifyPluginAsync = async (app) => {
       data: { ticketId: t.id, authorId: request.userId!, body: request.body.body, isInternal: request.body.isInternal ?? false },
       include: { author: { select: { id: true, name: true, email: true, avatarUrl: true } } },
     })
-    await publishEvent('ticket.commented', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
+    // Resolve @[uuid] mentions, org-bounded, so only real org members are notified.
+    const mentionedUserIds = await filterOrgMembers(t.project.orgId, parseMentions(request.body.body))
+    await publishEvent('ticket.commented', {
+      projectId: t.projectId,
+      ticketId: t.id,
+      actorId: request.userId!,
+      mentionedUserIds,
+    })
     return reply.code(201).send({ comment })
   })
 

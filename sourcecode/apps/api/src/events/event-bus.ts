@@ -10,6 +10,12 @@ import { createClient, type RedisClientType } from 'redis'
 let publisher: RedisClientType | undefined
 let subscriber: RedisClientType | undefined
 
+// Multiple in-process consumers (WS fan-out + notification service) share ONE
+// Redis subscription; we dispatch each message to every registered handler.
+type Handler = (type: string, payload: DomainEvent['payload']) => void
+const handlers: Handler[] = []
+let subscribed = false
+
 export const EVENTS_CHANNEL = 'agentpm:events'
 
 export interface DomainEvent {
@@ -37,11 +43,13 @@ export async function publishEvent(type: string, payload: DomainEvent['payload']
   )
 }
 
-export async function subscribeToEvents(handler: (type: string, payload: DomainEvent['payload']) => void) {
-  if (!subscriber) return
+export async function subscribeToEvents(handler: Handler) {
+  handlers.push(handler)
+  if (!subscriber || subscribed) return // no Redis (tests w/o bus) or already wired
+  subscribed = true
   await subscriber.subscribe(EVENTS_CHANNEL, (message) => {
     const { type, payload } = JSON.parse(message) as DomainEvent
-    handler(type, payload)
+    for (const h of handlers) h(type, payload)
   })
 }
 
@@ -59,4 +67,6 @@ export async function pingEventBus(): Promise<boolean> {
 export async function disposeEventBus() {
   await Promise.allSettled([publisher?.quit(), subscriber?.quit()])
   publisher = subscriber = undefined
+  handlers.length = 0
+  subscribed = false
 }

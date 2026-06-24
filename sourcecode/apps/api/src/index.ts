@@ -13,6 +13,8 @@ import { ApiError } from './lib/errors.js'
 import { prisma } from './db/client.js'
 import { isReady, markNotReady } from './lib/readiness.js'
 import { initEventBus, disposeEventBus, pingEventBus } from './events/event-bus.js'
+import { wsServer } from './websocket/ws-server.js'
+import { initNotificationService } from './services/notifications.service.js'
 
 export async function buildServer() {
   const config = loadConfig()
@@ -27,7 +29,17 @@ export async function buildServer() {
 
   await app.register(cors, { origin: config.ALLOWED_ORIGINS, credentials: true })
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
-  await app.register(websocket) // WS room handling lands in Phase 2C
+  await app.register(websocket)
+
+  // Real-time: connect the Redis bus (no-op without REDIS_URL → tests stay
+  // hermetic unless the harness opts in), then wire the consumers that subscribe
+  // to it — the WS fan-out and the in-app notification service.
+  await initEventBus(config.REDIS_URL)
+  await app.register(wsServer)
+  await initNotificationService()
+  app.addHook('onClose', async () => {
+    await disposeEventBus()
+  })
 
   // OpenAPI docs at /documentation, generated from the Phase-2 routes' Zod
   // schemas via fastify-type-provider-zod's transform (no separate JSON schema).
@@ -106,20 +118,18 @@ export async function buildServer() {
   await app.register(import('./routes/organizations.js'), { prefix: '/api/orgs' })
   await app.register(import('./routes/projects.js'), { prefix: '/api/projects' })
   await app.register(import('./routes/tickets.js'), { prefix: '/api/tickets' })
+  await app.register(import('./routes/sprints.js'), { prefix: '/api/sprints' })
+  await app.register(import('./routes/notifications.js'), { prefix: '/api/notifications' })
+  await app.register(import('./routes/invites.js'), { prefix: '/api/invites' })
   return app
 }
 
 async function start() {
-  const config = loadConfig()
-  // Connect the event bus only for a real run — tests/build stay hermetic since
-  // buildServer() never touches Redis.
-  await initEventBus(config.REDIS_URL)
-
   const app = await buildServer()
   const port = Number(process.env.PORT ?? 3001)
 
   // Graceful shutdown: drain readiness (→503) so the LB stops routing, then close
-  // the server, the event bus, and the DB pool.
+  // the server (onClose disposes the event bus + WS sockets) and the DB pool.
   let shuttingDown = false
   const shutdown = async (signal: string) => {
     if (shuttingDown) return
@@ -127,7 +137,6 @@ async function start() {
     app.log.info({ signal }, 'shutting down')
     markNotReady()
     await app.close()
-    await disposeEventBus()
     await prisma.$disconnect()
     process.exit(0)
   }

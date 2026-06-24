@@ -1,10 +1,17 @@
 import type { FastifyPluginAsync } from 'fastify'
+import { randomBytes } from 'node:crypto'
 import { z } from 'zod'
 import { prisma } from '../db/client.js'
 import { requireAuth, requireOrgRole } from '../middleware/auth.middleware.js'
-import { guardLastOwner } from '../services/authz.js'
+import { guardLastOwner, ROLE_ORDER } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
 import { slugify } from '../lib/slug.js'
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const createInviteSchema = z.object({
+  email: z.string().email().optional(),
+  role: z.enum(['ADMIN', 'MEMBER']).default('MEMBER'),
+})
 
 const createOrgSchema = z.object({
   name: z.string().min(1).max(120),
@@ -131,6 +138,51 @@ const routes: FastifyPluginAsync = async (app) => {
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
     await guardLastOwner(org.id, userId, null)
     await prisma.orgMember.delete({ where: { orgId_userId: { orgId: org.id, userId } } })
+    return reply.code(204).send()
+  })
+
+  // ── Invite links ── (accept lives at /api/invites/:token/accept)
+  app.post('/:slug/invites', { preHandler: requireOrgRole('ADMIN') }, async (request, reply) => {
+    const { slug } = request.params as { slug: string }
+    const body = createInviteSchema.parse(request.body)
+    const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
+    // Role cap: never mint an invite above the inviter's own role.
+    const me = await prisma.orgMember.findUniqueOrThrow({
+      where: { orgId_userId: { orgId: org.id, userId: request.userId! } },
+    })
+    if (ROLE_ORDER[body.role] > ROLE_ORDER[me.role])
+      throw new ApiError(403, 'Cannot invite above your own role', 'ROLE_CAP')
+
+    const token = randomBytes(32).toString('base64url') // CSPRNG, ~256 bits
+    const invite = await prisma.orgInvite.create({
+      data: {
+        orgId: org.id,
+        email: body.email,
+        role: body.role,
+        token,
+        invitedById: request.userId!,
+        expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      },
+    })
+    return reply.code(201).send({
+      invite: { id: invite.id, token, role: invite.role, email: invite.email, expiresAt: invite.expiresAt, url: `/invite/${token}` },
+    })
+  })
+
+  app.get('/:slug/invites', { preHandler: requireOrgRole('ADMIN') }, async (request) => {
+    const { slug } = request.params as { slug: string }
+    const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
+    const invites = await prisma.orgInvite.findMany({
+      where: { orgId: org.id, acceptedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    })
+    return { invites }
+  })
+
+  app.delete('/:slug/invites/:id', { preHandler: requireOrgRole('ADMIN') }, async (request, reply) => {
+    const { slug, id } = request.params as { slug: string; id: string }
+    const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
+    await prisma.orgInvite.deleteMany({ where: { id, orgId: org.id } })
     return reply.code(204).send()
   })
 }
