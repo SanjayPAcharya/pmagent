@@ -123,9 +123,11 @@ export default function Board() {
     const groups: Record<string, Ticket[]> = {}
     for (const s of BOARD_COLUMNS) groups[s] = []
     for (const t of tickets.data?.items ?? []) (groups[t.status] ??= []).push(t)
-    for (const s of BOARD_COLUMNS) groups[s].sort((a, b) => a.position - b.position || a.number - b.number)
+    // Only impose the manual (position) order under the default sort; for any
+    // other sort, keep the server's order so the chosen sort is actually visible.
+    if (sort === 'position') for (const s of BOARD_COLUMNS) groups[s].sort((a, b) => a.position - b.position || a.number - b.number)
     return groups
-  }, [tickets.data])
+  }, [tickets.data, sort])
 
   const counts = useMemo(() => {
     const items = tickets.data?.items ?? []
