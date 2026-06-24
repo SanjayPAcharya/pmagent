@@ -4,9 +4,15 @@ import rateLimit from '@fastify/rate-limit'
 import websocket from '@fastify/websocket'
 import jwt, { type TokenOrHeader } from '@fastify/jwt'
 import buildGetJwks from 'get-jwks'
+import swagger from '@fastify/swagger'
+import swaggerUi from '@fastify/swagger-ui'
+import { jsonSchemaTransform } from 'fastify-type-provider-zod'
 import { ZodError } from 'zod'
 import { loadConfig } from './config.js'
 import { ApiError } from './lib/errors.js'
+import { prisma } from './db/client.js'
+import { isReady, markNotReady } from './lib/readiness.js'
+import { initEventBus, disposeEventBus, pingEventBus } from './events/event-bus.js'
 
 export async function buildServer() {
   const config = loadConfig()
@@ -21,7 +27,15 @@ export async function buildServer() {
 
   await app.register(cors, { origin: config.ALLOWED_ORIGINS, credentials: true })
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
-  await app.register(websocket) // WS room handling lands in Phase 3
+  await app.register(websocket) // WS room handling lands in Phase 2C
+
+  // OpenAPI docs at /documentation, generated from the Phase-2 routes' Zod
+  // schemas via fastify-type-provider-zod's transform (no separate JSON schema).
+  await app.register(swagger, {
+    openapi: { info: { title: 'AgentPM API', version: '0.2.0' } },
+    transform: jsonSchemaTransform,
+  })
+  await app.register(swaggerUi, { routePrefix: '/documentation' })
 
   // ── Keycloak token verification (the API is an OIDC resource server) ──
   // Verify signature against the realm's JWKS + check iss/aud. Keys are fetched
@@ -74,15 +88,52 @@ export async function buildServer() {
     ts: new Date().toISOString(),
   }))
 
+  // Readiness: distinct from liveness. 503 during shutdown drain, or if a backing
+  // store is unreachable (Postgres SELECT 1 + Redis ping when the bus is wired).
+  app.get('/ready', async (_request, reply) => {
+    if (!isReady()) return reply.code(503).send({ status: 'shutting_down' })
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      if (!(await pingEventBus())) throw new Error('redis unreachable')
+      return { status: 'ready' }
+    } catch (err) {
+      reply.log.error({ err }, 'readiness check failed')
+      return reply.code(503).send({ status: 'not_ready' })
+    }
+  })
+
   await app.register(import('./routes/me.js'), { prefix: '/api/me' })
   await app.register(import('./routes/organizations.js'), { prefix: '/api/orgs' })
   await app.register(import('./routes/projects.js'), { prefix: '/api/projects' })
+  await app.register(import('./routes/tickets.js'), { prefix: '/api/tickets' })
   return app
 }
 
 async function start() {
+  const config = loadConfig()
+  // Connect the event bus only for a real run — tests/build stay hermetic since
+  // buildServer() never touches Redis.
+  await initEventBus(config.REDIS_URL)
+
   const app = await buildServer()
   const port = Number(process.env.PORT ?? 3001)
+
+  // Graceful shutdown: drain readiness (→503) so the LB stops routing, then close
+  // the server, the event bus, and the DB pool.
+  let shuttingDown = false
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return
+    shuttingDown = true
+    app.log.info({ signal }, 'shutting down')
+    markNotReady()
+    await app.close()
+    await disposeEventBus()
+    await prisma.$disconnect()
+    process.exit(0)
+  }
+  process.on('SIGTERM', () => void shutdown('SIGTERM'))
+  process.on('SIGINT', () => void shutdown('SIGINT'))
+
   try {
     await app.listen({ port, host: '0.0.0.0' })
   } catch (err) {

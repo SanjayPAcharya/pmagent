@@ -14,10 +14,10 @@
 
 ## Now / Next / Blocked
 
-- **Current phase:** Phase 1 — Skeleton + Auth + Platform
-- **Now:** 🟡 **Phase 2 in progress — 2A (data & migration) done.** Phase-2 Prisma schema migrated (tickets/sprints/labels/comments/watchers/activity/invites/in-app notifications + `Project.key`/`ticketCounter` + onDelete); existing-project `key` backfilled (WEBA/EMPL); project-create now derives a key; idempotent seed; test truncation extended. typecheck/build green, **13 tests pass**.
-- **Next:** **2B — Tickets backend** (transactional create + numbering, `updateTicket`+activity, comments, assignee/watchers, cross-scope validation, search/filter/sort + cursor pagination, Swagger, `/ready`+shutdown). Then 2C–2E. Phase 1 ✅.
-- **Blocked:** none. Note: `corepack` 0.29 needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. CI (Postgres+Redis+Playwright) finalized in Phase 3.
+- **Current phase:** Phase 2 — PM Core
+- **Now:** 🟡 **Phase 2 in progress — 2A + 2B done.** Tickets backend live: transactional create + atomic numbering (`Project.ticketCounter` → `AGP-1`), `updateTicket` service writing `TicketActivity` + returning events to publish post-commit, comments, assignee + watchers (auto-watch creator/assignee), cross-scope validation (assignee/labels/sprint/parent/deps), list with `q`/filter/`sort` whitelist + cursor pagination (Prisma keyset, id tiebreaker), soft-delete exclude, Swagger at `/documentation` (zod-provider), `/ready` + graceful shutdown, lazy Redis event bus (no-op until 2C wires it). typecheck/build green, **19 tests pass** (+6 tickets).
+- **Next:** **2C — Sprints + real-time + notifications + invites (backend):** sprint CRUD + completion counts; event bus init/dispose wired into buildServer; WS server (project+user rooms, presence, hardened handshake) + shared `WSMessage`; caller-scoped in-app notifications; org invite tokens (role-cap, single-use, accept). Then 2D–2E.
+- **Blocked:** none. Note: `corepack` needs `COREPACK_INTEGRITY_KEYS=0` for `pnpm install`. CI (Postgres+Redis+Playwright) finalized in Phase 3.
 
 ---
 
@@ -61,9 +61,9 @@ Tests (Stage E)
 ---
 
 ## Phase 2 — PM Core (tickets, board, sprints, realtime) → [plan](agentpm-plan/phases/phase-2-pm-core.md)
-**Status:** ⬜ not started — **fully planned; audit blockers resolved; sub-stages 2A–2E defined.**
+**Status:** 🟡 in progress — **2A + 2B done; 2C–2E next.**
 - [x] **2A** Migration: ticket/sprint/label(+org rel)/comment + `TicketWatcher`/`TicketActivity`/`OrgInvite`/in-app `Notification`; ticket `dueDate`/`archivedAt`; `Project.key`+`ticketCounter` (+backfill); onDelete clauses; project-create derives key; idempotent seed; test truncation extended
-- [ ] **2B** Tickets backend: transactional create + atomic numbering, `updateTicket` service + activity, comments, assignee/watchers, cross-scope validation, search/filter/sort (whitelist) + cursor pagination, Swagger (zod-provider), `/ready` + graceful shutdown
+- [x] **2B** Tickets backend: transactional create + atomic numbering, `updateTicket` service + activity, comments, assignee/watchers, cross-scope validation, search/filter/sort (whitelist) + cursor pagination, Swagger (zod-provider), `/ready` + graceful shutdown
 - [ ] **2C** Sprints + completion counts; event bus init/dispose; WS server (project+user rooms, presence, hardened handshake) + shared `WSMessage`; caller-scoped in-app notifications; org invite tokens (role-capped, single-use)
 - [ ] **2D** Frontend foundation: **shadcn/ui**, routing restructure (public `/invite/:token` vs gated), members endpoint + `api.listMembers`, typed WS client (refresh + reconnect-refetch + echo-dedupe)
 - [ ] **2E** Board (dnd-kit + position) + quick-add + drawer (comments/activity/assignee/watchers/labels/due) + sprint view + completion bars + optimistic UI/toasts/skeletons + notification bell + deep-link; **verify in-browser**
@@ -128,6 +128,7 @@ Tests (Stage E)
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-24 | P2/B | Stage 2B (tickets backend): `routes/tickets.ts` (CRUD + soft-delete, status quick-change, comments, watchers, activity, list) via `fastify-type-provider-zod`; `tickets.service.ts` — transactional create + atomic numbering (`Project.ticketCounter`), `updateTicket` writing `TicketActivity` + returning post-commit events, cross-scope validation (assignee/labels/sprint/parent/deps); cursor pagination helper (Prisma keyset, id tiebreaker); lazy Redis `event-bus.ts` (`publishEvent` no-op until 2C); Swagger `/documentation`; `/ready` + SIGTERM/SIGINT graceful shutdown. +6 ticket API tests (numbering, RBAC 403, assign/activity, cross-scope 400, pagination round-trip, soft-delete). Verified: db:generate, typecheck, build, **19 tests**. | _pending_ |
 | 2026-06-24 | P2/A | Stage 2A (data): Phase-2 Prisma schema (Ticket/Sprint/Label/Comment/TicketDependency/TicketWatcher/TicketActivity/OrgInvite/in-app Notification + enums; agent scalar cols kept, agent tables deferred); `Project.key`+`ticketCounter`; onDelete clauses; Label↔Org relation. Hand-written migration with `key` backfill (existing projects → WEBA/EMPL). Project-create derives+dedupes key. Idempotent `db:seed`. Test truncation extended to new tables. Verified: migrate deploy, prisma generate, typecheck, build, 13 tests, seed×2. | c97352d |
 | 2026-06-24 | plan | Phase 2/2.5 re-verify: no new Tier-1 blockers. Folded refinements — per-user rate-limit keying happens pre-auth (key off JWT sub in keyGenerator); soft-delete filters in list queries only (fetch-by-id/restore unaffected, no global Prisma hide); add `NotificationType`/`NotificationChannel` enums in 2A; `updateTicket` returns events to publish after commit; members endpoint enhances the Phase-1 route (+avatarUrl, initials fallback); E2E cross-user notification asserted via API. | fa3872e |
 | 2026-06-23 | plan | Phase 2 audit (7-dim workflow, 62 findings) → folded Tier-1 fixes into plan: notification IDOR scoping, org-bounded @mention + server sanitize, invite token entropy/single-use/role-cap, sort whitelist + cursor tiebreaker, cross-scope validation, publish-after-commit + transactional create + `updateTicket` service, position scheme, onDelete + Label org relation, WS handshake hardening + self-echo dedupe + refetch-on-reconnect + shared `WSMessage`, public/gated routing, members endpoint, graceful shutdown, zod-provider scope, per-user rate limit. Defined sub-stages 2A–2E. Split **Phase 2.5 (UX hardening)**; dropped `bulk-update`; adopted shadcn. Updated phase-2, new phase-2.5, 03/04/06/07 refs, README, PROGRESS. | 37f5681 |
