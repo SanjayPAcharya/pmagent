@@ -31,7 +31,7 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange }: 
   }
 
   return (
-    <div className="flex w-72 shrink-0 flex-col">
+    <div className="flex w-[85vw] shrink-0 snap-start flex-col sm:w-72">
       <div className="mb-2 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground">{STATUS_LABEL[status]}</h3>

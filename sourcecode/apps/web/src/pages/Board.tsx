@@ -5,13 +5,16 @@ import { useTranslation } from 'react-i18next'
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
 import { api, type Priority, type Ticket, type TicketStatus, type TicketType } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES } from '@/lib/board'
@@ -119,7 +122,13 @@ export default function Board() {
     { currentUserId: me.data?.user.id, onReconnect: () => qc.invalidateQueries({ queryKey: ticketsPrefix }) },
   )
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  // Mouse: drag after 5px. Touch: long-press (220ms) so the board still scrolls
+  // with a normal swipe on mobile. Keyboard: a11y reordering.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const byStatus = useMemo(() => {
     const groups: Record<string, Ticket[]> = {}
@@ -316,7 +325,7 @@ export default function Board() {
           onDragEnd={onDragEnd}
           onDragCancel={() => setActiveId(null)}
         >
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:snap-none">
             {BOARD_COLUMNS.map((s) => (
               <Column
                 key={s}

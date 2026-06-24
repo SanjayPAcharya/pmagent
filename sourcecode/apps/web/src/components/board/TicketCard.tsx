@@ -91,7 +91,7 @@ export function TicketCard({ ticket, onOpen, onStatusChange }: TicketCardProps) 
       onClick={() => onOpen(ticket)}
       role="button"
       tabIndex={0}
-      className={cn('group relative cursor-grab touch-none outline-none active:cursor-grabbing', isDragging && 'opacity-40')}
+      className={cn('group relative cursor-grab outline-none active:cursor-grabbing', isDragging && 'opacity-40')}
     >
       <TicketCardBody ticket={ticket} />
       <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={stop} onClick={stop}>

@@ -18,8 +18,8 @@ export default function Layout() {
           <Link to="/" className="text-lg font-semibold text-foreground">
             {t('common.appName')}
           </Link>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>{me.data?.user.email}</span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground sm:gap-3">
+            <span className="hidden max-w-[40vw] truncate sm:inline">{me.data?.user.email}</span>
             <Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme" aria-label="Toggle theme">
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
