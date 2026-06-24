@@ -9,3 +9,9 @@ export function slugify(input: string): string {
       .slice(0, 50) || 'item'
   )
 }
+
+/** Short uppercase project key (e.g. "Web App" → "WEBA"). Used for ticket ids (AGP-42). */
+export function deriveKey(input: string): string {
+  const base = input.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
+  return base || 'PRJ'
+}

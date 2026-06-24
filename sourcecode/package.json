@@ -8,7 +8,8 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "test": "turbo test"
+    "test": "turbo test",
+    "db:seed": "pnpm --filter @agentpm/api db:seed"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

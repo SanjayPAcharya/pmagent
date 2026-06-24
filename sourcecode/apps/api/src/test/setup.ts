@@ -15,7 +15,18 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  // child → parent FK order
   await prisma.$transaction([
+    prisma.notification.deleteMany(),
+    prisma.ticketActivity.deleteMany(),
+    prisma.ticketWatcher.deleteMany(),
+    prisma.comment.deleteMany(),
+    prisma.ticketLabel.deleteMany(),
+    prisma.ticketDependency.deleteMany(),
+    prisma.ticket.deleteMany(),
+    prisma.sprint.deleteMany(),
+    prisma.label.deleteMany(),
+    prisma.orgInvite.deleteMany(),
     prisma.orgMember.deleteMany(),
     prisma.project.deleteMany(),
     prisma.organization.deleteMany(),

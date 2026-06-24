@@ -1,5 +1,6 @@
-// Phase 1 data models. Later phases add Ticket/Sprint/Agent* etc.
-// See ../../../agentpm-plan/references/03-data-models.md for the full target schema.
+// Phase 1 + Phase 2 (PM core) data models.
+// Phase 4 adds AgentAction/AutonomySettings/Approval/Integration + the Ticket
+// agentActions relation. See ../../../agentpm-plan/references/03-data-models.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,16 +11,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Users & Orgs ────────────────────────────────────────────
+
 model User {
   id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  idpSub      String?     @unique // Keycloak subject — JIT-provisioned on first login (Stage B)
+  idpSub      String?     @unique // Keycloak subject — JIT-provisioned on first login
   email       String      @unique
   name        String
   avatarUrl   String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  memberships OrgMember[]
+  memberships     OrgMember[]
+  createdTickets  Ticket[]         @relation("CreatedBy")
+  assignedTickets Ticket[]         @relation("AssignedTo")
+  watching        TicketWatcher[]
+  ticketActivity  TicketActivity[]
+  sentInvites     OrgInvite[]      @relation("InvitesSent")
+  comments        Comment[]
+  notifications   Notification[]
 
   @@index([email])
 }
@@ -34,6 +44,8 @@ model Organization {
 
   members   OrgMember[]
   projects  Project[]
+  invites   OrgInvite[]
+  labels    Label[]
 
   @@index([slug])
 }
@@ -53,21 +65,214 @@ model OrgMember {
   @@index([userId])
 }
 
+model OrgInvite {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId       String   @db.Uuid
+  email       String?  // optional target; link works for whoever opens it if null
+  role        OrgRole  @default(MEMBER)
+  token       String   @unique // CSPRNG base64url; the /invite/:token link
+  invitedById String   @db.Uuid
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("InvitesSent", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([token])
+}
+
 model Project {
   id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   orgId         String       @db.Uuid
   name          String
   slug          String
+  key           String       // short uppercase, e.g. "AGP" — prefixes ticket numbers
+  ticketCounter Int          @default(0) // monotonic per-project allocator for ticket.number
   description   String?
   defaultBranch String       @default("main")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
   organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tickets       Ticket[]
+  sprints       Sprint[]
 
   @@unique([orgId, slug])
+  @@unique([orgId, key])
   @@index([orgId])
 }
+
+// ─── Tickets ─────────────────────────────────────────────────
+
+model Ticket {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId          String       @db.Uuid
+  sprintId           String?      @db.Uuid
+  number             Int          // per-project, displayed as <Project.key>-<number>
+  title              String
+  description        String?
+  acceptanceCriteria String?
+  goal               String?
+  constraints        String?
+  status             TicketStatus @default(BACKLOG)
+  priority           Priority     @default(MEDIUM)
+  type               TicketType   @default(FEATURE)
+  storyPoints        Int?
+  dueDate            DateTime?
+  archivedAt         DateTime?    // soft delete — list queries exclude archived
+  position           Float        @default(0) // board ordering within a column
+  assignedToId       String?      @db.Uuid
+  createdById        String       @db.Uuid
+  parentId           String?      @db.Uuid
+  // Agent fields (nullable; populated from Phase 4 — relations deferred)
+  assignedAgentType  AgentType?
+  agentRunId         String?      @db.Uuid
+  agentPhase         AgentPhase?
+  prUrl              String?
+  prNumber           Int?
+  branchName         String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  project      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sprint       Sprint?            @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  assignedTo   User?              @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy    User               @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  parent       Ticket?            @relation("Subtasks", fields: [parentId], references: [id], onDelete: SetNull)
+  subtasks     Ticket[]           @relation("Subtasks")
+  dependencies TicketDependency[] @relation("DependsOn")
+  dependents   TicketDependency[] @relation("BlockedBy")
+  labels       TicketLabel[]
+  comments     Comment[]
+  watchers     TicketWatcher[]
+  activity     TicketActivity[]
+  notifications Notification[]
+
+  @@unique([projectId, number])
+  @@index([projectId, status, position])
+  @@index([projectId, archivedAt])
+  @@index([sprintId])
+  @@index([assignedToId])
+}
+
+model TicketDependency {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId    String @db.Uuid
+  dependsOnId String @db.Uuid
+
+  ticket    Ticket @relation("DependsOn", fields: [ticketId], references: [id], onDelete: Cascade)
+  dependsOn Ticket @relation("BlockedBy", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, dependsOnId])
+}
+
+model Label {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  color        String
+  orgId        String        @db.Uuid
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  tickets      TicketLabel[]
+
+  @@unique([orgId, name])
+}
+
+model TicketLabel {
+  ticketId String @db.Uuid
+  labelId  String @db.Uuid
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  label    Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, labelId])
+}
+
+model Comment {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId   String     @db.Uuid
+  authorId   String?    @db.Uuid // null = agent/system comment (Phase 4)
+  agentType  AgentType?
+  body       String
+  isInternal Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId])
+}
+
+model TicketWatcher {
+  ticketId String   @db.Uuid
+  userId   String   @db.Uuid
+  addedAt  DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@index([userId])
+}
+
+model TicketActivity {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId  String             @db.Uuid
+  actorId   String?            @db.Uuid // null = system/agent
+  type      TicketActivityType
+  fromValue String?
+  toValue   String?
+  createdAt DateTime           @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt])
+}
+
+// ─── Sprints ─────────────────────────────────────────────────
+
+model Sprint {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String       @db.Uuid
+  name      String
+  goal      String?
+  status    SprintStatus @default(PLANNING)
+  startDate DateTime?
+  endDate   DateTime?
+  velocity  Int?         // story points completed, set on complete
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@index([projectId, status])
+}
+
+// ─── Notifications (in-app for Phase 2; channels in Phase 5) ──
+
+model Notification {
+  id       String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId   String              @db.Uuid
+  ticketId String?             @db.Uuid
+  type     NotificationType
+  channel  NotificationChannel @default(IN_APP)
+  subject  String?
+  body     String
+  sentAt   DateTime?
+  readAt   DateTime?
+  metadata Json?
+  createdAt DateTime           @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ─── Enums ───────────────────────────────────────────────────
 
 enum PlanType {
   FREE
@@ -79,4 +284,81 @@ enum OrgRole {
   OWNER
   ADMIN
   MEMBER
+}
+
+enum TicketStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+enum Priority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TicketType {
+  FEATURE
+  BUG
+  CHORE
+  SPIKE
+}
+
+enum SprintStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TicketActivityType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  WATCHER_ADDED
+  WATCHER_REMOVED
+  SPRINT_CHANGED
+  PRIORITY_CHANGED
+}
+
+enum NotificationType {
+  TICKET_ASSIGNED
+  TICKET_STATUS_CHANGED
+  TICKET_COMMENTED
+  MENTION
+  WATCHER_ADDED
+  SPRINT_STARTED
+  SPRINT_COMPLETED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+  SLACK
+}
+
+// Agent enums kept now (scalar columns on Ticket/Comment); agent TABLES land in Phase 4.
+enum AgentType {
+  SPEC
+  CODE
+  QA
+  DEPLOY
+  OBSERVABILITY
+}
+
+enum AgentPhase {
+  SPEC
+  BUILD
+  REVIEW
+  TEST
+  STAGING
+  CANARY
+  PRODUCTION
 }
