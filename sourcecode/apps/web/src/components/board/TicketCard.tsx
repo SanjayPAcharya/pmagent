@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Eye, MoreHorizontal } from 'lucide-react'
 import type { Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
+import { staleBorderClass } from '@/lib/time'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing } from '@/components/ReadinessRing'
 import {
@@ -19,7 +20,8 @@ export function TicketCardBody({ ticket, dragging }: { ticket: Ticket; dragging?
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card p-3 transition-shadow',
+        'rounded-lg border border-l-2 bg-card p-3 transition-shadow',
+        staleBorderClass(ticket.updatedAt),
         dragging ? 'rotate-1 shadow-xl ring-2 ring-primary/30' : 'shadow-sm hover:shadow-md',
       )}
     >

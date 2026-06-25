@@ -15,6 +15,14 @@ export const STATUS_LABEL: Record<TicketStatus, string> = {
   CANCELLED: 'Cancelled',
 }
 
+// B2 — soft WIP limits: a column header pulses amber when its count exceeds the
+// limit. Flow discipline with zero config beyond a number. Columns not listed
+// are unlimited.
+export const WIP_LIMITS: Partial<Record<TicketStatus, number>> = {
+  IN_PROGRESS: 3,
+  IN_REVIEW: 3,
+}
+
 export const PRIORITIES: Priority[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']
 
 export const PRIORITY_CLASS: Record<Priority, string> = {

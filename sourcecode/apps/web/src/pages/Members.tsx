@@ -71,6 +71,21 @@ export default function Members() {
         <h2 className="text-xl font-semibold text-foreground">{t('members.title')}</h2>
       </div>
 
+      {/* H2 — invite nudge when it's a team of one. */}
+      {(members.data?.members.length ?? 0) <= 1 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-medium text-foreground">{t('members.nudgeTitle')}</div>
+              <div className="text-xs text-muted-foreground">{t('members.nudgeHint')}</div>
+            </div>
+            <Button onClick={create} className="shrink-0">
+              {t('members.createInvite')}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">{t('members.addByEmailTitle')}</CardTitle>

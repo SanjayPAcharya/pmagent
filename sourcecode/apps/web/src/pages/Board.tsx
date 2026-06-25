@@ -234,6 +234,22 @@ export default function Board() {
     }
   }
 
+  // H1 — guided first ticket: create in Backlog and open the drawer so the
+  // author lands on the goal/AC fields (the agent-ready pattern).
+  const [firstTitle, setFirstTitle] = useState('')
+  async function createFirstTicket() {
+    const title = firstTitle.trim()
+    if (!projectId || !title) return
+    try {
+      const { ticket } = await api.createTicket({ projectId, title, status: 'BACKLOG' })
+      setFirstTitle('')
+      qc.invalidateQueries({ queryKey: ticketsPrefix })
+      navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${ticket.number}`)
+    } catch (err) {
+      toast.error(t('board.createFailed', { message: (err as Error).message }))
+    }
+  }
+
   const activeTicket = activeId ? tickets.data?.items.find((t) => t.id === activeId) : undefined
   const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
 
@@ -372,6 +388,33 @@ export default function Board() {
         </div>
       ) : tickets.isLoading ? (
         <BoardSkeleton />
+      ) : counts.total === 0 ? (
+        <div className="mx-auto mt-8 max-w-md rounded-xl border bg-card p-6 text-center">
+          <h3 className="text-base font-semibold text-foreground">{t('board.firstTicketTitle')}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t('board.firstTicketHint')}</p>
+          <ol className="mx-auto mt-4 max-w-xs list-decimal space-y-1 pl-5 text-left text-sm text-muted-foreground">
+            <li>{t('board.firstStep1')}</li>
+            <li>{t('board.firstStep2')}</li>
+            <li>{t('board.firstStep3')}</li>
+          </ol>
+          <div className="mt-4 flex gap-2">
+            <input
+              autoFocus
+              value={firstTitle}
+              onChange={(e) => setFirstTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && createFirstTicket()}
+              placeholder={t('board.firstTicketPlaceholder')}
+              className="h-9 flex-1 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            <button
+              onClick={createFirstTicket}
+              disabled={!firstTitle.trim()}
+              className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {t('common.create')}
+            </button>
+          </div>
+        </div>
       ) : (
         <DndContext
           sensors={sensors}

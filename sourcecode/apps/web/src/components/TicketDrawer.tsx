@@ -19,6 +19,15 @@ import { RelativeTime } from '@/components/RelativeTime'
 import { fireConfetti } from '@/lib/confetti'
 import { cn } from '@/lib/utils'
 
+// C3 — slash command palette shown when the comment box starts with "/".
+const SLASH_COMMANDS: { cmd: string; args: string }[] = [
+  { cmd: 'status', args: 'done · in progress · blocked …' },
+  { cmd: 'assign', args: 'name · none' },
+  { cmd: 'sprint', args: 'name · none' },
+  { cmd: 'due', args: 'today · tomorrow · YYYY-MM-DD' },
+  { cmd: 'label', args: 'name' },
+]
+
 interface Props {
   ticketId: string
   orgId: string
@@ -110,9 +119,56 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
     }
   }
 
+  // C3 — slash commands in the comment box. "/status done", "/assign sanjay",
+  // "/sprint sprint2", "/due tomorrow", "/label bug" run an update instead of
+  // posting a comment. Unrecognized input falls through to a normal comment.
+  async function runSlash(text: string): Promise<boolean> {
+    const m = text.match(/^\/(\w+)\s+(.+)$/)
+    if (!m) return false
+    const [, cmd, raw] = m
+    const arg = raw.trim()
+    const argLc = arg.toLowerCase()
+    const reset = () => {
+      setComment('')
+      setMentions([])
+    }
+    switch (cmd.toLowerCase()) {
+      case 'status': {
+        const s = ALL_STATUSES.find((x) => x.toLowerCase() === argLc.replace(/\s+/g, '_') || STATUS_LABEL[x].toLowerCase() === argLc)
+        if (s) { patch({ status: s }); reset(); return true }
+        break
+      }
+      case 'assign': {
+        if (argLc === 'none') { patch({ assignedToId: null }, t('drawer.unassigned')); reset(); return true }
+        const mem = members.find((x) => x.name.toLowerCase().replace(/\s+/g, '').includes(argLc.replace(/\s+/g, '')) || x.email.toLowerCase().startsWith(argLc))
+        if (mem) { patch({ assignedToId: mem.userId }, t('drawer.assigned')); reset(); return true }
+        break
+      }
+      case 'sprint': {
+        if (argLc === 'none') { patch({ sprintId: null }, t('drawer.removedFromSprint')); reset(); return true }
+        const sp = sprints.data?.sprints.find((x) => x.name.toLowerCase().replace(/\s+/g, '').includes(argLc.replace(/\s+/g, '')))
+        if (sp) { patch({ sprintId: sp.id }, t('drawer.addedToSprint')); reset(); return true }
+        break
+      }
+      case 'due': {
+        const d = argLc === 'today' ? new Date() : argLc === 'tomorrow' ? new Date(Date.now() + 86_400_000) : new Date(arg)
+        if (!Number.isNaN(d.getTime())) { patch({ dueDate: d.toISOString() }); reset(); return true }
+        break
+      }
+      case 'label': {
+        const lab = (labels.data?.labels ?? []).find((x) => x.name.toLowerCase().includes(argLc))
+        if (lab && !labelIds.includes(lab.id)) { patch({ labelIds: [...labelIds, lab.id] }, t('drawer.labelsUpdated')); reset(); return true }
+        break
+      }
+    }
+    toast.error(t('drawer.slashUnknown', { cmd }))
+    return true
+  }
+
   async function submitComment() {
     const display = comment.trim()
     if (!display) return
+    if (display.startsWith('/') && (await runSlash(display))) return
     // Convert each "@Display Name" back to the "@[uuid]" token the server resolves.
     // Longest labels first so one name can't partially match inside another.
     let body = display
@@ -158,6 +214,10 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
   // @mention: a trailing "@query" in the comment box opens a member picker; the
   // selection is stored as the server-resolved token `@[uuid]` and rendered back
   // as "@Name".
+  // Slash-command suggestions while the comment is just "/word" (no arg yet).
+  const slashMatch = comment.match(/^\/(\w*)$/)
+  const slashCandidates = slashMatch ? SLASH_COMMANDS.filter((c) => c.cmd.startsWith(slashMatch[1].toLowerCase())) : []
+
   const mentionMatch = comment.match(/@([\w.]*)$/)
   const mentionCandidates = mentionMatch
     ? members
@@ -185,6 +245,12 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
   const currentSprint = sprints.data?.sprints.find((s) => s.id === ticket?.sprintId)
   const watchers = (ticket?.watcherIds ?? []).map((id) => members.find((m) => m.userId === id)).filter(Boolean) as Member[]
   const nonWatchers = members.filter((m) => !ticket?.watcherIds.includes(m.userId))
+
+  // C1 — unified "story": comments + activity interleaved chronologically.
+  const storyItems = [
+    ...(comments.data?.comments ?? []).map((c) => ({ id: `c-${c.id}`, at: c.createdAt, comment: c, activity: null as null })),
+    ...(activity.data?.activity ?? []).map((a) => ({ id: `a-${a.id}`, at: a.createdAt, comment: null as null, activity: a })),
+  ].sort((x, y) => new Date(x.at).getTime() - new Date(y.at).getTime())
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
@@ -458,6 +524,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
               <TabsList>
                 <TabsTrigger value="comments">{t('drawer.comments')}</TabsTrigger>
                 <TabsTrigger value="activity">{t('drawer.activity')}</TabsTrigger>
+                <TabsTrigger value="story">{t('drawer.story')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="comments" className="space-y-3">
@@ -469,6 +536,24 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                       rows={2}
                       placeholder={t('drawer.commentPlaceholder')}
                     />
+                    {slashCandidates.length > 0 && (
+                      <div className="absolute bottom-full left-0 z-10 mb-1 w-72 overflow-hidden rounded-md border bg-popover p-1 shadow-md">
+                        <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {t('drawer.slashCommands')}
+                        </div>
+                        {slashCandidates.map((c) => (
+                          <button
+                            key={c.cmd}
+                            type="button"
+                            onClick={() => setComment(`/${c.cmd} `)}
+                            className="flex w-full items-baseline gap-2 rounded px-2 py-1.5 text-left hover:bg-accent"
+                          >
+                            <span className="font-mono text-sm text-foreground">/{c.cmd}</span>
+                            <span className="truncate text-xs text-muted-foreground">{c.args}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {mentionCandidates.length > 0 && (
                       <div className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-md border bg-popover p-1 shadow-md">
                         {mentionCandidates.map((m) => (
@@ -515,6 +600,33 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                   </div>
                 ))}
                 {activity.data?.activity.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noActivity')}</p>}
+              </TabsContent>
+
+              {/* C1 — interleaved story (comments + activity) */}
+              <TabsContent value="story" className="space-y-2">
+                {storyItems.map((item) =>
+                  item.comment ? (
+                    <div key={item.id} className="rounded-md border p-3">
+                      <div className="mb-1 text-xs font-medium text-foreground">
+                        {item.comment.author?.name ?? 'System'}{' '}
+                        <span className="text-muted-foreground">
+                          · <RelativeTime date={item.comment.createdAt} />
+                        </span>
+                      </div>
+                      <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(item.comment.body) }} />
+                    </div>
+                  ) : (
+                    <div key={item.id} className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{item.activity!.actor?.name ?? 'System'}</span>
+                      <span>
+                        {item.activity!.type.replace(/_/g, ' ').toLowerCase()}
+                        {item.activity!.fromValue || item.activity!.toValue ? `: ${item.activity!.fromValue ?? '∅'} → ${item.activity!.toValue ?? '∅'}` : ''}
+                      </span>
+                      <span>· <RelativeTime date={item.activity!.createdAt} /></span>
+                    </div>
+                  ),
+                )}
+                {storyItems.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noActivity')}</p>}
               </TabsContent>
             </Tabs>
 

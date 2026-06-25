@@ -18,3 +18,13 @@ export function formatRelative(iso: string, now: number = Date.now()): string {
   if (diff < WEEK) return `${Math.floor(diff / DAY)}d ago`
   return new Date(iso).toLocaleDateString()
 }
+
+// B5 — time-decay: a card's left border darkens the longer since `updatedAt`,
+// a calm staleness signal (no nagging badge). Fresh cards show nothing.
+export function staleBorderClass(iso: string, now: number = Date.now()): string {
+  const days = (now - new Date(iso).getTime()) / 86_400_000
+  if (Number.isNaN(days) || days < 2) return 'border-l-transparent'
+  if (days < 7) return 'border-l-amber-300/40'
+  if (days < 21) return 'border-l-amber-500/50'
+  return 'border-l-amber-600/70'
+}

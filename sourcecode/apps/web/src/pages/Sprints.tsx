@@ -34,6 +34,14 @@ function SprintRow({
   const pct = counts && counts.total ? Math.round((counts.done / counts.total) * 100) : 0
   const candidates = (allTickets.data?.items ?? []).filter((t) => t.sprintId !== sprint.id)
 
+  // F3 — velocity-aware capacity: committed points vs the most recent completed
+  // sprint's velocity. Flags overcommitment while planning.
+  const committedPts = (detail.data?.tickets ?? []).reduce((s, tk) => s + (tk.storyPoints ?? 0), 0)
+  const lastVelocity = allSprints.filter((s) => s.status === 'COMPLETED' && s.velocity != null).map((s) => s.velocity!).at(-1) ?? null
+  const showCapacity = (sprint.status === 'PLANNING' || sprint.status === 'ACTIVE') && committedPts > 0
+  const overcommitted = lastVelocity != null && committedPts > lastVelocity
+  const capacityPct = lastVelocity ? Math.min(100, Math.round((committedPts / lastVelocity) * 100)) : 100
+
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['sprint', sprint.id] })
     qc.invalidateQueries({ queryKey: ['tickets', projectId] })
@@ -84,6 +92,26 @@ function SprintRow({
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
         </div>
+
+        {showCapacity && (
+          <div className="mt-3">
+            <div className="mb-1 flex justify-between text-xs">
+              <span className="text-muted-foreground">{t('sprints.capacity')}</span>
+              <span className={overcommitted ? 'font-medium text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}>
+                {lastVelocity != null
+                  ? t('sprints.capacitySummary', { committed: committedPts, velocity: lastVelocity })
+                  : t('sprints.capacityNoVelocity', { committed: committedPts })}
+              </span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={overcommitted ? 'h-full bg-amber-500 transition-all' : 'h-full bg-emerald-500 transition-all'}
+                style={{ width: `${capacityPct}%` }}
+              />
+            </div>
+            {overcommitted && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{t('sprints.overcommitted')}</p>}
+          </div>
+        )}
 
         {expanded && (
           <div className="mt-4 space-y-3">
