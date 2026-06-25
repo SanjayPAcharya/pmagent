@@ -14,9 +14,9 @@
 
 ## Now / Next / Blocked
 
-- **Current phase:** Phase 2.5 — UX Hardening (complete)
-- **Now:** ✅ **Phase 2 + 2F + 2.5 all complete.** 2.5 shipped dark mode, full i18n (react-i18next/en), mobile-responsive board+drawer with touch dnd, ⌘K command palette, a11y pass, and a Playwright E2E scaffold (`test:e2e`, runs locally). theme + 2F verified in-browser by user. **35 API tests** + web typecheck/build green.
-- **Next:** **Phase 2.6 — UX delight (DRAFTED, not started)** — creative/agent-first polish backlog (28 items, groups A–H; see [draft](agentpm-plan/phases/phase-2.6-ux-delight.md) + checklist below), build selectively. OR **Phase 3 — deployment + CI/CD**. Optional housekeeping: clean `docker compose build web` once Docker Hub DNS is back (bakes in cmdk/i18n/playwright deps), and run `pnpm --filter @agentpm/web test:e2e` locally.
+- **Current phase:** Phase 2.6 — UX Delight & Agent-First Polish (in progress)
+- **Now:** ✅ **Phase 2.6 Slice 1 shipped + browser-verified (7 quick wins, web-only):** A1 readiness ring (card + drawer ring updated 1/3→2/3 on save; goal/constraints now editable), E2 toast→Undo (verified: priority LOW→Undo reverted to HIGH via DOM observer), G1 done-confetti (verified: canvas injected on →DONE transition, reduced-motion aware), G3 layout-matched board skeleton (build-verified; load window sub-second), G4 `?` keyboard-help overlay (verified open), C4 relative time (verified "18h ago" + exact `title` on hover, drawer + bell), B4 focus mode (verified: non-mine cards dim, toggle + `f`). typecheck + build green; verified in Chrome against the live stack. (Phase 2 + 2F + 2.5 complete; **35 API tests** green.) **Bonus:** 2F C9 silent-SSO restore confirmed working on fresh tab. **Fix:** `cn` import in Board landed via a separate edit after the JSX edit — Vite served a stale transform (macOS bind-mount missed the change); `docker compose restart web` flushed it. See [[vite-stale-transform-restart-web]].
+- **Next:** **Phase 2.6 Slice 2 — palette power** (D1 action surface · D2 frecency · D3 natural quick-create), then realtime flair (E1/B1) and the agent-first set (A2–A4). OR **Phase 3 — deployment + CI/CD**. Optional housekeeping: `docker compose build web` once convenient (bakes in cmdk/i18n/playwright deps), run `pnpm --filter @agentpm/web test:e2e` locally, and browser-verify Slice 1 + the pending 2F items (C9/C10/mention).
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -108,11 +108,11 @@ _Group C — polish / pre-existing:_
 
 ---
 
-## Phase 2.6 — UX Delight & Agent-First Polish (DRAFT) → [draft](agentpm-plan/phases/phase-2.6-ux-delight.md)
-**Status:** ⬜ **drafted, not started** — creative/delight backlog from the UI/UX brainstorm; build selectively (not a gate). Most items reuse existing primitives (WS/presence, ticket schema, palette, optimistic rollback). "Phase 4-dep" = UI now, action when the agent lands.
+## Phase 2.6 — UX Delight & Agent-First Polish → [draft](agentpm-plan/phases/phase-2.6-ux-delight.md)
+**Status:** 🟢 **Slice 1 shipped (7 items)** — quick-win delight pass, web-only, typecheck/build green; **in-browser verification pending**. Remaining groups build selectively (not a gate). "Phase 4-dep" = UI now, action when the agent lands.
 
 _A — Agent-first signatures:_
-- [ ] **A1** Ticket "readiness meter" (goal/AC/constraints fill → ring) — S
+- [x] **A1** Ticket "readiness meter" (goal/AC/constraints fill → ring) — S _(ring on card + drawer; drawer now edits goal/constraints too)_
 - [ ] **A2** `@agent` first-class in mention/assignee pickers — M, Phase 4-dep
 - [ ] **A3** "Draft with agent" goal/AC/constraints skeleton — M, Phase 4-dep
 - [ ] **A4** Agent swimlane/badge on the board — S–M, Phase 4-dep
@@ -121,14 +121,14 @@ _B — Board:_
 - [ ] **B1** Live "ghost drag" via presence/WS — M
 - [ ] **B2** Column WIP-limit pulse — S
 - [ ] **B3** Swipe-to-advance (mobile) — S
-- [ ] **B4** Focus mode (`f`) — S
+- [x] **B4** Focus mode (`f`) — S _(dim non-mine cards; `f` key + header toggle)_
 - [ ] **B5** Time-decay card coloring (by `updatedAt`) — S
 
 _C — Drawer:_
 - [ ] **C1** Unified activity+comments "story" timeline — M
 - [ ] **C2** Acceptance-criteria checklist → completion — M (small backend)
 - [ ] **C3** In-editor slash commands — M
-- [ ] **C4** Relative time, exact on hover — S
+- [x] **C4** Relative time, exact on hover — S _(drawer comments/activity + notification bell)_
 
 _D — Command palette:_
 - [ ] **D1** Full action surface (status/assign/sprint/label/theme) — M
@@ -137,7 +137,7 @@ _D — Command palette:_
 
 _E — Notifications / presence / realtime:_
 - [ ] **E1** Ticket-level presence (who's on which ticket) — M
-- [ ] **E2** Toast → Undo (reuse rollback snapshot) — S
+- [x] **E2** Toast → Undo (reuse rollback snapshot) — S _(board column moves + every drawer field patch)_
 - [ ] **E3** Notification grouping + "catch me up" — M (small backend)
 
 _F — Sprints / planning:_
@@ -146,10 +146,10 @@ _F — Sprints / planning:_
 - [ ] **F3** Velocity-aware capacity bar — S
 
 _G — Delight / craft:_
-- [ ] **G1** "Done" confetti (reduced-motion aware) — S
+- [x] **G1** "Done" confetti (reduced-motion aware) — S _(canvas burst, no dep; fires on move→DONE board + drawer)_
 - [ ] **G2** Per-org accent color + theme tristate + `t` — M (small backend)
-- [ ] **G3** Layout-matched skeletons — S
-- [ ] **G4** Keyboard help overlay (`?`) — S
+- [x] **G3** Layout-matched skeletons — S _(`BoardSkeleton` mirrors columns/cards)_
+- [x] **G4** Keyboard help overlay (`?`) — S _(radix dialog; ⌘K / f / ? / Enter / Esc)_
 
 _H — Onboarding / empty states:_
 - [ ] **H1** Guided first ticket (name→goal→column) — S
@@ -205,6 +205,8 @@ _H — Onboarding / empty states:_
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-25 | P2.6 | **Slice 1 browser-verified** in Chrome vs live stack: A1 ring 1/3→2/3 on save + goal/constraints editable; E2 Undo reverts (LOW→Undo→HIGH, confirmed via DOM observer); G1 confetti canvas injected on →DONE; G4 `?` overlay opens; C4 "18h ago" + exact hover `title`; B4 focus dims non-mine cards. G3 build-verified (load <1s). Also confirmed 2F C9 silent-SSO restores session on a fresh tab. Fixed a Vite stale-transform crash (`cn` undefined) by restarting the web container. _(no code change beyond Slice 1)_ | 2a56e74 |
+| 2026-06-25 | P2.6 | **Slice 1 (7 quick wins, web-only):** A1 `ReadinessRing` (card + drawer) over goal/AC/constraints + drawer now edits goal/constraints (new "Spec" block); E2 toast→Undo — `applyMove` narrates + offers undo on column change only (silent on reorder), drawer `patch` builds `inverseInput` for undo; G1 `lib/confetti.ts` dependency-free canvas burst on move→DONE (board + drawer), no-op under reduced-motion; G3 `BoardSkeleton` mirrors real columns/cards; G4 `KeyboardHelp` radix-dialog overlay on `?`; C4 `lib/time.ts` + `RelativeTime` in drawer comments/activity + notification bell; B4 focus mode (`f` key + header toggle) dims non-mine cards via `focusUserId` thread. +`goal`/`constraints` on web `UpdateTicketInput`; i18n strings added. typecheck + build green; browser-verified. | 2a56e74 |
 | 2026-06-24 | P2.5 | Stage 2.5B (i18n): `react-i18next` + `i18next-browser-languagedetector` + `lib/i18n.ts`; `locales/en.json` baseline; **externalized every UI string** across Landing/Layout/Dashboard/OrgProjects/Members/InviteAccept/Board/Column/TicketCard/TicketDrawer/Sprints/NotificationBell (incl. toasts, placeholders, empty states); localStorage persistence. Rebuilt web container for new deps. typecheck/build green. | 72b5ca6 |
 | 2026-06-24 | P2.5 | Stage 2.5E (a11y + Playwright): a11y — ticket cards keyboard-activatable (Enter/Space) + focus ring + `aria-label`, bell `aria-label`, radix dialogs already trap/restore focus. Playwright scaffold — `playwright.config.ts`, `e2e/global-setup.ts` (KC UI login → storageState; SPA check-sso restores from cookie), `e2e/core-flow.spec.ts` (org→project→add/open ticket→comment + optional cross-user mention via password-grant API), `test:e2e` script, `.gitignore`. Runs locally (needs `playwright install` + seeded user + stack); **not executed in sandbox**. typecheck/build green. | 7cb3585 |
 | 2026-06-24 | P2.5 | Stage 2.5D (Cmd-K): `cmdk` + `components/ui/command.tsx`; `CommandPalette` (⌘/Ctrl-K) mounted in Layout — quick-create ticket from the query, jump to ticket by #/title, switch project/org; context derived from URL. typecheck/build green. (Docker deps-layer cache wouldn't rebust for the new dep amid a Docker Hub DNS blip → installed cmdk into the running container to verify; committed lockfile bakes it in on next clean image build.) | 8d6ed00 |
