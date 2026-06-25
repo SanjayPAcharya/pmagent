@@ -58,7 +58,11 @@
     "inviteCreated": "Invite link created and copied to clipboard",
     "linkCopied": "Link copied",
     "inviteRevoked": "Invite revoked",
-    "memberAdded": "Member added"
+    "memberAdded": "Member added",
+    "accentTitle": "Workspace accent",
+    "accentCustom": "Custom color",
+    "accentReset": "Reset",
+    "accentSaved": "Accent updated"
   },
   "invite": {
     "title": "You’ve been invited to AgentPM",
@@ -166,6 +170,9 @@
     "movedToBacklog": "Moved to backlog",
     "movedToSprint": "Moved to sprint",
     "completion": "Completion",
+    "burndown": "Burndown",
+    "burndownRemaining": "{{remaining}} {{unit}} left",
+    "unit": { "points": "pts", "tickets": "tickets" },
     "backlog": "Backlog — drag a ticket onto a sprint",
     "backlogEmpty": "No unsprinted tickets.",
     "capacity": "Capacity",
@@ -211,6 +218,12 @@
   },
   "readiness": {
     "label": "Agent-readiness: {{filled}}/{{total}} spec fields filled"
+  },
+  "theme": {
+    "light": "light",
+    "dark": "dark",
+    "system": "system",
+    "cycle": "Theme: {{theme}} — click or press t to change"
   },
   "shortcuts": {
     "title": "Keyboard shortcuts",

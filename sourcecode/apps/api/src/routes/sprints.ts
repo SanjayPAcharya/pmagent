@@ -96,6 +96,53 @@ const routes: FastifyPluginAsync = async (app) => {
     return { sprint, tickets: tickets.map(serializeTicket), counts: await sprintCounts(sprint.id) }
   })
 
+  // F1 — burndown reconstructed from activity (no snapshot table): remaining
+  // work (story points, or ticket count if none are pointed) per day across the
+  // sprint window, plus the ideal straight-line. `remaining` is null for future
+  // days so the actual line stops at today.
+  r.get('/:sprintId/burndown', { schema: { params: sprintParams, tags: ['sprints'] } }, async (request) => {
+    const sprint = await loadSprintAuthorized(request, 'MEMBER')
+    const tickets = await prisma.ticket.findMany({
+      where: { sprintId: sprint.id, archivedAt: null },
+      select: { id: true, storyPoints: true, status: true },
+    })
+    const usePoints = tickets.some((t) => (t.storyPoints ?? 0) > 0)
+    const weight = (t: { storyPoints: number | null }) => (usePoints ? (t.storyPoints ?? 0) : 1)
+    const total = tickets.reduce((n, t) => n + weight(t), 0)
+
+    // Completion date per currently-done ticket = its latest STATUS_CHANGED→DONE.
+    const doneIds = tickets.filter((t) => t.status === 'DONE').map((t) => t.id)
+    const acts = doneIds.length
+      ? await prisma.ticketActivity.findMany({
+          where: { ticketId: { in: doneIds }, type: 'STATUS_CHANGED', toValue: 'DONE' },
+          orderBy: { createdAt: 'desc' },
+          select: { ticketId: true, createdAt: true },
+        })
+      : []
+    const doneAt = new Map<string, Date>()
+    for (const a of acts) if (!doneAt.has(a.ticketId)) doneAt.set(a.ticketId, a.createdAt)
+
+    const dayMs = 86_400_000
+    const start = sprint.startDate ?? sprint.createdAt
+    const end = sprint.endDate ?? new Date(start.getTime() + 14 * dayMs)
+    const nDays = Math.max(1, Math.min(60, Math.ceil((end.getTime() - start.getTime()) / dayMs)))
+    const now = Date.now()
+
+    const points = Array.from({ length: nDays + 1 }, (_, i) => {
+      const boundary = start.getTime() + i * dayMs
+      const doneWeight = tickets.reduce((n, t) => {
+        const d = doneAt.get(t.id)
+        return d && d.getTime() <= boundary ? n + weight(t) : n
+      }, 0)
+      return {
+        date: new Date(boundary).toISOString().slice(0, 10),
+        ideal: Math.round(total * (1 - i / nDays) * 10) / 10,
+        remaining: boundary <= now + dayMs ? total - doneWeight : null,
+      }
+    })
+    return { total, unit: usePoints ? 'points' : 'tickets', points }
+  })
+
   r.patch('/:sprintId', { schema: { params: sprintParams, body: updateSprintSchema, tags: ['sprints'] } }, async (request) => {
     const s = await loadSprintAuthorized(request, 'MEMBER')
     const b = request.body

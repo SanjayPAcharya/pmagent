@@ -44,7 +44,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 // ── Types (subset of the API responses) ──
 export interface User { id: string; email: string; name: string; avatarUrl: string | null }
-export interface Organization { id: string; name: string; slug: string; role?: string }
+export interface Organization { id: string; name: string; slug: string; role?: string; accentColor?: string | null }
 export interface Project { id: string; orgId: string; name: string; slug: string; description: string | null }
 export interface Member {
   userId: string
@@ -125,6 +125,11 @@ export interface Sprint {
   velocity: number | null
   _count?: { tickets: number }
 }
+export interface Burndown {
+  total: number
+  unit: 'points' | 'tickets'
+  points: { date: string; ideal: number; remaining: number | null }[]
+}
 export interface SprintCounts {
   total: number
   done: number
@@ -173,6 +178,8 @@ export const api = {
   listOrgs: () => request<{ organizations: Organization[] }>('GET', '/api/orgs'),
   getOrg: (slug: string) => request<{ org: Organization }>('GET', `/api/orgs/${slug}`),
   createOrg: (name: string) => request<{ org: Organization }>('POST', '/api/orgs', { name }),
+  updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
+    request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
   listProjects: (orgId: string) =>
     request<{ projects: Project[] }>('GET', `/api/projects?orgId=${encodeURIComponent(orgId)}`),
   createProject: (orgId: string, name: string) =>
@@ -228,6 +235,7 @@ export const api = {
     request<{ sprints: Sprint[] }>('GET', `/api/sprints?projectId=${encodeURIComponent(projectId)}`),
   getSprint: (id: string) =>
     request<{ sprint: Sprint; tickets: Ticket[]; counts: SprintCounts }>('GET', `/api/sprints/${id}`),
+  getBurndown: (id: string) => request<Burndown>('GET', `/api/sprints/${id}/burndown`),
   createSprint: (projectId: string, name: string, goal?: string) =>
     request<{ sprint: Sprint }>('POST', '/api/sprints', { projectId, name, goal }),
   startSprint: (id: string) => request<{ sprint: Sprint }>('POST', `/api/sprints/${id}/start`),

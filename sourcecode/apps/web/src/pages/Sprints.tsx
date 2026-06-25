@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { BurndownSparkline } from '@/components/BurndownSparkline'
 import { cn } from '@/lib/utils'
 
 // F2 — a draggable ticket chip (backlog → sprint, or between sprints).
@@ -144,6 +145,8 @@ function SprintRow({
             {overcommitted && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{t('sprints.overcommitted')}</p>}
           </div>
         )}
+
+        {(sprint.status === 'ACTIVE' || sprint.status === 'COMPLETED') && <BurndownSparkline sprintId={sprint.id} />}
 
         {expanded && (
           <div className="mt-4 space-y-3">

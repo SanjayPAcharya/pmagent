@@ -38,7 +38,7 @@ export function CommandPalette() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { t } = useTranslation()
-  const { toggle: toggleTheme } = useTheme()
+  const { cycle: cycleTheme } = useTheme()
   const location = useLocation()
 
   useEffect(() => {
@@ -273,7 +273,7 @@ export function CommandPalette() {
             )}
 
             <CommandGroup heading={t('palette.general')}>
-              <CommandItem value="toggle theme" onSelect={() => { toggleTheme(); reset(false) }}>
+              <CommandItem value="toggle theme" onSelect={() => { cycleTheme(); reset(false) }}>
                 <SunMoon className="h-4 w-4" />
                 {t('palette.toggleTheme')}
               </CommandItem>

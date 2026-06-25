@@ -17,7 +17,16 @@ const createOrgSchema = z.object({
   name: z.string().min(1).max(120),
   slug: z.string().regex(/^[a-z0-9-]+$/).max(50).optional(),
 })
-const updateOrgSchema = z.object({ name: z.string().min(1).max(120) })
+const updateOrgSchema = z
+  .object({
+    name: z.string().min(1).max(120),
+    // G2 — per-org accent (hex, e.g. "#6d28d9"); null clears it back to default.
+    accentColor: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .nullable(),
+  })
+  .partial()
 const addMemberSchema = z.object({
   email: z.string().email(),
   role: z.enum(['ADMIN', 'MEMBER']).default('MEMBER'),
