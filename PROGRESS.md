@@ -15,8 +15,8 @@
 ## Now / Next / Blocked
 
 - **Current phase:** Phase 2.6 — UX Delight & Agent-First Polish (in progress)
-- **Now:** ✅ **Phase 2.6 Slice 2 shipped + browser-verified (command-palette power, web-only):** D1 full action surface (open-ticket sub-pages: status/assign/sprint/label + global theme toggle — verified status change patches + closes), D2 frecency Recent (verified EMPL-4 surfaced after visit), D3 natural quick-create (verified "…!high @adish #sprint2" → created EMPL-4 with HIGH/Adish/Sprint 2). typecheck + build green. Prior: **Slice 1 shipped + browser-verified (7 quick wins, web-only):** A1 readiness ring (card + drawer ring updated 1/3→2/3 on save; goal/constraints now editable), E2 toast→Undo (verified: priority LOW→Undo reverted to HIGH via DOM observer), G1 done-confetti (verified: canvas injected on →DONE transition, reduced-motion aware), G3 layout-matched board skeleton (build-verified; load window sub-second), G4 `?` keyboard-help overlay (verified open), C4 relative time (verified "18h ago" + exact `title` on hover, drawer + bell), B4 focus mode (verified: non-mine cards dim, toggle + `f`). typecheck + build green; verified in Chrome against the live stack. (Phase 2 + 2F + 2.5 complete; **35 API tests** green.) **Bonus:** 2F C9 silent-SSO restore confirmed working on fresh tab. **Fix:** `cn` import in Board landed via a separate edit after the JSX edit — Vite served a stale transform (macOS bind-mount missed the change); `docker compose restart web` flushed it. See [[vite-stale-transform-restart-web]].
-- **Next:** **Phase 2.6 Slice 3 — realtime flair** (E1 ticket-level presence · B1 live ghost-drag, both via WS) and the **agent-first set** (A2 `@agent` mention · A3 draft-with-agent · A4 agent badge — UI now, wires in Phase 4). Then bigger/backend items (C2 AC checklist · F1 burndown · G2 org accent · E3 grouping). OR jump to **Phase 3 — deployment + CI/CD**. Optional housekeeping: `docker compose build web` once convenient (bakes in cmdk/i18n/playwright deps), run `pnpm --filter @agentpm/web test:e2e` locally, and browser-verify Slice 1 + the pending 2F items (C9/C10/mention).
+- **Now:** ✅ **Phase 2.6 Slice 3 shipped (delight grab-bag, 7 items, web-only):** B2 WIP pulse, B5 time-decay border, C1 story timeline, C3 slash commands, F3 capacity bar, H1 guided first ticket, H2 invite nudge. typecheck + build green. Browser-verified: C3 (`/status done` ran), C1 (merged story tab), B2 (N/limit badges), H1 (empty-board starter → create+open). B5/F3/H2 build+logic verified (need old tickets / story points / single-member org to display). **17 / 28 Phase-2.6 items now done.** Prior: **Slice 2 shipped + browser-verified (command-palette power):** D1 full action surface (open-ticket sub-pages: status/assign/sprint/label + global theme toggle — verified status change patches + closes), D2 frecency Recent (verified EMPL-4 surfaced after visit), D3 natural quick-create (verified "…!high @adish #sprint2" → created EMPL-4 with HIGH/Adish/Sprint 2). typecheck + build green. Prior: **Slice 1 shipped + browser-verified (7 quick wins, web-only):** A1 readiness ring (card + drawer ring updated 1/3→2/3 on save; goal/constraints now editable), E2 toast→Undo (verified: priority LOW→Undo reverted to HIGH via DOM observer), G1 done-confetti (verified: canvas injected on →DONE transition, reduced-motion aware), G3 layout-matched board skeleton (build-verified; load window sub-second), G4 `?` keyboard-help overlay (verified open), C4 relative time (verified "18h ago" + exact `title` on hover, drawer + bell), B4 focus mode (verified: non-mine cards dim, toggle + `f`). typecheck + build green; verified in Chrome against the live stack. (Phase 2 + 2F + 2.5 complete; **35 API tests** green.) **Bonus:** 2F C9 silent-SSO restore confirmed working on fresh tab. **Fix:** `cn` import in Board landed via a separate edit after the JSX edit — Vite served a stale transform (macOS bind-mount missed the change); `docker compose restart web` flushed it. See [[vite-stale-transform-restart-web]].
+- **Next:** **realtime flair** (E1 ticket-level presence · B1 live ghost-drag, both via WS) and the **agent-first set** (A2 `@agent` mention · A3 draft-with-agent · A4 agent badge — UI now, wires in Phase 4). Remaining small: B3 swipe-to-advance. Bigger/backend: C2 AC checklist · F1 burndown · F2 drag-into-sprint · G2 org accent · E3 grouping. OR jump to **Phase 3 — deployment + CI/CD**. Optional housekeeping: `docker compose build web` once convenient (bakes in cmdk/i18n/playwright deps), run `pnpm --filter @agentpm/web test:e2e` locally, and browser-verify Slice 1 + the pending 2F items (C9/C10/mention).
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -119,15 +119,15 @@ _A — Agent-first signatures:_
 
 _B — Board:_
 - [ ] **B1** Live "ghost drag" via presence/WS — M
-- [ ] **B2** Column WIP-limit pulse — S
+- [x] **B2** Column WIP-limit pulse — S _(IN_PROGRESS/IN_REVIEW limit 3; badge shows N/limit, pulses amber over — verified badge format)_
 - [ ] **B3** Swipe-to-advance (mobile) — S
 - [x] **B4** Focus mode (`f`) — S _(dim non-mine cards; `f` key + header toggle)_
-- [ ] **B5** Time-decay card coloring (by `updatedAt`) — S
+- [x] **B5** Time-decay card coloring (by `updatedAt`) — S _(left border darkens with age; fresh <2d = none — build+logic verified)_
 
 _C — Drawer:_
-- [ ] **C1** Unified activity+comments "story" timeline — M
+- [x] **C1** Unified activity+comments "story" timeline — M _(third drawer tab, chronological merge — verified)_
 - [ ] **C2** Acceptance-criteria checklist → completion — M (small backend)
-- [ ] **C3** In-editor slash commands — M
+- [x] **C3** In-editor slash commands — M _(`/status /assign /sprint /due /label` in the comment box — verified `/status done`)_
 - [x] **C4** Relative time, exact on hover — S _(drawer comments/activity + notification bell)_
 
 _D — Command palette:_
@@ -143,7 +143,7 @@ _E — Notifications / presence / realtime:_
 _F — Sprints / planning:_
 - [ ] **F1** Burndown sparkline — M (daily snapshot)
 - [ ] **F2** Drag tickets into a sprint — M
-- [ ] **F3** Velocity-aware capacity bar — S
+- [x] **F3** Velocity-aware capacity bar — S _(committed pts vs last completed velocity; amber overcommit — build+logic verified, shows when pts>0)_
 
 _G — Delight / craft:_
 - [x] **G1** "Done" confetti (reduced-motion aware) — S _(canvas burst, no dep; fires on move→DONE board + drawer)_
@@ -152,8 +152,8 @@ _G — Delight / craft:_
 - [x] **G4** Keyboard help overlay (`?`) — S _(radix dialog; ⌘K / f / ? / Enter / Esc)_
 
 _H — Onboarding / empty states:_
-- [ ] **H1** Guided first ticket (name→goal→column) — S
-- [ ] **H2** Invite nudge on empty members — S
+- [x] **H1** Guided first ticket (name→goal→column) — S _(empty-board starter card → creates in Backlog + opens drawer — verified)_
+- [x] **H2** Invite nudge on empty members — S _(team-of-one banner → create invite link — build+logic verified)_
 
 > Suggested first slice (quick, no backend): **E2 Undo · A1 readiness · G1 confetti · G3 skeletons · G4 `?` · C4 relative time · B4 focus**. Detail/effort per item in the [draft](agentpm-plan/phases/phase-2.6-ux-delight.md).
 
@@ -205,6 +205,7 @@ _H — Onboarding / empty states:_
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-25 | P2.6 | **Slice 3 (delight grab-bag, 7 items):** B2 `WIP_LIMITS` + amber motion-safe pulse on count badge; B5 `staleBorderClass` left-border time-decay; C1 third "Story" drawer tab merging comments+activity chronologically; C3 slash commands in comment box (`/status /assign /sprint /due /label` → `patch`, else posts as comment) + `/`-triggered command menu; F3 sprint capacity bar (committed pts vs last velocity, amber overcommit); H1 guided empty-board starter (create in Backlog → open drawer); H2 team-of-one invite nudge on Members. +i18n. **Browser-verified:** C3 `/status done` moved EMPL-4→Done, C1 story tab, B2 N/limit badges, H1 starter card. typecheck+build green. _(Note: long verify session expired the KC token at the end — re-login needed; not a code issue.)_ | 8d6bca3 |
 | 2026-06-25 | P2.6 | **Slice 2 (palette power, D1/D2/D3):** CommandPalette rewrite with cmdk sub-pages — open-ticket actions (status/assign/sprint/label via `patchOpen`→updateTicket+invalidate+toast+close; Backspace-on-empty steps back) + global theme toggle (D1). `lib/frecency.ts` localStorage count+recency score; Board records ticket/project visits; palette "Recent" group when query empty (D2). `lib/parseQuickCreate.ts` parses `Title !high @user #sprint` → priority/assignee/sprint, unresolved tokens kept in title; create item shows parsed badges (D3). +palette.* i18n. **Browser-verified:** D3 created EMPL-4 w/ HIGH/Adish/Sprint2; D1 status→In Progress patched+closed; D2 Recent showed EMPL-4. typecheck+build green. | c8981d1 |
 | 2026-06-25 | P2.6 | **Slice 1 browser-verified** in Chrome vs live stack: A1 ring 1/3→2/3 on save + goal/constraints editable; E2 Undo reverts (LOW→Undo→HIGH, confirmed via DOM observer); G1 confetti canvas injected on →DONE; G4 `?` overlay opens; C4 "18h ago" + exact hover `title`; B4 focus dims non-mine cards. G3 build-verified (load <1s). Also confirmed 2F C9 silent-SSO restores session on a fresh tab. Fixed a Vite stale-transform crash (`cn` undefined) by restarting the web container. _(no code change beyond Slice 1)_ | 2a56e74 |
 | 2026-06-25 | P2.6 | **Slice 1 (7 quick wins, web-only):** A1 `ReadinessRing` (card + drawer) over goal/AC/constraints + drawer now edits goal/constraints (new "Spec" block); E2 toast→Undo — `applyMove` narrates + offers undo on column change only (silent on reorder), drawer `patch` builds `inverseInput` for undo; G1 `lib/confetti.ts` dependency-free canvas burst on move→DONE (board + drawer), no-op under reduced-motion; G3 `BoardSkeleton` mirrors real columns/cards; G4 `KeyboardHelp` radix-dialog overlay on `?`; C4 `lib/time.ts` + `RelativeTime` in drawer comments/activity + notification bell; B4 focus mode (`f` key + header toggle) dims non-mine cards via `focusUserId` thread. +`goal`/`constraints` on web `UpdateTicketInput`; i18n strings added. typecheck + build green; browser-verified. | 2a56e74 |
