@@ -93,4 +93,13 @@ export function useProjectWebSocket(projectId: string | undefined, handlers: WSH
       wsRef.current?.close(1000, 'unmounted')
     }
   }, [connect])
+
+  // Send an ephemeral client→server message (ticket.viewing / ticket.drag).
+  // Best-effort: silently no-ops if the socket isn't open.
+  const send = useCallback((msg: Record<string, unknown>) => {
+    const ws = wsRef.current
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
+  }, [])
+
+  return { send }
 }

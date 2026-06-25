@@ -10,6 +10,8 @@ import { assertOrgRole } from '../services/authz.js'
 // whichever sockets it holds. Only presence is per-instance (fine for the MVP).
 const rooms = new Map<string, Set<WebSocket>>()
 const socketUser = new Map<WebSocket, { userId: string; projectId: string }>()
+// E1 — which ticket each socket is currently viewing (ephemeral, per-instance).
+const socketTicket = new Map<WebSocket, string | null>()
 
 const join = (room: string, s: WebSocket) =>
   (rooms.get(room) ?? rooms.set(room, new Set()).get(room)!).add(s)
@@ -37,6 +39,20 @@ function presenceState(projectId: string): string[] {
   }
   return [...ids]
 }
+
+// E1 — map of ticketId → userIds currently viewing it, across this instance.
+function ticketPresence(projectId: string): Record<string, string[]> {
+  const byTicket: Record<string, Set<string>> = {}
+  for (const s of rooms.get(`project:${projectId}`) ?? []) {
+    const u = socketUser.get(s)
+    const tid = socketTicket.get(s)
+    if (u && tid) (byTicket[tid] ??= new Set()).add(u.userId)
+  }
+  return Object.fromEntries(Object.entries(byTicket).map(([k, v]) => [k, [...v]]))
+}
+
+const broadcastTicketPresence = (projectId: string) =>
+  broadcast(`project:${projectId}`, { type: 'ticket.presence', payload: { projectId, byTicket: ticketPresence(projectId) } })
 
 const AUTH_TIMEOUT_MS = Number(process.env.WS_AUTH_TIMEOUT_MS ?? 5000)
 
@@ -71,13 +87,28 @@ export const wsServer: FastifyPluginAsync = async (app) => {
     }, AUTH_TIMEOUT_MS)
 
     socket.on('message', async (raw: Buffer) => {
-      let msg: { type?: string; token?: string; projectId?: string }
+      let msg: { type?: string; token?: string; projectId?: string; ticketId?: string | null; status?: string | null }
       try {
         msg = JSON.parse(raw.toString())
       } catch {
         return
       }
-      if (authed) return // Phase-2 clients only listen after auth
+      // Post-auth: handle ephemeral relays (ticket presence + ghost drag). These
+      // never touch Redis/DB — they're best-effort, per-instance signals.
+      if (authed) {
+        const u = socketUser.get(socket)
+        if (!u) return
+        if (msg.type === 'ticket.viewing') {
+          socketTicket.set(socket, msg.ticketId ?? null)
+          broadcastTicketPresence(u.projectId)
+        } else if (msg.type === 'ticket.drag') {
+          broadcast(`project:${u.projectId}`, {
+            type: 'ticket.drag',
+            payload: { projectId: u.projectId, actorId: u.userId, ticketId: msg.ticketId ?? null, status: msg.status ?? null },
+          })
+        }
+        return
+      }
       if (msg.type !== 'auth' || !msg.token || !msg.projectId) return
 
       try {
@@ -110,11 +141,13 @@ export const wsServer: FastifyPluginAsync = async (app) => {
       const u = socketUser.get(socket)
       leaveAll(socket)
       socketUser.delete(socket)
+      socketTicket.delete(socket)
       if (u) {
         broadcast(`project:${u.projectId}`, {
           type: 'presence.state',
           payload: { projectId: u.projectId, viewers: presenceState(u.projectId) },
         })
+        broadcastTicketPresence(u.projectId)
       }
     })
   })

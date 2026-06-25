@@ -128,6 +128,7 @@
     "comments": "Comments",
     "activity": "Activity",
     "story": "Story",
+    "alsoViewing": "Also viewing: {{names}}",
     "acProgress": "{{done}}/{{total}}",
     "slashCommands": "Commands",
     "slashUnknown": "Couldn’t run /{{cmd}} — check the value",

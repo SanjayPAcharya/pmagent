@@ -3,11 +3,18 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
-import type { Ticket, TicketStatus } from '@/lib/api'
+import type { Member, Ticket, TicketStatus } from '@/lib/api'
 import { STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+
+export interface GhostInfo {
+  ticketId: string
+  title: string
+  initials: string
+}
 
 interface Props {
   status: TicketStatus
@@ -17,9 +24,13 @@ interface Props {
   onStatusChange: (id: string, status: TicketStatus) => void
   /** B4 focus mode: when set, cards not assigned to this user are dimmed. */
   focusUserId?: string | null
+  /** E1: userId→members viewing each ticket (minus me). */
+  viewers?: Record<string, Member[]>
+  /** B1: other viewers' in-flight drags landing in this column. */
+  ghosts?: GhostInfo[]
 }
 
-export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, focusUserId }: Props) {
+export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, focusUserId, viewers, ghosts }: Props) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
@@ -89,10 +100,23 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, fo
               onOpen={onOpen}
               onStatusChange={onStatusChange}
               dimmed={Boolean(focusUserId) && t.assignedToId !== focusUserId}
+              viewers={viewers?.[t.id]}
             />
           ))}
         </SortableContext>
-        {tickets.length === 0 && !adding && (
+        {/* B1 — ghost cards for other viewers' in-flight drags landing here */}
+        {ghosts?.map((g) => (
+          <div
+            key={`ghost-${g.ticketId}`}
+            className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-primary/50 bg-primary/5 p-3 text-sm text-muted-foreground"
+          >
+            <span className="truncate italic">{g.title}</span>
+            <Avatar className="h-5 w-5 shrink-0">
+              <AvatarFallback className="text-[9px]">{g.initials}</AvatarFallback>
+            </Avatar>
+          </div>
+        ))}
+        {tickets.length === 0 && !adding && (ghosts?.length ?? 0) === 0 && (
           <p className="px-1 py-6 text-center text-xs text-muted-foreground">{t('board.noTickets')}</p>
         )}
       </div>

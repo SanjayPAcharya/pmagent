@@ -18,6 +18,8 @@ export type WSEventType =
   | 'sprint.updated'
   | 'notification.new'
   | 'presence.state'
+  | 'ticket.presence' // E1: which viewers are on which ticket (ephemeral relay)
+  | 'ticket.drag' // B1: another viewer's in-flight drag (ephemeral relay)
   | 'member.joined'
   | 'auth.ok'
   | 'auth.error'

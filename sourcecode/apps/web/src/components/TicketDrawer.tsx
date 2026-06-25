@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
@@ -33,11 +34,13 @@ interface Props {
   ticketId: string
   orgId: string
   members: Member[]
+  /** E1: other members currently viewing this ticket. */
+  viewers?: Member[]
   onClose: () => void
   onChanged: () => void
 }
 
-export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: Props) {
+export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onChanged }: Props) {
   const qc = useQueryClient()
   const { t } = useTranslation()
   const ticketQ = useQuery({ queryKey: ['ticket', ticketId], queryFn: () => api.getTicket(ticketId) })
@@ -293,7 +296,20 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
         ) : (
           <>
             <SheetHeader>
-              <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">{ticket.key}</div>
+              <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                {ticket.key}
+                {/* E1 — others currently viewing this ticket */}
+                {viewers && viewers.length > 0 && (
+                  <span className="flex -space-x-1.5" title={t('drawer.alsoViewing', { names: viewers.map((v) => v.name).join(', ') })}>
+                    {viewers.slice(0, 4).map((v) => (
+                      <Avatar key={v.userId} className="h-5 w-5 border border-background ring-1 ring-green-500 motion-safe:animate-pulse">
+                        {v.avatarUrl && <AvatarImage src={v.avatarUrl} />}
+                        <AvatarFallback className="text-[8px]">{v.initials}</AvatarFallback>
+                      </Avatar>
+                    ))}
+                  </span>
+                )}
+              </div>
               <SheetTitle>
                 <Input
                   value={title}

@@ -12,11 +12,12 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
-import { api, type Priority, type Ticket, type TicketStatus, type TicketType } from '@/lib/api'
+import { api, type Member, type Priority, type Ticket, type TicketStatus, type TicketType } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
 import { useProjectWebSocket } from '@/lib/websocket'
 import { Column } from '@/components/board/Column'
@@ -110,6 +111,9 @@ export default function Board() {
   const [viewers, setViewers] = useState<string[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [focusMine, setFocusMine] = useState(false)
+  // E1 — userIds viewing each ticket; B1 — other viewers' in-flight drags.
+  const [ticketViewers, setTicketViewers] = useState<Record<string, string[]>>({})
+  const [ghosts, setGhosts] = useState<Record<string, { actorId: string; status: TicketStatus }>>({})
   const myId = me.data?.user.id
 
   // B4 — press "f" to dim everything that isn't assigned to me ("what's mine").
@@ -126,7 +130,7 @@ export default function Board() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  useProjectWebSocket(
+  const { send } = useProjectWebSocket(
     projectId,
     {
       'ticket.created': () => qc.invalidateQueries({ queryKey: ticketsPrefix }),
@@ -137,6 +141,16 @@ export default function Board() {
         qc.invalidateQueries({ queryKey: ['unreadCount'] })
       },
       'presence.state': (p: { viewers: string[] }) => setViewers(p.viewers ?? []),
+      'ticket.presence': (p: { byTicket: Record<string, string[]> }) => setTicketViewers(p.byTicket ?? {}),
+      // self-echo (actorId === me) is already dropped by the hook.
+      'ticket.drag': (p: { actorId: string; ticketId: string | null; status: TicketStatus | null }) =>
+        setGhosts((g) => {
+          if (!p.ticketId) return g
+          const next = { ...g }
+          if (p.status == null) delete next[p.ticketId]
+          else next[p.ticketId] = { actorId: p.actorId, status: p.status }
+          return next
+        }),
     },
     { currentUserId: me.data?.user.id, onReconnect: () => qc.invalidateQueries({ queryKey: ticketsPrefix }) },
   )
@@ -170,6 +184,7 @@ export default function Board() {
   // fractional position between its new neighbours.
   async function onDragEnd(e: DragEndEvent) {
     setActiveId(null)
+    clearGhost(String(e.active.id)) // B1 — drag finished
     if (!e.over || !projectId) return
     const id = String(e.active.id)
     const overId = String(e.over.id)
@@ -251,7 +266,26 @@ export default function Board() {
   }
 
   const activeTicket = activeId ? tickets.data?.items.find((t) => t.id === activeId) : undefined
-  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
+
+  // Resolve a drop target id (a ticket or a column) to its column status.
+  const targetColumn = (overId: string): TicketStatus | undefined => {
+    const overTicket = tickets.data?.items.find((t) => t.id === overId)
+    return overTicket?.status ?? (BOARD_COLUMNS.includes(overId as TicketStatus) ? (overId as TicketStatus) : undefined)
+  }
+
+  const onDragStart = (e: DragStartEvent) => {
+    const id = String(e.active.id)
+    setActiveId(id)
+    const tk = tickets.data?.items.find((t) => t.id === id)
+    if (tk) send({ type: 'ticket.drag', ticketId: id, status: tk.status }) // B1
+  }
+  // B1 — broadcast the live target column as the card moves over the board.
+  const onDragOver = (e: DragOverEvent) => {
+    if (!e.over || !activeId) return
+    const target = targetColumn(String(e.over.id))
+    if (target) send({ type: 'ticket.drag', ticketId: activeId, status: target })
+  }
+  const clearGhost = (id: string) => send({ type: 'ticket.drag', ticketId: id, status: null })
 
   const openTicket = (t: Ticket) => navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${t.number}`)
   const closeDrawer = () => navigate(`/orgs/${slug}/projects/${projectSlug}`)
@@ -270,6 +304,35 @@ export default function Board() {
         meta: drawerTicket.key,
       })
   }, [drawerTicket?.id])
+
+  // E1 — tell the room which ticket I'm viewing (null when the drawer is closed).
+  useEffect(() => {
+    send({ type: 'ticket.viewing', ticketId: drawerTicket?.id ?? null })
+  }, [drawerTicket?.id, send])
+
+  // E1 — resolve viewer userIds (minus me) to members, per ticket.
+  const viewersByTicket = useMemo(() => {
+    const out: Record<string, Member[]> = {}
+    for (const [tid, ids] of Object.entries(ticketViewers)) {
+      const others = ids
+        .filter((id) => id !== myId)
+        .map((id) => members.data?.members.find((m) => m.userId === id))
+        .filter(Boolean) as Member[]
+      if (others.length) out[tid] = others
+    }
+    return out
+  }, [ticketViewers, members.data, myId])
+
+  // B1 — group other viewers' in-flight drags by their target column.
+  const ghostsByStatus = useMemo(() => {
+    const out: Record<string, { ticketId: string; title: string; initials: string }[]> = {}
+    for (const [tid, g] of Object.entries(ghosts)) {
+      const tk = tickets.data?.items.find((t) => t.id === tid)
+      const actor = members.data?.members.find((m) => m.userId === g.actorId)
+      ;(out[g.status] ??= []).push({ ticketId: tid, title: tk?.title ?? '…', initials: actor?.initials ?? '?' })
+    }
+    return out
+  }, [ghosts, tickets.data, members.data])
 
   const pct = counts.total ? Math.round((counts.done / counts.total) * 100) : 0
 
@@ -420,8 +483,12 @@ export default function Board() {
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragStart={onDragStart}
+          onDragOver={onDragOver}
           onDragEnd={onDragEnd}
-          onDragCancel={() => setActiveId(null)}
+          onDragCancel={() => {
+            if (activeId) clearGhost(activeId)
+            setActiveId(null)
+          }}
         >
           <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:snap-none">
             {BOARD_COLUMNS.map((s) => (
@@ -433,6 +500,8 @@ export default function Board() {
                 onQuickAdd={quickAdd}
                 onStatusChange={moveTicket}
                 focusUserId={focusMine ? myId : null}
+                viewers={viewersByTicket}
+                ghosts={ghostsByStatus[s] ?? []}
               />
             ))}
           </div>
@@ -451,6 +520,7 @@ export default function Board() {
           ticketId={drawerTicket.id}
           orgId={orgId ?? ''}
           members={members.data?.members ?? []}
+          viewers={viewersByTicket[drawerTicket.id]}
           onClose={closeDrawer}
           onChanged={() => qc.invalidateQueries({ queryKey: ticketsPrefix })}
         />

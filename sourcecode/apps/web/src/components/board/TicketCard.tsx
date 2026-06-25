@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
 import { Eye, MoreHorizontal } from 'lucide-react'
-import type { Ticket, TicketStatus } from '@/lib/api'
+import type { Member, Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, BOARD_COLUMNS, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { staleBorderClass } from '@/lib/time'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 
 /** Pure visual — reused by the draggable card and the drag overlay. */
-export function TicketCardBody({ ticket, dragging }: { ticket: Ticket; dragging?: boolean }) {
+export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; dragging?: boolean; viewers?: Member[] }) {
   return (
     <div
       className={cn(
@@ -49,9 +49,22 @@ export function TicketCardBody({ ticket, dragging }: { ticket: Ticket; dragging?
       )}
 
       <div className="mt-3 flex items-center justify-between">
-        <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', PRIORITY_CLASS[ticket.priority])}>
-          {ticket.priority}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', PRIORITY_CLASS[ticket.priority])}>
+            {ticket.priority}
+          </span>
+          {/* E1 — live viewers currently on this ticket */}
+          {viewers && viewers.length > 0 && (
+            <div className="flex -space-x-1.5" title={viewers.map((v) => v.name).join(', ')}>
+              {viewers.slice(0, 3).map((v) => (
+                <Avatar key={v.userId} className="h-5 w-5 border border-background ring-1 ring-green-500 motion-safe:animate-pulse">
+                  {v.avatarUrl && <AvatarImage src={v.avatarUrl} />}
+                  <AvatarFallback className="text-[8px]">{v.initials}</AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <ReadinessRing ticket={ticket} />
           {ticket.watcherIds.length > 0 && (
@@ -77,9 +90,11 @@ interface TicketCardProps {
   onStatusChange: (id: string, status: TicketStatus) => void
   /** B4 focus mode: cards that aren't mine are dimmed (not hidden). */
   dimmed?: boolean
+  /** E1: members currently viewing this ticket (minus me). */
+  viewers?: Member[]
 }
 
-export function TicketCard({ ticket, onOpen, onStatusChange, dimmed }: TicketCardProps) {
+export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers }: TicketCardProps) {
   const { t } = useTranslation()
   // useSortable gives within-column reordering (cards shift to make room) plus
   // cross-column moves. The 5px activation distance (set on the board) lets a
@@ -148,7 +163,7 @@ export function TicketCard({ ticket, onOpen, onStatusChange, dimmed }: TicketCar
         dimmed && 'opacity-30 hover:opacity-100',
       )}
     >
-      <TicketCardBody ticket={ticket} />
+      <TicketCardBody ticket={ticket} viewers={viewers} />
       <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={stop} onClick={stop}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
