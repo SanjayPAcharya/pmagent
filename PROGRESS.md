@@ -113,9 +113,7 @@ _Group C — polish / pre-existing:_
 
 _A — Agent-first signatures:_
 - [x] **A1** Ticket "readiness meter" (goal/AC/constraints fill → ring) — S _(ring on card + drawer; drawer now edits goal/constraints too)_
-- [ ] **A2** `@agent` first-class in mention/assignee pickers — M, Phase 4-dep
-- [ ] **A3** "Draft with agent" goal/AC/constraints skeleton — M, Phase 4-dep
-- [ ] **A4** Agent swimlane/badge on the board — S–M, Phase 4-dep
+- → **A2, A3, A4 moved to [Phase 2.7](agentpm-plan/phases/phase-2.7-agent-first.md)** (parked for discussion; imply an actual agent, wire with Phase 4)
 
 _B — Board:_
 - [ ] **B1** Live "ghost drag" via presence/WS — M
@@ -156,6 +154,14 @@ _H — Onboarding / empty states:_
 - [x] **H2** Invite nudge on empty members — S _(team-of-one banner → create invite link — build+logic verified)_
 
 > Suggested first slice (quick, no backend): **E2 Undo · A1 readiness · G1 confetti · G3 skeletons · G4 `?` · C4 relative time · B4 focus**. Detail/effort per item in the [draft](agentpm-plan/phases/phase-2.6-ux-delight.md).
+
+---
+
+## Phase 2.7 — Agent-First Surfaces (PARKED) → [doc](agentpm-plan/phases/phase-2.7-agent-first.md)
+**Status:** ⏸️ **parked for discussion** — split out of 2.6 on 2026-06-25. UI can ship pre-agent but the *action* needs Phase 4, so we'll decide the agent UX deliberately rather than stub it.
+- [ ] **A2** `@agent` first-class in mention/assignee pickers — M, Phase 4-dep
+- [ ] **A3** "Draft with agent" goal/AC/constraints skeleton — M, Phase 4-dep
+- [ ] **A4** Agent swimlane/badge on the board — S–M, Phase 4-dep
 
 ---
 

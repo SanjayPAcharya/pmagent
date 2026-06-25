@@ -11,6 +11,8 @@ Phase 2.5 hardened the UX (theme, i18n, mobile, ⌘K, a11y). 2.6 gives it person
 
 ## Group A — Agent-first signatures (the differentiator)
 
+> **A2–A4 moved to [Phase 2.7](phase-2.7-agent-first.md)** (2026-06-25) — they imply an actual Code/Spec agent, so they're parked for discussion alongside Phase 4. **A1 stayed here** and shipped in Slice 1 (pure derived UI, no agent dependency).
+
 ### A1. Ticket "readiness meter" — **S**, no backend
 A small ring/badge on each card + drawer showing how agent-ready a ticket is, derived from how much of `goal` / `acceptanceCriteria` / `constraints` is filled. Empty AC → amber, all present → green. Nudges authors toward tickets an agent can actually pick up. Pure derived UI over existing fields.
 
