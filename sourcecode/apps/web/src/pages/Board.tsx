@@ -17,14 +17,16 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
 import { api, type Priority, type Ticket, type TicketStatus, type TicketType } from '@/lib/api'
-import { BOARD_COLUMNS, PRIORITIES } from '@/lib/board'
+import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
 import { useProjectWebSocket } from '@/lib/websocket'
 import { Column } from '@/components/board/Column'
 import { TicketCardBody } from '@/components/board/TicketCard'
+import { BoardSkeleton } from '@/components/board/BoardSkeleton'
 import { TicketDrawer } from '@/components/TicketDrawer'
 import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Skeleton } from '@/components/ui/skeleton'
+import { fireConfetti } from '@/lib/confetti'
+import { cn } from '@/lib/utils'
 
 // A fractional position between two neighbours (board uses Float positions), so
 // reordering only ever rewrites the one moved card.
@@ -106,6 +108,22 @@ export default function Board() {
 
   const [viewers, setViewers] = useState<string[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [focusMine, setFocusMine] = useState(false)
+  const myId = me.data?.user.id
+
+  // B4 — press "f" to dim everything that isn't assigned to me ("what's mine").
+  // Ignored while typing in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'f' || e.metaKey || e.ctrlKey || e.altKey) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      e.preventDefault()
+      setFocusMine((v) => !v)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   useProjectWebSocket(
     projectId,
@@ -177,12 +195,27 @@ export default function Board() {
     await applyMove(id, target, endPos)
   }
 
-  async function applyMove(id: string, target: TicketStatus, position: number) {
+  async function applyMove(id: string, target: TicketStatus, position: number, opts: { announce?: boolean } = {}) {
+    const announce = opts.announce ?? true
+    const prev = tickets.data?.items.find((t) => t.id === id)
+    const fromStatus = prev?.status
+    const fromPos = prev?.position
     qc.setQueryData(ticketsKey, (old: typeof tickets.data) =>
       old ? { ...old, items: old.items.map((t) => (t.id === id ? { ...t, status: target, position } : t)) } : old,
     )
     try {
       await api.updateTicket(id, { status: target, position })
+      // Only narrate (with undo) when the column actually changed — silent on
+      // pure within-column reorders so dragging doesn't spam toasts.
+      if (announce && fromStatus && fromStatus !== target) {
+        if (target === 'DONE') fireConfetti()
+        toast.success(t('board.movedTo', { status: STATUS_LABEL[target] }), {
+          action: {
+            label: t('common.undo'),
+            onClick: () => applyMove(id, fromStatus, fromPos ?? position, { announce: false }),
+          },
+        })
+      }
     } catch (err) {
       toast.error(t('board.moveFailed', { message: (err as Error).message }))
       qc.invalidateQueries({ queryKey: ticketsPrefix })
@@ -219,6 +252,17 @@ export default function Board() {
           <h2 className="text-xl font-semibold text-foreground">{project?.name ?? projectSlug}</h2>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setFocusMine((v) => !v)}
+            aria-pressed={focusMine}
+            title={t('board.focusHint')}
+            className={cn(
+              'rounded-md px-2 py-1 text-sm transition-colors',
+              focusMine ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {t('board.focusMine')}
+          </button>
           <Link
             to={`/orgs/${slug}/projects/${projectSlug}/sprints`}
             className="text-sm text-muted-foreground hover:text-foreground hover:underline"
@@ -312,11 +356,7 @@ export default function Board() {
           {t('board.loadError', { message: (tickets.error as Error).message })}
         </div>
       ) : tickets.isLoading ? (
-        <div className="flex gap-4">
-          {BOARD_COLUMNS.map((s) => (
-            <Skeleton key={s} className="h-64 w-72" />
-          ))}
-        </div>
+        <BoardSkeleton />
       ) : (
         <DndContext
           sensors={sensors}
@@ -334,6 +374,7 @@ export default function Board() {
                 onOpen={openTicket}
                 onQuickAdd={quickAdd}
                 onStatusChange={moveTicket}
+                focusUserId={focusMine ? myId : null}
               />
             ))}
           </div>

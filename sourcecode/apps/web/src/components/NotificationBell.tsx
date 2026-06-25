@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Bell } from 'lucide-react'
 import { api } from '@/lib/api'
+import { RelativeTime } from '@/components/RelativeTime'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -76,7 +77,7 @@ export function NotificationBell({ slug, projectSlug }: { slug: string; projectS
             >
               <div className="flex flex-col">
                 <span className="text-sm">{n.body}</span>
-                <span className="text-[10px] text-muted-foreground">{new Date(n.createdAt).toLocaleString()}</span>
+                <RelativeTime date={n.createdAt} className="text-[10px] text-muted-foreground" />
               </div>
             </DropdownMenuItem>
           )

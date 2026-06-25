@@ -7,6 +7,7 @@ import { logout } from '../lib/auth'
 import { useTheme } from '../lib/theme'
 import { Button } from '@/components/ui/button'
 import { CommandPalette } from '@/components/CommandPalette'
+import { KeyboardHelp } from '@/components/KeyboardHelp'
 
 export default function Layout() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
@@ -34,6 +35,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <CommandPalette />
+      <KeyboardHelp />
     </div>
   )
 }

@@ -14,6 +14,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
+import { RelativeTime } from '@/components/RelativeTime'
+import { fireConfetti } from '@/lib/confetti'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -35,6 +38,8 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
   const [ac, setAc] = useState('')
+  const [goal, setGoal] = useState('')
+  const [constraints, setConstraints] = useState('')
   const [editingDesc, setEditingDesc] = useState(false)
   const [comment, setComment] = useState('')
   // Mentions inserted via the picker: the editor shows "@Display Name", and we
@@ -46,6 +51,8 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
       setTitle(ticket.title)
       setDesc(ticket.description ?? '')
       setAc(ticket.acceptanceCriteria ?? '')
+      setGoal(ticket.goal ?? '')
+      setConstraints(ticket.constraints ?? '')
     }
   }, [ticket])
 
@@ -55,7 +62,19 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
     onChanged()
   }
 
-  async function patch(input: UpdateTicketInput, ok = t('drawer.saved')) {
+  // E2 — build the inverse of an update so the success toast can offer Undo.
+  // For labelIds (which has no scalar previous value) we restore the prior label set.
+  function inverseInput(input: UpdateTicketInput, prevTicket: Ticket): UpdateTicketInput {
+    const out: Record<string, unknown> = {}
+    for (const k of Object.keys(input)) {
+      if (k === 'labelIds') out.labelIds = prevTicket.labels.map((l) => l.id)
+      else out[k] = (prevTicket as unknown as Record<string, unknown>)[k] ?? null
+    }
+    return out as UpdateTicketInput
+  }
+
+  async function patch(input: UpdateTicketInput, ok = t('drawer.saved'), opts: { undoable?: boolean } = {}) {
+    const undoable = opts.undoable ?? true
     const key = ['ticket', ticketId]
     const prev = qc.getQueryData<{ ticket: Ticket }>(key)
     // Optimistically merge scalar fields for instant feedback (labels reconcile on
@@ -67,7 +86,12 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
     try {
       await api.updateTicket(ticketId, input)
       refresh()
-      toast.success(ok)
+      if (input.status === 'DONE' && prev?.ticket && prev.ticket.status !== 'DONE') fireConfetti()
+      const undo =
+        undoable && prev?.ticket
+          ? { label: t('common.undo'), onClick: () => patch(inverseInput(input, prev.ticket), t('drawer.reverted'), { undoable: false }) }
+          : undefined
+      toast.success(ok, undo ? { action: undo } : undefined)
     } catch (err) {
       if (prev) qc.setQueryData(key, prev)
       toast.error((err as Error).message)
@@ -149,6 +173,13 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
   }
   const renderCommentBody = (body: string) =>
     renderMarkdown(body.replace(/@\[([0-9a-f-]{36})\]/gi, (_m, id) => '@' + (members.find((x) => x.userId === id)?.name ?? 'user')))
+
+  const SpecField = ({ label, body }: { label: string; body: string }) => (
+    <div className="rounded-md border bg-muted/20 p-3">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }} />
+    </div>
+  )
 
   const assignee = members.find((m) => m.userId === ticket?.assignedToId)
   const currentSprint = sprints.data?.sprints.find((s) => s.id === ticket?.sprintId)
@@ -372,22 +403,31 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
               </div>
             </div>
 
-            {/* Description */}
+            {/* Spec — description + the agent-ready fields (goal/AC/constraints).
+                The readiness ring (A1) reflects how much of the spec is filled. */}
             <div className="mt-4">
               <div className="flex items-center justify-between">
-                <Label>{t('drawer.description')}</Label>
+                <div className="flex items-center gap-2">
+                  <Label>{t('drawer.spec')}</Label>
+                  <ReadinessRing ticket={ticket} size={18} />
+                  <span className="text-xs text-muted-foreground">
+                    {t('readiness.label', { ...ticketReadiness(ticket) })}
+                  </span>
+                </div>
                 <Button variant="ghost" size="sm" onClick={() => setEditingDesc((v) => !v)}>
                   {editingDesc ? t('common.preview') : t('common.edit')}
                 </Button>
               </div>
               {editingDesc ? (
                 <div className="mt-1 space-y-2">
-                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder={t('drawer.descriptionPlaceholder')} />
+                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} placeholder={t('drawer.descriptionPlaceholder')} />
+                  <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2} placeholder={t('drawer.goalPlaceholder')} />
                   <Textarea value={ac} onChange={(e) => setAc(e.target.value)} rows={3} placeholder={t('drawer.acPlaceholder')} />
+                  <Textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} placeholder={t('drawer.constraintsPlaceholder')} />
                   <Button
                     size="sm"
                     onClick={() => {
-                      patch({ description: desc, acceptanceCriteria: ac })
+                      patch({ description: desc, acceptanceCriteria: ac, goal, constraints })
                       setEditingDesc(false)
                     }}
                   >
@@ -395,10 +435,21 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                   </Button>
                 </div>
               ) : (
-                <div
-                  className="prose prose-sm mt-1 max-w-none rounded-md border bg-muted/30 p-3 text-sm"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(desc || `_${t('drawer.noDescription')}_`) }}
-                />
+                <div className="mt-1 space-y-2">
+                  <div
+                    className="prose prose-sm max-w-none rounded-md border bg-muted/30 p-3 text-sm"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(desc || `_${t('drawer.noDescription')}_`) }}
+                  />
+                  {goal.trim() && (
+                    <SpecField label={t('drawer.goal')} body={goal} />
+                  )}
+                  {ac.trim() && (
+                    <SpecField label={t('drawer.acceptanceCriteria')} body={ac} />
+                  )}
+                  {constraints.trim() && (
+                    <SpecField label={t('drawer.constraints')} body={constraints} />
+                  )}
+                </div>
               )}
             </div>
 
@@ -441,7 +492,10 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                 {comments.data?.comments.map((c) => (
                   <div key={c.id} className="rounded-md border p-3">
                     <div className="mb-1 text-xs font-medium text-foreground">
-                      {c.author?.name ?? 'System'} <span className="text-muted-foreground">· {new Date(c.createdAt).toLocaleString()}</span>
+                      {c.author?.name ?? 'System'}{' '}
+                      <span className="text-muted-foreground">
+                        · <RelativeTime date={c.createdAt} />
+                      </span>
                     </div>
                     <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body) }} />
                   </div>
@@ -457,7 +511,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                       {a.type.replace(/_/g, ' ').toLowerCase()}
                       {a.fromValue || a.toValue ? `: ${a.fromValue ?? '∅'} → ${a.toValue ?? '∅'}` : ''}
                     </span>
-                    <span>· {new Date(a.createdAt).toLocaleString()}</span>
+                    <span>· <RelativeTime date={a.createdAt} /></span>
                   </div>
                 ))}
                 {activity.data?.activity.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noActivity')}</p>}

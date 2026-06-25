@@ -5,6 +5,7 @@ import { Eye, MoreHorizontal } from 'lucide-react'
 import type { Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ReadinessRing } from '@/components/ReadinessRing'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +50,7 @@ export function TicketCardBody({ ticket, dragging }: { ticket: Ticket; dragging?
           {ticket.priority}
         </span>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ReadinessRing ticket={ticket} />
           {ticket.watcherIds.length > 0 && (
             <span className="flex items-center gap-0.5">
               <Eye className="h-3 w-3" /> {ticket.watcherIds.length}
@@ -70,9 +72,11 @@ interface TicketCardProps {
   ticket: Ticket
   onOpen: (t: Ticket) => void
   onStatusChange: (id: string, status: TicketStatus) => void
+  /** B4 focus mode: cards that aren't mine are dimmed (not hidden). */
+  dimmed?: boolean
 }
 
-export function TicketCard({ ticket, onOpen, onStatusChange }: TicketCardProps) {
+export function TicketCard({ ticket, onOpen, onStatusChange, dimmed }: TicketCardProps) {
   const { t } = useTranslation()
   // useSortable gives within-column reordering (cards shift to make room) plus
   // cross-column moves. The 5px activation distance (set on the board) lets a
@@ -99,8 +103,9 @@ export function TicketCard({ ticket, onOpen, onStatusChange }: TicketCardProps) 
       tabIndex={0}
       aria-label={`${ticket.key}: ${ticket.title}`}
       className={cn(
-        'group relative cursor-grab outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing',
+        'group relative cursor-grab outline-none ring-offset-background transition-opacity focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing',
         isDragging && 'opacity-40',
+        dimmed && 'opacity-30 hover:opacity-100',
       )}
     >
       <TicketCardBody ticket={ticket} />

@@ -13,7 +13,8 @@
     "loading": "Loading…",
     "signOut": "Sign out",
     "back": "Back",
-    "any": "Any"
+    "any": "Any",
+    "undo": "Undo"
   },
   "landing": {
     "tagline": "AI-agent-first project management",
@@ -87,11 +88,20 @@
     "sortOldest": "Oldest",
     "sortNewest": "Newest",
     "clear": "Clear",
-    "changeStatus": "Change status"
+    "changeStatus": "Change status",
+    "movedTo": "Moved to {{status}}",
+    "focusMine": "My tickets",
+    "focusHint": "Dim everything not assigned to me (f)"
   },
   "drawer": {
     "noDescription": "No description",
     "descriptionPlaceholder": "Markdown supported…",
+    "spec": "Spec",
+    "goal": "Goal",
+    "acceptanceCriteria": "Acceptance criteria",
+    "constraints": "Constraints",
+    "goalPlaceholder": "Goal — what outcome should this achieve?",
+    "constraintsPlaceholder": "Constraints — tech, scope, or guardrails…",
     "acPlaceholder": "Acceptance criteria…",
     "assignee": "Assignee",
     "unassigned": "Unassigned",
@@ -115,6 +125,7 @@
     "deleteConfirm": "Delete this ticket? It will be archived and removed from the board.",
     "ticketDeleted": "Ticket deleted",
     "saved": "Saved",
+    "reverted": "Reverted",
     "labelsUpdated": "Labels updated"
   },
   "sprints": {
@@ -158,5 +169,17 @@
     "projects": "Projects",
     "organizations": "Organizations",
     "dashboard": "Dashboard"
+  },
+  "readiness": {
+    "label": "Agent-readiness: {{filled}}/{{total}} spec fields filled"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "close": "Close",
+    "palette": "Command palette",
+    "focus": "Focus my tickets",
+    "help": "Show this help",
+    "openCard": "Open focused card",
+    "dismiss": "Close dialog / cancel"
   }
 }

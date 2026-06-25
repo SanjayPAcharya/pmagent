@@ -15,9 +15,11 @@ interface Props {
   onOpen: (t: Ticket) => void
   onQuickAdd: (status: TicketStatus, title: string) => void
   onStatusChange: (id: string, status: TicketStatus) => void
+  /** B4 focus mode: when set, cards not assigned to this user are dimmed. */
+  focusUserId?: string | null
 }
 
-export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange }: Props) {
+export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, focusUserId }: Props) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
@@ -68,7 +70,13 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange }: 
         )}
         <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tickets.map((t) => (
-            <TicketCard key={t.id} ticket={t} onOpen={onOpen} onStatusChange={onStatusChange} />
+            <TicketCard
+              key={t.id}
+              ticket={t}
+              onOpen={onOpen}
+              onStatusChange={onStatusChange}
+              dimmed={Boolean(focusUserId) && t.assignedToId !== focusUserId}
+            />
           ))}
         </SortableContext>
         {tickets.length === 0 && !adding && (

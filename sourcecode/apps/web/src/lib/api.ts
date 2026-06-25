@@ -155,6 +155,8 @@ export interface UpdateTicketInput {
   title?: string
   description?: string | null
   acceptanceCriteria?: string | null
+  goal?: string | null
+  constraints?: string | null
   status?: TicketStatus
   priority?: Priority
   type?: TicketType
