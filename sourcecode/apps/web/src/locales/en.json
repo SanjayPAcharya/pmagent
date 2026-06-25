@@ -128,6 +128,7 @@
     "comments": "Comments",
     "activity": "Activity",
     "story": "Story",
+    "acProgress": "{{done}}/{{total}}",
     "slashCommands": "Commands",
     "slashUnknown": "Couldn’t run /{{cmd}} — check the value",
     "commentPlaceholder": "Add a comment… @ to mention, / for commands",
@@ -164,6 +165,8 @@
     "movedToBacklog": "Moved to backlog",
     "movedToSprint": "Moved to sprint",
     "completion": "Completion",
+    "backlog": "Backlog — drag a ticket onto a sprint",
+    "backlogEmpty": "No unsprinted tickets.",
     "capacity": "Capacity",
     "capacitySummary": "{{committed}} pts committed · last velocity {{velocity}}",
     "capacityNoVelocity": "{{committed}} pts committed",
@@ -174,7 +177,9 @@
   "notifications": {
     "title": "Notifications",
     "markAllRead": "Mark all read",
-    "empty": "You’re all caught up."
+    "empty": "You’re all caught up.",
+    "catchUp": "{{count}} unread since you last looked",
+    "grouped": "{{count}} updates"
   },
   "palette": {
     "placeholder": "Search, or type to create — !high @user #sprint",

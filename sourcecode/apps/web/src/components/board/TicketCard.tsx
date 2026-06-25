@@ -1,9 +1,10 @@
+import { useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
 import { Eye, MoreHorizontal } from 'lucide-react'
 import type { Ticket, TicketStatus } from '@/lib/api'
-import { ALL_STATUSES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
+import { ALL_STATUSES, BOARD_COLUMNS, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { staleBorderClass } from '@/lib/time'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing } from '@/components/ReadinessRing'
@@ -88,13 +89,50 @@ export function TicketCard({ ticket, onOpen, onStatusChange, dimmed }: TicketCar
   // Stop the status menu from triggering a drag (pointerdown) or the drawer (click).
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
 
+  // B3 — swipe-to-advance on touch: a quick horizontal flick advances (right) or
+  // retreats (left) the status. Composes with dnd-kit's touch listener (long
+  // press still starts a drag); sets swipedRef so the trailing click won't open.
+  const dnd = (listeners ?? {}) as Record<string, ((e: React.SyntheticEvent) => void) | undefined>
+  const swipeStart = useRef<{ x: number; y: number; t: number } | null>(null)
+  const swipedRef = useRef(false)
+  const onTouchStart = (e: React.TouchEvent) => {
+    dnd.onTouchStart?.(e)
+    const tt = e.touches[0]
+    swipeStart.current = { x: tt.clientX, y: tt.clientY, t: Date.now() }
+    swipedRef.current = false
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    dnd.onTouchEnd?.(e)
+    const s = swipeStart.current
+    if (!s) return
+    const tt = e.changedTouches[0]
+    const dx = tt.clientX - s.x
+    const dy = tt.clientY - s.y
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 40 && Date.now() - s.t < 600) {
+      const idx = BOARD_COLUMNS.indexOf(ticket.status)
+      const target = idx >= 0 ? BOARD_COLUMNS[idx + (dx > 0 ? 1 : -1)] : undefined
+      if (target) {
+        swipedRef.current = true
+        onStatusChange(ticket.id, target)
+      }
+    }
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => onOpen(ticket)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onClick={() => {
+        if (swipedRef.current) {
+          swipedRef.current = false
+          return
+        }
+        onOpen(ticket)
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()

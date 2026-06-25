@@ -30,6 +30,38 @@ export function NotificationBell({ slug, projectSlug }: { slug: string; projectS
 
   const count = unread.data?.count ?? 0
 
+  // E3 — group notifications by ticket ("3 updates on EMPL-42"); preserve the
+  // API's newest-first order. Clicking a group marks all its items read.
+  const items = list.data?.items ?? []
+  const order: string[] = []
+  const byTicket = new Map<string, typeof items>()
+  for (const n of items) {
+    const key = n.ticketId ?? n.id
+    if (!byTicket.has(key)) {
+      byTicket.set(key, [])
+      order.push(key)
+    }
+    byTicket.get(key)!.push(n)
+  }
+  const groups = order.map((key) => {
+    const groupItems = byTicket.get(key)!
+    const latest = groupItems[0]
+    return {
+      key,
+      latest,
+      count: groupItems.length,
+      unread: groupItems.filter((n) => !n.readAt).length,
+      num: latest.subject?.match(/-(\d+)$/)?.[1],
+      ids: groupItems.map((n) => n.id),
+    }
+  })
+
+  const openGroup = async (g: (typeof groups)[number]) => {
+    await Promise.all(g.ids.map((id) => api.markNotificationRead(id).catch(() => undefined)))
+    refresh()
+    if (g.num) navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${g.num}`)
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -59,29 +91,23 @@ export function NotificationBell({ slug, projectSlug }: { slug: string; projectS
             </Button>
           )}
         </div>
+        {count > 0 && <p className="px-2 pb-1 text-[11px] text-muted-foreground">{t('notifications.catchUp', { count })}</p>}
         <DropdownMenuSeparator />
-        {(list.data?.items ?? []).length === 0 && (
+        {items.length === 0 && (
           <p className="px-2 py-6 text-center text-sm text-muted-foreground">{t('notifications.empty')}</p>
         )}
-        {list.data?.items.map((n) => {
-          const num = n.subject?.match(/-(\d+)$/)?.[1]
-          return (
-            <DropdownMenuItem
-              key={n.id}
-              className={n.readAt ? 'opacity-60' : 'font-medium'}
-              onClick={async () => {
-                await api.markNotificationRead(n.id).catch(() => undefined)
-                refresh()
-                if (num) navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${num}`)
-              }}
-            >
-              <div className="flex flex-col">
-                <span className="text-sm">{n.body}</span>
-                <RelativeTime date={n.createdAt} className="text-[10px] text-muted-foreground" />
+        {groups.map((g) => (
+          <DropdownMenuItem key={g.key} className={g.unread === 0 ? 'opacity-60' : 'font-medium'} onClick={() => openGroup(g)}>
+            <div className="flex w-full flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm">{g.count > 1 ? t('notifications.grouped', { count: g.count }) : g.latest.body}</span>
+                {g.unread > 0 && <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />}
               </div>
-            </DropdownMenuItem>
-          )
-        })}
+              {g.count > 1 && <span className="truncate text-xs text-muted-foreground">{g.latest.body}</span>}
+              <RelativeTime date={g.latest.createdAt} className="text-[10px] text-muted-foreground" />
+            </div>
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   )

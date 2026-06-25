@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelativeTime } from '@/components/RelativeTime'
+import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
 import { cn } from '@/lib/utils'
 
@@ -240,6 +241,38 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
       <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }} />
     </div>
   )
+
+  // C2 — acceptance criteria: if the text has "- [ ]" task lines, render them as
+  // interactive checkboxes (toggling rewrites the AC markdown); otherwise plain.
+  const AcceptanceCriteria = () => {
+    const { items, done, total } = parseChecklist(ac)
+    if (total === 0) return <SpecField label={t('drawer.acceptanceCriteria')} body={ac} />
+    const toggle = (line: number) => {
+      const next = toggleChecklistItem(ac, line)
+      setAc(next)
+      patch({ acceptanceCriteria: next }, t('drawer.saved'), { undoable: false })
+    }
+    return (
+      <div className="rounded-md border bg-muted/20 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('drawer.acceptanceCriteria')}</span>
+          <span className={cn('text-xs', done === total ? 'font-medium text-green-600 dark:text-green-400' : 'text-muted-foreground')}>
+            {t('drawer.acProgress', { done, total })}
+          </span>
+        </div>
+        <ul className="space-y-1">
+          {items.map((it) => (
+            <li key={it.line}>
+              <label className="flex cursor-pointer items-start gap-2 text-sm">
+                <input type="checkbox" checked={it.checked} onChange={() => toggle(it.line)} className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-primary" />
+                <span className={it.checked ? 'text-muted-foreground line-through' : 'text-foreground'}>{it.text}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
 
   const assignee = members.find((m) => m.userId === ticket?.assignedToId)
   const currentSprint = sprints.data?.sprints.find((s) => s.id === ticket?.sprintId)
@@ -509,9 +542,7 @@ export function TicketDrawer({ ticketId, orgId, members, onClose, onChanged }: P
                   {goal.trim() && (
                     <SpecField label={t('drawer.goal')} body={goal} />
                   )}
-                  {ac.trim() && (
-                    <SpecField label={t('drawer.acceptanceCriteria')} body={ac} />
-                  )}
+                  {ac.trim() && <AcceptanceCriteria />}
                   {constraints.trim() && (
                     <SpecField label={t('drawer.constraints')} body={constraints} />
                   )}

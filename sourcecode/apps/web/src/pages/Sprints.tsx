@@ -3,11 +3,42 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { api, type Sprint } from '@/lib/api'
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { api, type Sprint, type Ticket } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+
+// F2 — a draggable ticket chip (backlog → sprint, or between sprints).
+function TicketChip({ ticket }: { ticket: Ticket }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: ticket.id })
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined}
+      className={cn(
+        'cursor-grab rounded-md border bg-card px-2 py-1 text-xs active:cursor-grabbing',
+        isDragging && 'opacity-40',
+      )}
+    >
+      <span className="font-mono text-muted-foreground">{ticket.key}</span> {ticket.title}
+    </div>
+  )
+}
 
 function SprintRow({
   sprint,
@@ -23,6 +54,7 @@ function SprintRow({
   const qc = useQueryClient()
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: sprint.id })
   const detail = useQuery({ queryKey: ['sprint', sprint.id], queryFn: () => api.getSprint(sprint.id) })
   // Candidate tickets to add = project tickets not already in this sprint.
   const allTickets = useQuery({
@@ -58,7 +90,7 @@ function SprintRow({
   }
 
   return (
-    <Card>
+    <Card ref={setDropRef} className={cn(isOver && 'ring-2 ring-primary/50')}>
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           {sprint.name}
@@ -181,6 +213,45 @@ export default function Sprints() {
   const projectId = project?.id
 
   const sprints = useQuery({ queryKey: ['sprints', projectId], queryFn: () => api.listSprints(projectId!), enabled: Boolean(projectId) })
+  const allTickets = useQuery({
+    queryKey: ['tickets', projectId, { sort: 'number' }],
+    queryFn: () => api.listTickets(projectId!, { sort: 'number' }),
+    enabled: Boolean(projectId),
+  })
+  const backlog = (allTickets.data?.items ?? []).filter((tk) => !tk.sprintId)
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+  )
+  const [dragId, setDragId] = useState<string | null>(null)
+  const activeTicket = dragId ? allTickets.data?.items.find((tk) => tk.id === dragId) : undefined
+
+  const move = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn()
+      qc.invalidateQueries({ queryKey: ['tickets', projectId] })
+      qc.invalidateQueries({ queryKey: ['sprints', projectId] })
+      sprints.data?.sprints.forEach((s) => qc.invalidateQueries({ queryKey: ['sprint', s.id] }))
+      toast.success(ok)
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+  // F2 — drop a ticket onto a sprint card (add) or the backlog zone (remove).
+  async function onDragEnd(e: DragEndEvent) {
+    setDragId(null)
+    if (!e.over) return
+    const ticketId = String(e.active.id)
+    const over = String(e.over.id)
+    const tk = allTickets.data?.items.find((x) => x.id === ticketId)
+    if (!tk) return
+    if (over === 'backlog') {
+      if (tk.sprintId) await move(() => api.removeFromSprint(tk.sprintId!, ticketId), t('sprints.movedToBacklog'))
+    } else if (over !== tk.sprintId) {
+      await move(() => api.addToSprint(over, [ticketId]), t('sprints.movedToSprint'))
+    }
+  }
 
   const [name, setName] = useState('')
   const create = async () => {
@@ -223,13 +294,45 @@ export default function Sprints() {
         </Button>
       </form>
 
-      <div className="space-y-3">
-        {projectId &&
-          sprints.data?.sprints.map((s) => (
-            <SprintRow key={s.id} sprint={s} projectId={projectId} allSprints={sprints.data!.sprints} onChanged={refresh} />
+      <DndContext sensors={sensors} onDragStart={(e) => setDragId(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setDragId(null)}>
+        <BacklogZone tickets={backlog} />
+
+        <div className="space-y-3">
+          {projectId &&
+            sprints.data?.sprints.map((s) => (
+              <SprintRow key={s.id} sprint={s} projectId={projectId} allSprints={sprints.data!.sprints} onChanged={refresh} />
+            ))}
+          {sprints.data?.sprints.length === 0 && <p className="text-sm text-muted-foreground">{t('sprints.empty')}</p>}
+        </div>
+
+        <DragOverlay>{activeTicket ? <TicketChip ticket={activeTicket} /> : null}</DragOverlay>
+      </DndContext>
+    </div>
+  )
+}
+
+// F2 — droppable backlog strip of unsprinted tickets to drag into sprints.
+function BacklogZone({ tickets }: { tickets: Ticket[] }) {
+  const { t } = useTranslation()
+  const { setNodeRef, isOver } = useDroppable({ id: 'backlog' })
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'rounded-lg border border-dashed p-3 transition-colors',
+        isOver ? 'border-primary/50 bg-accent' : 'border-input',
+      )}
+    >
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('sprints.backlog')}</div>
+      {tickets.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{t('sprints.backlogEmpty')}</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {tickets.map((tk) => (
+            <TicketChip key={tk.id} ticket={tk} />
           ))}
-        {sprints.data?.sprints.length === 0 && <p className="text-sm text-muted-foreground">{t('sprints.empty')}</p>}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
