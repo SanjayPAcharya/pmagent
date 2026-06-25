@@ -161,14 +161,31 @@
     "empty": "You’re all caught up."
   },
   "palette": {
-    "placeholder": "Search tickets, projects, orgs… or type to create",
+    "placeholder": "Search, or type to create — !high @user #sprint",
     "noResults": "No results.",
     "actions": "Actions",
     "createTicket": "Create ticket: “{{title}}”",
     "tickets": "Tickets",
     "projects": "Projects",
     "organizations": "Organizations",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "recent": "Recent",
+    "general": "General",
+    "toggleTheme": "Toggle theme",
+    "ticketActions": "{{key}} · actions",
+    "changeStatus": "Change status…",
+    "assign": "Assign…",
+    "moveSprint": "Move to sprint…",
+    "addLabelAction": "Add label…",
+    "setStatus": "Set status",
+    "assignTo": "Assign to",
+    "moveToSprint": "Move to sprint",
+    "addLabel": "Add label",
+    "noLabels": "No more labels to add",
+    "pickStatus": "Pick a status…",
+    "pickAssignee": "Pick an assignee…",
+    "pickSprint": "Pick a sprint…",
+    "pickLabel": "Pick a label…"
   },
   "readiness": {
     "label": "Agent-readiness: {{filled}}/{{total}} spec fields filled"

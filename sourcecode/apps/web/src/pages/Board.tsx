@@ -26,6 +26,7 @@ import { TicketDrawer } from '@/components/TicketDrawer'
 import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fireConfetti } from '@/lib/confetti'
+import { recordVisit } from '@/lib/frecency'
 import { cn } from '@/lib/utils'
 
 // A fractional position between two neighbours (board uses Float positions), so
@@ -239,6 +240,20 @@ export default function Board() {
   const openTicket = (t: Ticket) => navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${t.number}`)
   const closeDrawer = () => navigate(`/orgs/${slug}/projects/${projectSlug}`)
   const drawerTicket = number ? tickets.data?.items.find((t) => t.number === Number(number)) : undefined
+
+  // D2 frecency — record project + opened-ticket visits for the palette's Recent.
+  useEffect(() => {
+    if (project) recordVisit('project', { key: project.id, label: project.name, href: `/orgs/${slug}/projects/${project.slug}` })
+  }, [project?.id])
+  useEffect(() => {
+    if (drawerTicket)
+      recordVisit('ticket', {
+        key: drawerTicket.id,
+        label: drawerTicket.title,
+        href: `/orgs/${slug}/projects/${projectSlug}/ticket/${drawerTicket.number}`,
+        meta: drawerTicket.key,
+      })
+  }, [drawerTicket?.id])
 
   const pct = counts.total ? Math.round((counts.done / counts.total) * 100) : 0
 
