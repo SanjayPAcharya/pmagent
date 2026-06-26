@@ -33,7 +33,7 @@ From the PMAgent Landing, a user signs in or signs up with **Google / Microsoft 
 - **2.8.5a — fully custom form (no redirect even for passwords).** Login via Keycloak **Direct Access Grant (ROPC)**; signup via a backend endpoint that uses a Keycloak **service-account (admin REST)** to create the user, then auto-logs in. _Trade-offs:_ ROPC is deprecated in OAuth 2.1; no built-in MFA / bot-protection on that path; the SPA handles raw credentials; the API must hold a Keycloak service credential. Requires a `06-security-checklist` note + review.
 
 ## Prerequisites (your action — external accounts)
-Register an OAuth app with each provider, set the **Authorized redirect URI** to the Keycloak broker endpoint, and hand over the client id + secret:
+**Step-by-step runbook: [references/13-social-login-setup.md](../references/13-social-login-setup.md).** In short — register an OAuth app with each provider, set the **Authorized redirect URI** to the Keycloak broker endpoint, and put the client id + secret in `sourcecode/.env`:
 
 | Provider | Where | Redirect URI (dev) |
 |---|---|---|

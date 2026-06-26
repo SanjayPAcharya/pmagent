@@ -67,6 +67,7 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 | [10-local-dev-and-github-app.md](references/10-local-dev-and-github-app.md) | Local dev setup, Docker Compose, GitHub App setup |
 | [11-launch-checklist.md](references/11-launch-checklist.md) | Pre-launch checklist + ongoing operations |
 | [12-docker-and-deployment.md](references/12-docker-and-deployment.md) | Full container topology, Dockerfiles, Compose (dev/prod), Caddy, deploy |
+| [13-social-login-setup.md](references/13-social-login-setup.md) | Register Google/Microsoft/GitHub OAuth apps + wire creds into Keycloak (Phase 2.8.5) |
 
 ### `phases/` — sequential build work
 | Phase | File | Goal |
