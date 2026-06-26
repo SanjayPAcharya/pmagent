@@ -60,7 +60,7 @@ export async function buildServer() {
   // OpenAPI docs at /documentation, generated from the Phase-2 routes' Zod
   // schemas via fastify-type-provider-zod's transform (no separate JSON schema).
   await app.register(swagger, {
-    openapi: { info: { title: 'AgentPM API', version: '0.2.0' } },
+    openapi: { info: { title: 'PMAgent API', version: '0.2.0' } },
     transform: jsonSchemaTransform,
   })
   await app.register(swaggerUi, { routePrefix: '/documentation' })

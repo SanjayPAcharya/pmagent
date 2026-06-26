@@ -1,5 +1,8 @@
 {
   "realm": "agentpm",
+  "displayName": "PMAgent",
+  "displayNameHtml": "PMAgent",
+  "loginTheme": "pmagent",
   "enabled": true,
   "registrationAllowed": true,
   "registrationEmailAsUsername": true,
@@ -10,7 +13,7 @@
   "clients": [
     {
       "clientId": "agentpm-web",
-      "name": "AgentPM Web (SPA)",
+      "name": "PMAgent Web (SPA)",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -36,7 +39,7 @@
     },
     {
       "clientId": "agentpm-api",
-      "name": "AgentPM API (resource server)",
+      "name": "PMAgent API (resource server)",
       "enabled": true,
       "bearerOnly": true,
       "publicClient": false,

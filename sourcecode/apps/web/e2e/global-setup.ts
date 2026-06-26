@@ -24,7 +24,7 @@ export default async function globalSetup(_config: FullConfig) {
   await page.click('#kc-login')
   await page.waitForURL(`${BASE_URL}/**`)
   // Landed back in the app (header shows the user) → session cookie is set.
-  await page.getByText(/AgentPM/i).first().waitFor()
+  await page.getByText(/PMAgent/i).first().waitFor()
   await page.context().storageState({ path: 'e2e/.auth/user.json' })
   await browser.close()
 }

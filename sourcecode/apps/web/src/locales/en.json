@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "AgentPM",
+    "appName": "PMAgent",
     "create": "Create",
     "save": "Save",
     "cancel": "Cancel",
@@ -19,8 +19,13 @@
   "landing": {
     "tagline": "AI-agent-first project management",
     "signIn": "Sign in",
+    "signInEmail": "Sign in with email",
     "createAccount": "Create account",
-    "ssoNote": "Email/password and social sign-in (Google, Microsoft, GitHub) are presented on the secure Keycloak page."
+    "continueGoogle": "Continue with Google",
+    "continueMicrosoft": "Continue with Microsoft",
+    "continueGithub": "Continue with GitHub",
+    "or": "or",
+    "ssoNote": "Social sign-in is one tap. Email/password is handled on our secure Keycloak page."
   },
   "dashboard": {
     "title": "Your organizations",
@@ -65,7 +70,7 @@
     "accentSaved": "Accent updated"
   },
   "invite": {
-    "title": "You’ve been invited to AgentPM",
+    "title": "You’ve been invited to PMAgent",
     "joining": "Joining the organization…",
     "signInToAccept": "Sign in or create an account to accept this invitation.",
     "signInButton": "Sign in to accept",

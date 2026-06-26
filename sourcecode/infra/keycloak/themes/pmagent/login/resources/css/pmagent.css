@@ -1,0 +1,44 @@
+/* PMAgent — Keycloak login theme (Phase 2.8, Tier 2).
+   Brand: slate-900 (#0f172a), matching the web app's --primary token. */
+
+.login-pf body {
+  background: #f1f5f9; /* slate-100 — clean backdrop for the white card */
+}
+
+/* Header: swap the realm display text for the PMAgent wordmark logo. */
+#kc-header-wrapper {
+  height: 44px;
+  margin: 16px auto 8px;
+  max-width: 220px;
+  background: url(../img/logo.svg) no-repeat center center;
+  background-size: contain;
+  /* hide the text node (realm displayNameHtml), show the logo instead */
+  text-indent: -9999px;
+  white-space: nowrap;
+  overflow: hidden;
+  color: transparent;
+}
+
+/* Primary actions → the app's slate-900 primary. */
+.login-pf .btn-primary,
+input[type="submit"].btn-primary,
+#kc-login {
+  background: #0f172a;
+  border-color: #0f172a;
+}
+.login-pf .btn-primary:hover,
+#kc-login:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+}
+
+/* Card polish to echo the app's surfaces. */
+.card-pf {
+  border-top: 4px solid #0f172a;
+  border-radius: 10px;
+}
+
+/* Brand-colored links (register / forgot password). */
+.login-pf a {
+  color: #0f172a;
+}
