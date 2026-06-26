@@ -22,13 +22,17 @@ Phase 1  Skeleton + Auth + Platform     → app shell, Keycloak login/signup (Go
    │
 Phase 2  PM Core                        → tickets, kanban board, sprints, real-time, in-app notifications, invites
    │
+Phase 2.1 Gap closure                   → 11 drawer/board/UX gaps found verifying Phase 2 (labels API, mention picker, invite UI, reorder)
+   │
 Phase 2.5 UX Hardening                  → dark mode, i18n, mobile, Cmd-K, Playwright E2E (after Phase 2 is verified)
+   │
+Phase 2.6 UX Delight                    → readiness rings, undo, confetti, palette power, ticket presence, burndown, accent/theme
    │
 Phase 3  Dev Deployment + CI/CD         → Docker, GitHub Actions, managed data, deploy to dev/staging
    │
 Phase 4  Notifications + Channels       → email (SES), then WhatsApp + Slack two-way
    │
-Phase 5  GitHub Integration + Code Agent→ GitHub App, repo linking, queue/worker, Code Agent → PR
+Phase 5  GitHub Integration + Code Agent→ GitHub App, repo linking, queue/worker, Code Agent → PR; absorbs Phase 2.7 agent-first UI
    │
 Phase 6  Full Agent Suite + Autonomy    → Spec, QA, Deploy, Observability agents + autonomy dial
    │
@@ -63,7 +67,10 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 |---|---|---|
 | 1 | [phase-1-skeleton-auth-platform.md](phases/phase-1-skeleton-auth-platform.md) | Frontend + backend skeleton, Keycloak login + self-signup (Google/Microsoft/GitHub), create the platform (orgs & projects) |
 | 2 | [phase-2-pm-core.md](phases/phase-2-pm-core.md) | Tickets, board, sprints, real-time, in-app notifications, invites, assignee/watchers/activity |
+| 2.1 | [phase-2.1-gap-closure.md](phases/phase-2.1-gap-closure.md) | Gap closure — 11 drawer/board/UX items found verifying Phase 2 (labels API, mention picker, invite UI, within-column reorder, optimistic) |
 | 2.5 | [phase-2.5-ux-hardening.md](phases/phase-2.5-ux-hardening.md) | Dark mode, i18n, mobile, Cmd-K, Playwright E2E (after Phase 2 verified) |
+| 2.6 | [phase-2.6-ux-delight.md](phases/phase-2.6-ux-delight.md) | UX delight — readiness rings, undo, confetti, palette power, ticket presence, burndown, per-org accent + theme |
+| 2.7 | [phase-2.7-agent-first.md](phases/phase-2.7-agent-first.md) | Agent-first surfaces (@agent, draft-with-agent, agent swimlane) — **parked; lands with Phase 5** |
 | 3 | [phase-3-dev-deployment-cicd.md](phases/phase-3-dev-deployment-cicd.md) | Basic deployment to dev/staging with CI/CD |
 | 4 | [phase-4-notifications-channels.md](phases/phase-4-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
 | 5 | [phase-5-github-code-agent.md](phases/phase-5-github-code-agent.md) | Third-party integration: GitHub App + Code Agent + agent-first UI |

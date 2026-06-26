@@ -1,10 +1,10 @@
-# Phase 2F — Gap closure (draft)
+# Phase 2.1 — Gap closure
 
-> **Status: DRAFT — not started.** Closes the gaps between the [Phase 2 plan](phase-2-pm-core.md) (board/drawer/UX spec + Definition of Done) and what 2A–2E actually shipped. Found during in-browser verification after 2E. Backend for most items already exists and is tested; the work is mostly UI wiring.
+> **Status: ✅ COMPLETE** — all 11 items shipped & committed (`3db2df1`, 2026-06-24); typecheck/build/35 API tests green. Closes the gaps between the [Phase 2 plan](phase-2-pm-core.md) (board/drawer/UX spec + Definition of Done) and what 2A–2E actually shipped. Found during in-browser verification after 2E. Numbered **2.1** because it directly patches Phase 2 (was "2F" historically).
 >
 > Effort key: **S** ≈ <1h · **M** ≈ 1–3h · **L** ≈ half-day+. Each item lists where it lives and whether the backend is ready.
 
-## Why 2F exists
+## Why 2.1 exists
 2E delivered the board, drawer, sprints, bell, and realtime — verified working. But a feature-by-feature pass against the plan's drawer spec (lines 415–431), board spec (391–413), frontend-UX section (533–541), and Definition of Done (553–564) surfaced 11 gaps: 6 are pure UI wiring over ready+tested APIs, 2 need new backend, and 3 are polish/pre-existing.
 
 ---

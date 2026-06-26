@@ -1,6 +1,6 @@
-# Phase 2.6 — UX Delight & Agent-First Polish (draft)
+# Phase 2.6 — UX Delight & Agent-First Polish
 
-> **Status: DRAFT — not started.** A creative pass that turns the working PM core (Phase 2 + 2F + 2.5) into something with a distinct point of view: **agent-first** project management. Most items build on primitives we already have — the Redis event bus + WS rooms, presence, the structured ticket schema (`goal`/`acceptanceCriteria`/`constraints`), the command palette, optimistic-update rollback state, completion counts — so they're high-impact for low effort.
+> **Status: ✅ COMPLETE** — all non-agent items (6 slices) shipped & browser-verified; the agent-implying items A2–A4 were split to [Phase 2.7](phase-2.7-agent-first.md) (parked → land with Phase 5). A creative pass that turns the working PM core (Phase 2 + 2.1 + 2.5) into something with a distinct point of view: **agent-first** project management. Most items build on primitives we already have — the Redis event bus + WS rooms, presence, the structured ticket schema (`goal`/`acceptanceCriteria`/`constraints`), the command palette, optimistic-update rollback state, completion counts — so they're high-impact for low effort.
 >
 > Effort: **S** ≈ <1h · **M** ≈ 1–3h · **L** ≈ half-day+. "Backend" = needs new/changed API; otherwise pure web. "Phase 5-dep" = the *action* lights up when the Code/Spec agent lands, but the UI ships now.
 

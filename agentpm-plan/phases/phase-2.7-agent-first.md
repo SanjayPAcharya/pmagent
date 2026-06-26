@@ -1,4 +1,4 @@
-# Phase 2.7 — Agent-First Surfaces (deferred to after Phase 3)
+# Phase 2.7 — Agent-First Surfaces (parked → lands with Phase 5)
 
 > **Sequencing (2026-06-25): all agent-related work happens AFTER [Phase 3](phase-3-dev-deployment-cicd.md) (deployment + CI/CD).** These items therefore land with **[Phase 5](phase-5-github-code-agent.md)** (Code Agent), not before Phase 3 — the "2.7" number is kept only for history. Build deployment first; agent surfaces follow.
 
