@@ -26,9 +26,9 @@ Phase 2.5 UX Hardening                  → dark mode, i18n, mobile, Cmd-K, Play
    │
 Phase 3  Dev Deployment + CI/CD         → Docker, GitHub Actions, managed data, deploy to dev/staging
    │
-Phase 4  GitHub Integration + Code Agent→ GitHub App, repo linking, queue/worker, Code Agent → PR
+Phase 4  Notifications + Channels       → email (SES), then WhatsApp + Slack two-way
    │
-Phase 5  Notifications + Channels       → email (SES), then WhatsApp + Slack two-way
+Phase 5  GitHub Integration + Code Agent→ GitHub App, repo linking, queue/worker, Code Agent → PR
    │
 Phase 6  Full Agent Suite + Autonomy    → Spec, QA, Deploy, Observability agents + autonomy dial
    │
@@ -65,8 +65,8 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 | 2 | [phase-2-pm-core.md](phases/phase-2-pm-core.md) | Tickets, board, sprints, real-time, in-app notifications, invites, assignee/watchers/activity |
 | 2.5 | [phase-2.5-ux-hardening.md](phases/phase-2.5-ux-hardening.md) | Dark mode, i18n, mobile, Cmd-K, Playwright E2E (after Phase 2 verified) |
 | 3 | [phase-3-dev-deployment-cicd.md](phases/phase-3-dev-deployment-cicd.md) | Basic deployment to dev/staging with CI/CD |
-| 4 | [phase-4-github-code-agent.md](phases/phase-4-github-code-agent.md) | Third-party integration: GitHub App + Code Agent → PR |
-| 5 | [phase-5-notifications-channels.md](phases/phase-5-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
+| 4 | [phase-4-notifications-channels.md](phases/phase-4-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
+| 5 | [phase-5-github-code-agent.md](phases/phase-5-github-code-agent.md) | Third-party integration: GitHub App + Code Agent + agent-first UI |
 | 6 | [phase-6-agent-suite-autonomy.md](phases/phase-6-agent-suite-autonomy.md) | Spec / QA / Deploy / Observability agents + autonomy dial |
 | 7 | [phase-7-autonomous-sprints.md](phases/phase-7-autonomous-sprints.md) | Milestone → auto-planned & shipped sprint |
 

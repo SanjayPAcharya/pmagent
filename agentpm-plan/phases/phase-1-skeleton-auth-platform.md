@@ -25,7 +25,7 @@
 - [ ] `GET`/`PATCH /api/me` route (profile from the verified token)
 - [ ] RBAC matrix enforced server-side
 - [ ] Organizations CRUD + member management (new signup → create own org as OWNER)
-- [ ] Projects CRUD (GitHub *repo* linking deferred to Phase 4 — distinct from GitHub login)
+- [ ] Projects CRUD (GitHub *repo* linking deferred to Phase 5 — distinct from GitHub login)
 - [ ] Vite + React 18 + TypeScript + Tailwind + shadcn/ui setup (init, path alias)
 - [ ] React Router setup (browser router, protected dashboard layout / auth guard)
 - [ ] Frontend auth via `keycloak-js` / `oidc-client-ts` (login, signup, social buttons, silent token refresh)
@@ -149,11 +149,11 @@ Token refresh:
   (handled by keycloak-js / oidc-client-ts — no custom /api/auth/refresh endpoint).
 ```
 
-> **Login identity vs. GitHub repo access (important):** signing in *with GitHub* via Keycloak only establishes **who the user is**. It does **not** grant the Code Agent access to any repository. Repo read/write is a separate **GitHub App installation** the user performs per project in Phase 4. A user who signs up with Google or Microsoft uses the board fully in Phases 1–3 and only connects GitHub when they want the Code Agent.
+> **Login identity vs. GitHub repo access (important):** signing in *with GitHub* via Keycloak only establishes **who the user is**. It does **not** grant the Code Agent access to any repository. Repo read/write is a separate **GitHub App installation** the user performs per project in Phase 5. A user who signs up with Google or Microsoft uses the board fully in Phases 1–3 and only connects GitHub when they want the Code Agent.
 
-> **Schema note:** with Keycloak owning credentials, `User.passwordHash` is unused (leave nullable or drop it). Add a stable link to the IdP subject — reuse a column or add `idpSub String? @unique`. `User.githubId` / `githubLogin` stay, but are populated from the **GitHub App** connection in Phase 4, not from login. The `Session` model (DB refresh tokens) is also unused — refresh is handled by Keycloak.
+> **Schema note:** with Keycloak owning credentials, `User.passwordHash` is unused (leave nullable or drop it). Add a stable link to the IdP subject — reuse a column or add `idpSub String? @unique`. `User.githubId` / `githubLogin` stay, but are populated from the **GitHub App** connection in Phase 5, not from login. The `Session` model (DB refresh tokens) is also unused — refresh is handled by Keycloak.
 
-> **Open-signup cost guard (product constraint):** because anyone can self-register, agent runs (Phase 4) must be gated behind a verified org with trial limits or billing — open signup must not mean uncapped Anthropic spend. See [01-tech-stack.md](../references/01-tech-stack.md) and [09-cost-estimates.md](../references/09-cost-estimates.md).
+> **Open-signup cost guard (product constraint):** because anyone can self-register, agent runs (Phase 5) must be gated behind a verified org with trial limits or billing — open signup must not mean uncapped Anthropic spend. See [01-tech-stack.md](../references/01-tech-stack.md) and [09-cost-estimates.md](../references/09-cost-estimates.md).
 
 ### RBAC — authorization matrix
 
@@ -172,7 +172,7 @@ Resource: Ticket           (enforced from Phase 2)
   Project member: comment, view, change own assignments
   Admin+: delete, rollback, override status
 
-Resource: AgentAction      (enforced from Phase 4)
+Resource: AgentAction      (enforced from Phase 5)
   MEMBER: view only
   ADMIN+: rollback, retry
 

@@ -22,7 +22,7 @@ VITE_KEYCLOAK_CLIENT=agentpm-web
 # INSIDE Keycloak (Realm → Identity Providers), NOT as app env vars. The API and
 # SPA never see them. Keycloak's own DB/admin credentials are managed where Keycloak runs.
 
-# ── GitHub App (repo access for the Code Agent — Phase 4) ──
+# ── GitHub App (repo access for the Code Agent — Phase 5) ──
 # Distinct from GitHub *login*. Login-as-GitHub is a Keycloak identity provider;
 # this App grants the agent read/write to connected repos.
 GITHUB_APP_ID=<your GitHub App ID>

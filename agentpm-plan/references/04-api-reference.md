@@ -44,22 +44,22 @@ DELETE /api/orgs/:slug/invites/:id Revoke invite (Phase 2)
 POST   /api/invites/:token/accept  Accept invite — current user joins (Phase 2)
 ```
 
-### Projects (`/api/projects`) — Phase 1 (CRUD); GitHub/integration/autonomy endpoints land in Phase 4
+### Projects (`/api/projects`) — Phase 1 (CRUD); GitHub/integration/autonomy endpoints land in Phase 5
 ```
 POST   /api/projects                           Create project (body: { orgId, name, slug?, key? }) — key derived if omitted
 GET    /api/projects?orgId=:orgId              List projects in org
 GET    /api/projects/:projectId                Get project
 PATCH  /api/projects/:projectId                Update project
 DELETE /api/projects/:projectId                Delete project
-POST   /api/projects/:projectId/github/connect Connect GitHub repo            (Phase 4)
-POST   /api/projects/:projectId/integrations   Add integration (Slack, etc.)  (Phase 5)
-GET    /api/projects/:projectId/integrations   List integrations              (Phase 5)
-DELETE /api/projects/:projectId/integrations/:type Remove integration         (Phase 5)
+POST   /api/projects/:projectId/github/connect Connect GitHub repo            (Phase 5)
+POST   /api/projects/:projectId/integrations   Add integration (Slack, etc.)  (Phase 4)
+GET    /api/projects/:projectId/integrations   List integrations              (Phase 4)
+DELETE /api/projects/:projectId/integrations/:type Remove integration         (Phase 4)
 GET    /api/projects/:projectId/autonomy       Get autonomy settings          (Phase 6)
 PATCH  /api/projects/:projectId/autonomy       Update autonomy settings       (Phase 6)
 ```
 
-### Tickets (`/api/tickets`) — Phase 2 (CRUD); agent endpoints land in Phase 4
+### Tickets (`/api/tickets`) — Phase 2 (CRUD); agent endpoints land in Phase 5
 ```
 POST   /api/tickets                            Create ticket
 GET    /api/tickets?projectId=:id&sprintId=:id List tickets (filterable)
@@ -67,16 +67,16 @@ GET    /api/tickets/:ticketId                  Get single ticket (with agent act
 PATCH  /api/tickets/:ticketId                  Update ticket
 DELETE /api/tickets/:ticketId                  Delete ticket
 PATCH  /api/tickets/:ticketId/status           Update status (triggers gate check)
-POST   /api/tickets/:ticketId/assign-agent     Assign agent type, enqueue job   (Phase 4)
-POST   /api/tickets/:ticketId/approve          Approve pending gate             (Phase 4)
-POST   /api/tickets/:ticketId/reject           Reject pending gate              (Phase 4)
-POST   /api/tickets/:ticketId/rollback         Close agent PR + reset ticket    (Phase 4)
+POST   /api/tickets/:ticketId/assign-agent     Assign agent type, enqueue job   (Phase 5)
+POST   /api/tickets/:ticketId/approve          Approve pending gate             (Phase 5)
+POST   /api/tickets/:ticketId/reject           Reject pending gate              (Phase 5)
+POST   /api/tickets/:ticketId/rollback         Close agent PR + reset ticket    (Phase 5)
 POST   /api/tickets/:ticketId/comments         Add comment
 GET    /api/tickets/:ticketId/comments         List comments
 POST   /api/tickets/:ticketId/watchers         Add a watcher / CC ({ userId })
 DELETE /api/tickets/:ticketId/watchers/:userId Remove a watcher
 GET    /api/tickets/:ticketId/activity         Activity timeline (status/assignee/watcher/sprint)
-GET    /api/tickets/:ticketId/actions          List agent actions               (Phase 4)
+GET    /api/tickets/:ticketId/actions          List agent actions               (Phase 5)
 # POST /api/tickets/bulk-update — DEFERRED (board drag covers reorder/move; revisit post-Phase 2 with per-org authz)
 ```
 
@@ -101,7 +101,7 @@ POST   /api/notifications/read-all             Mark all read
 ```
 > **Caller-scoped (no org guard):** every handler filters by `request.userId` — list/count use `where:{ userId }`; `:id/read` matches `{ id, userId }` and returns 404 otherwise. Notifications are per-user, so do **not** reuse `requireOrgRole`.
 
-### Agents (`/api/agents`) — Phase 4
+### Agents (`/api/agents`) — Phase 5
 ```
 GET    /api/agents/feed?projectId=:id         Live agent activity (paginated)
 GET    /api/agents/actions/:actionId          Get single action detail

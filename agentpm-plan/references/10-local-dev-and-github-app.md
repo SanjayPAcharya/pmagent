@@ -59,7 +59,7 @@ The Compose files (base + dev override + prod) are the single source of truth in
 > `docker compose exec keycloak /opt/keycloak/bin/kc.sh export --realm agentpm --file /tmp/realm.json`
 > For purely local testing you can use Keycloak-native email/password without configuring the social providers; wire real Google/Microsoft/GitHub OAuth credentials in staging/prod.
 
-## GitHub App setup (needed for Phase 4)
+## GitHub App setup (needed for Phase 5)
 
 1. Go to GitHub Settings → Developer Settings → GitHub Apps → New GitHub App
 2. Set:
@@ -75,4 +75,4 @@ The Compose files (base + dev override + prod) are the single source of truth in
 5. Generate a private key, base64-encode it: `base64 -w 0 private-key.pem`
 6. Save App ID and base64 private key to Secrets Manager
 
-> The same GitHub App backs both **OAuth login** (Phase 1, via Client ID/Secret) and **repo access for agents** (Phase 4, via installation tokens).
+> The same GitHub App backs both **OAuth login** (Phase 1, via Client ID/Secret) and **repo access for agents** (Phase 5, via installation tokens).

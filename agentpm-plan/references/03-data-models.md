@@ -1,7 +1,7 @@
 # Reference: Data Models & Database Schema
 
 > Stable reference. The single source of truth for all DB entities. Source: §4 of the original plan.
-> **Phasing note:** not every model is needed on day one. Phase 1 needs `User`, `Organization`, `OrgMember`, `Project`. Phase 2 adds `Ticket`, `TicketDependency`, `Label`, `TicketLabel`, `Comment`, `Sprint`, `TicketWatcher`, `TicketActivity`, `OrgInvite`, and `Notification` (used for the **in-app** bell now; email/Slack/WhatsApp fan-out + `Integration` come in Phase 5). Phase 4 adds `AgentAction`, `AutonomySettings`, `Approval`, `Integration`. Migrate incrementally — but keep this file as the complete target schema.
+> **Phasing note:** not every model is needed on day one. Phase 1 needs `User`, `Organization`, `OrgMember`, `Project`. Phase 2 adds `Ticket`, `TicketDependency`, `Label`, `TicketLabel`, `Comment`, `Sprint`, `TicketWatcher`, `TicketActivity`, `OrgInvite`, and `Notification` (used for the **in-app** bell now; email/Slack/WhatsApp fan-out + `Integration` come in Phase 4). Phase 5 adds `AgentAction`, `AutonomySettings`, `Approval`, `Integration`. Migrate incrementally — but keep this file as the complete target schema.
 >
 > **Auth note (Keycloak):** identity is delegated to Keycloak (see [phase-1](../phases/phase-1-skeleton-auth-platform.md)). `User.idpSub` links to the Keycloak subject; `User.passwordHash` and the entire `Session` model are **unused** (Keycloak owns credentials + refresh tokens). They are kept in the schema for reference / possible fallback but are not written to in the Keycloak flow.
 
@@ -29,7 +29,7 @@ model User {
   email         String   @unique
   name          String
   avatarUrl     String?
-  githubId      String?  @unique // set from the GitHub APP connection in Phase 4, NOT from login
+  githubId      String?  @unique // set from the GitHub APP connection in Phase 5, NOT from login
   githubLogin   String?
   passwordHash  String?  // legacy/unused — credentials live in Keycloak
   createdAt     DateTime @default(now())

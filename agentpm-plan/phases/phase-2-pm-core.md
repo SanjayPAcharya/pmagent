@@ -16,7 +16,7 @@
 ## Deliverables
 
 - [ ] Migration adding ticket/sprint/label/comment models (+ `TicketWatcher`, `TicketActivity` — see below)
-- [ ] Tickets full CRUD + status transitions (status route is a stub gate now; full gate logic in Phase 4)
+- [ ] Tickets full CRUD + status transitions (status route is a stub gate now; full gate logic in Phase 5)
 - [ ] Sequential per-project ticket numbering (e.g. AGP-42)
 - [ ] Sprints CRUD + start/complete + add/remove tickets
 - [ ] Event bus (Redis pub/sub)
@@ -29,7 +29,7 @@
 **Added per feedback:**
 - [ ] **JIRA-style quick status change** — change status from the card (dropdown) and by drag; reflected everywhere live
 - [ ] **Assignee** — single assignee per ticket (`assignedToId`) with an assignee picker (avatars)
-- [ ] **Watchers / "CC"** — add/remove multiple users who follow a ticket (`TicketWatcher`); they'll receive notifications once Phase 5 lands
+- [ ] **Watchers / "CC"** — add/remove multiple users who follow a ticket (`TicketWatcher`); they'll receive notifications once Phase 4 lands
 - [ ] **Activity timeline** — record + show status changes, assignment, watcher and sprint moves (`TicketActivity`); shown as a timeline tab in the drawer
 - [ ] **Completion progress bar** — done/total as a progress bar on the sprint header and the project header (and per-column counts on the board)
 - [ ] **UI/UX polish** — clean, smooth, lightly creative per the UX direction above (drag motion, transitions, empty states)
@@ -49,7 +49,7 @@ _Real-time / notifications_
 - [ ] **Presence** — "who's viewing this board" via WS rooms
 
 _Onboarding_
-- [ ] **Org invite links** (token-based; copy-link now, emailed in Phase 5)
+- [ ] **Org invite links** (token-based; copy-link now, emailed in Phase 4)
 
 _API quality_
 - [ ] **Pagination convention** (cursor/limit) on all list endpoints
@@ -127,9 +127,9 @@ A 7-dimension review of this plan + the Phase-1 code surfaced these. They are se
 - **Board ordering:** `position` = midpoint between neighbours on move (append = max+step); document a rebalance when the gap collapses; every board/list query appends `id` as the final tiebreaker. (Keep `Float`; revisit LexoRank only if precision bites.)
 - **Cursor pagination is total:** ORDER BY ends with `id`; cursor encodes the `(sortKey…, id)` tuple; keyset predicate `(sortVal,id) > (cursorSortVal,cursorId)`; add covering indexes.
 - **`onDelete` + Label relation** (see [03](../references/03-data-models.md)): `Label` gets an `organization` relation (cascade); `Ticket.assignedTo`→`SetNull`, `TicketActivity.actor`→`SetNull`, `Notification.ticket`→`Cascade`, `OrgInvite.invitedBy`→`Cascade`, `Ticket.createdBy`→`Restrict` (block user delete).
-- **Agent enums stay, relations don't:** the Phase-2 schema keeps `AgentType`/`AgentPhase` enums + the ticket agent **scalar** columns (nullable); it omits the `agentActions`/`Approval` **relations + tables** (Phase 4). Phase-2 ticket include set = `{ project, sprint, labels, assignedTo, watchers, activity, comments }` (no `agentActions`).
+- **Agent enums stay, relations don't:** the Phase-2 schema keeps `AgentType`/`AgentPhase` enums + the ticket agent **scalar** columns (nullable); it omits the `agentActions`/`Approval` **relations + tables** (Phase 5). Phase-2 ticket include set = `{ project, sprint, labels, assignedTo, watchers, activity, comments }` (no `agentActions`).
 - **Notification-writer ownership:** in Phase 2 (single API instance) the API writes `Notification` rows and fans out. For multi-instance (Phase 3 scale) move the writer to the worker or add a dedupe unique key.
-- **Schema header:** Phase-2 schema keeps the Phase-1 generator/datasource header — **no managed `extensions`/pgvector** (defer to Phase 4).
+- **Schema header:** Phase-2 schema keeps the Phase-1 generator/datasource header — **no managed `extensions`/pgvector** (defer to Phase 5).
 
 **Real-time**
 - **Self-echo dedupe:** every event payload carries `actorId`; the client ignores events where `actorId === me` for its own optimistic mutations (or the server skips the originating socket). **Board events carry only `projectId`; `notification.new` only `userId`** (no double-delivery).
@@ -175,7 +175,7 @@ interface CreateTicketBody {
   type?: 'FEATURE' | 'BUG' | 'CHORE' | 'SPIKE'       // default: FEATURE
   storyPoints?: number
   assignedToId?: string
-  assignedAgentType?: 'CODE' | 'SPEC'   // honored from Phase 4
+  assignedAgentType?: 'CODE' | 'SPEC'   // honored from Phase 5
   labelIds?: string[]
   dependsOnIds?: string[]
   parentId?: string
@@ -196,7 +196,7 @@ interface CreateTicketResponse {
 }
 ```
 
-> The `goal`, `acceptanceCriteria`, and `constraints` fields are the structured inputs the Code Agent consumes in Phase 4 — capture them well now even though nothing reads them yet.
+> The `goal`, `acceptanceCriteria`, and `constraints` fields are the structured inputs the Code Agent consumes in Phase 5 — capture them well now even though nothing reads them yet.
 
 ---
 
@@ -204,7 +204,7 @@ interface CreateTicketResponse {
 
 **Assignee (single)** — set via `assignedToId` on create or `PATCH /api/tickets/:id`. The assignee must be a member of the ticket's org (validated). Changing it writes a `TicketActivity` row and emits `ticket.updated`.
 
-**Watchers / CC (many)** — a `TicketWatcher` join (`ticketId` × `userId`). The creator and assignee are auto-added; anyone can add others (org members). Watchers receive notifications once Phase 5 lands.
+**Watchers / CC (many)** — a `TicketWatcher` join (`ticketId` × `userId`). The creator and assignee are auto-added; anyone can add others (org members). Watchers receive notifications once Phase 4 lands.
 ```
 POST   /api/tickets/:id/watchers      { userId }   add a watcher (CC)
 DELETE /api/tickets/:id/watchers/:userId           remove
@@ -370,7 +370,7 @@ type WSEventType =
   | 'presence.state'                       // current viewers of a board
 ```
 
-> Ticket CRUD handlers in this phase call `publishEvent('ticket.created' | 'ticket.updated' | 'ticket.deleted', { ..., projectId })`. The `agent.*` and `approval.*` events are emitted starting in Phase 4.
+> Ticket CRUD handlers in this phase call `publishEvent('ticket.created' | 'ticket.updated' | 'ticket.deleted', { ..., projectId })`. The `agent.*` and `approval.*` events are emitted starting in Phase 5.
 
 ### Rooms: project + per-user (added round 2)
 
@@ -400,11 +400,11 @@ File: `apps/web/src/routes/project/BoardPage.tsx`
  * - JIRA-style quick status change on the card (dropdown) in addition to drag
  * - Real-time updates via WebSocket
  * - Ticket card: number (AGP-42), title, priority, assignee avatar, label chips,
- *   watcher count; agent badge (Phase 4), PR link (Phase 4)
+ *   watcher count; agent badge (Phase 5), PR link (Phase 5)
  * - Per-column counts; project completion progress bar in the board header
  * - Click ticket → slide-in drawer with full detail
- * - "Assign to agent" button (Phase 4)
- * - Agent activity feed sidebar (Phase 4)
+ * - "Assign to agent" button (Phase 5)
+ * - Agent activity feed sidebar (Phase 5)
  *
  * Libraries: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities
  * State: React Query for tickets, WebSocket for real-time updates
@@ -420,10 +420,10 @@ File: `apps/web/src/routes/project/BoardPage.tsx`
  * 1. Header: title (editable inline), ticket number, status (quick-change dropdown), priority
  * 2. Description (markdown — styled textarea + render; rich editor optional later)
  * 3. Acceptance Criteria (structured text area)
- * 4. Agent Assignment panel        (wired in Phase 4)
- * 5. Agent Action Log              (Phase 4)
- * 6. Approval Gate                 (Phase 4)
- * 7. PR Link                       (Phase 4)
+ * 4. Agent Assignment panel        (wired in Phase 5)
+ * 5. Agent Action Log              (Phase 5)
+ * 6. Approval Gate                 (Phase 5)
+ * 7. PR Link                       (Phase 5)
  * 8. Tabs: Comments | Activity timeline (status/assignee/watcher/sprint changes)
  * 9. Metadata sidebar: assignee (picker), watchers/CC (add/remove chips),
  *    sprint, labels, story points, dates
@@ -491,7 +491,7 @@ export function useProjectWebSocket(
 
 ## Onboarding: org invite links
 
-Adding a member by email (Phase 1/PM-core) only works if they've already signed up. Invite links fix onboarding without depending on email (which arrives in Phase 5).
+Adding a member by email (Phase 1/PM-core) only works if they've already signed up. Invite links fix onboarding without depending on email (which arrives in Phase 4).
 
 - `OrgInvite` model: `{ id, orgId, email?, role, token (random, unique), invitedById, expiresAt, acceptedAt? }`.
 ```
@@ -500,7 +500,7 @@ GET    /api/orgs/:slug/invites         list pending invites                     
 DELETE /api/orgs/:slug/invites/:id     revoke                                        (ADMIN+)
 POST   /api/invites/:token/accept      accept (current Keycloak user joins the org)
 ```
-Flow now: admin creates invite → **copies the link** → recipient signs in/up via Keycloak → hits `/invite/:token` → `accept` adds them as an `OrgMember` with the invite's role. In Phase 5 the same invite is *emailed*; nothing else changes.
+Flow now: admin creates invite → **copies the link** → recipient signs in/up via Keycloak → hits `/invite/:token` → `accept` adds them as an `OrgMember` with the invite's role. In Phase 4 the same invite is *emailed*; nothing else changes.
 
 ## Search, filter, sort & pagination
 
@@ -511,11 +511,11 @@ Flow now: admin creates invite → **copies the link** → recipient signs in/up
 
 ## In-app notifications (bell)
 
-Pulls the **in-app slice** of notifications forward to Phase 2 (email/Slack/WhatsApp stay Phase 5). Uses the existing `Notification` model with `channel = IN_APP`.
+Pulls the **in-app slice** of notifications forward to Phase 2 (email/Slack/WhatsApp stay Phase 4). Uses the existing `Notification` model with `channel = IN_APP`.
 
 - A small **notification service** subscribes to ticket events and, for each, resolves recipients and writes `Notification` rows + publishes `notification.new` to each recipient's `user:{userId}` room.
 - **Who gets notified:** the ticket's **assignee**, **creator**, **watchers/CC**, and any **`@mentioned`** users — minus the actor themselves.
-- **Triggers (Phase 2):** assigned to you, commented / `@mention`, status changed, added as watcher, ticket in your sprint moved. (Agent events join in Phase 4.)
+- **Triggers (Phase 2):** assigned to you, commented / `@mention`, status changed, added as watcher, ticket in your sprint moved. (Agent events join in Phase 5.)
 ```
 GET    /api/notifications?limit=&cursor=   list (most recent first)
 GET    /api/notifications/unread-count

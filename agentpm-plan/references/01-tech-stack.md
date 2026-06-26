@@ -32,8 +32,8 @@
 
 Auth is delegated to a self-hosted **Keycloak** instance rather than hand-rolled in the API. This adds one service to run from day one, but buys: self-service signup, social login (Google, Microsoft, GitHub) with no per-provider code, and a clean upgrade path to enterprise SAML/OIDC SSO. Two consequences worth internalizing:
 
-- **Login identity ≠ GitHub repo access.** Keycloak handles *who you are* (sign in/up via Google/Microsoft/GitHub/email). The **GitHub App installation** for repo read/write by the Code Agent (Phase 4) is a *separate* connection a user makes per project. A user can sign up with Google and use the board immediately; they only need GitHub when assigning the Code Agent.
-- **Open signup needs a cost guard.** Because anyone can self-register and agent runs cost real Anthropic spend, agent execution must be gated behind a verified org with trial limits or billing (see [09-cost-estimates.md](09-cost-estimates.md)). This is a product constraint, enforced before the Code Agent ships (Phase 4).
+- **Login identity ≠ GitHub repo access.** Keycloak handles *who you are* (sign in/up via Google/Microsoft/GitHub/email). The **GitHub App installation** for repo read/write by the Code Agent (Phase 5) is a *separate* connection a user makes per project. A user can sign up with Google and use the board immediately; they only need GitHub when assigning the Code Agent.
+- **Open signup needs a cost guard.** Because anyone can self-register and agent runs cost real Anthropic spend, agent execution must be gated behind a verified org with trial limits or billing (see [09-cost-estimates.md](09-cost-estimates.md)). This is a product constraint, enforced before the Code Agent ships (Phase 5).
 
 ## Core architecture principles
 

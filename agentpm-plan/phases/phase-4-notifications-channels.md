@@ -1,8 +1,8 @@
-# Phase 5 — Notifications & Communication Channels
+# Phase 4 — Notifications & Communication Channels
 
 > **Goal:** Close the loop with humans. Start with email (AWS SES) driven by the event bus, then add two-way WhatsApp and Slack. Notification workers subscribe to events and fan out to channels — no coupling to board logic.
 
-**Depends on:** Phase 2 (event bus), Phase 4 (agent events to notify about).
+**Depends on:** Phase 2 (event bus), Phase 5 (agent events to notify about).
 
 **References:**
 - [03-data-models.md](../references/03-data-models.md) — adds `Notification`; uses `Integration`
@@ -13,7 +13,7 @@
 
 ## Deliverables
 
-### Email (MVP — ships with Phase 4's first agent runs)
+### Email (MVP — ships with Phase 5's first agent runs)
 - [ ] Email notifications via AWS SES
 - [ ] Notification queue worker (subscribes to event bus, reads user prefs + channel config, sends, logs `Notification`)
 - [ ] Sprint digest scheduling (daily cron via BullMQ)

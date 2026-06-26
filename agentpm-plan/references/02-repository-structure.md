@@ -123,7 +123,7 @@ agentpm/
 │   └── notification-workers/       # Standalone notification consumers
 │       ├── email.worker.ts
 │       ├── slack.worker.ts
-│       └── whatsapp.worker.ts      # Phase 5
+│       └── whatsapp.worker.ts      # Phase 4
 │
 ├── infra/                          # AWS CDK v2
 │   ├── bin/

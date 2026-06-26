@@ -193,7 +193,7 @@ CMD ["node", "dist/index.js"]
 
 Why the split: the **build** stage installs *all* deps (TypeScript/turbo/prisma CLI) to compile and generate the client; the **runner** ships only production deps + the build output. Two things the slim image must still contain for `docker compose run --rm api pnpm prisma migrate deploy` to work: the **Prisma CLI** (kept in `dependencies`, not dev) and the **`prisma/` migrations folder** (copied above).
 
-The **web** Dockerfile (nginx) and all three Compose files live in [12-docker-and-deployment.md](../references/12-docker-and-deployment.md). The **agent worker** (Phase 4) reuses this same API image with `command: ["node", "dist/worker.js"]`.
+The **web** Dockerfile (nginx) and all three Compose files live in [12-docker-and-deployment.md](../references/12-docker-and-deployment.md). The **agent worker** (Phase 5) reuses this same API image with `command: ["node", "dist/worker.js"]`.
 
 ## Definition of Done (primary path)
 
@@ -435,7 +435,7 @@ export class ComputeStack extends cdk.Stack {
     //   const s = api.autoScaleTaskCount({ maxCapacity: 10 })
     //   s.scaleOnCpuUtilization('CpuScale', { targetUtilizationPercent: 70 })
 
-    // ── Agent Worker (Phase 4) ────────────────────────────
+    // ── Agent Worker (Phase 5) ────────────────────────────
     // A separate Fargate service (no ALB target — it only consumes the BullMQ
     // queue), reusing the agentpm-api image with `command: ["node","dist/worker.js"]`
     // and the same DATABASE_URL/REDIS_URL/ANTHROPIC/GITHUB secrets. Defined in phase-4.

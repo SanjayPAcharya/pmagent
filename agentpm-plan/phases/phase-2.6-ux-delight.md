@@ -2,7 +2,7 @@
 
 > **Status: DRAFT — not started.** A creative pass that turns the working PM core (Phase 2 + 2F + 2.5) into something with a distinct point of view: **agent-first** project management. Most items build on primitives we already have — the Redis event bus + WS rooms, presence, the structured ticket schema (`goal`/`acceptanceCriteria`/`constraints`), the command palette, optimistic-update rollback state, completion counts — so they're high-impact for low effort.
 >
-> Effort: **S** ≈ <1h · **M** ≈ 1–3h · **L** ≈ half-day+. "Backend" = needs new/changed API; otherwise pure web. "Phase 4-dep" = the *action* lights up when the Code/Spec agent lands, but the UI ships now.
+> Effort: **S** ≈ <1h · **M** ≈ 1–3h · **L** ≈ half-day+. "Backend" = needs new/changed API; otherwise pure web. "Phase 5-dep" = the *action* lights up when the Code/Spec agent lands, but the UI ships now.
 
 ## Why 2.6 exists
 Phase 2.5 hardened the UX (theme, i18n, mobile, ⌘K, a11y). 2.6 gives it personality and leans into the differentiator from the landing tagline — *AI-agent-first project management* — while the surrounding work (board/drawer/realtime) is fresh. Ship selectively; this is a delight backlog, not a gate.
@@ -11,18 +11,18 @@ Phase 2.5 hardened the UX (theme, i18n, mobile, ⌘K, a11y). 2.6 gives it person
 
 ## Group A — Agent-first signatures (the differentiator)
 
-> **A2–A4 moved to [Phase 2.7](phase-2.7-agent-first.md)** (2026-06-25) — they imply an actual Code/Spec agent, so they're parked for discussion alongside Phase 4. **A1 stayed here** and shipped in Slice 1 (pure derived UI, no agent dependency).
+> **A2–A4 moved to [Phase 2.7](phase-2.7-agent-first.md)** (2026-06-25) — they imply an actual Code/Spec agent, so they're parked for discussion alongside Phase 5. **A1 stayed here** and shipped in Slice 1 (pure derived UI, no agent dependency).
 
 ### A1. Ticket "readiness meter" — **S**, no backend
 A small ring/badge on each card + drawer showing how agent-ready a ticket is, derived from how much of `goal` / `acceptanceCriteria` / `constraints` is filled. Empty AC → amber, all present → green. Nudges authors toward tickets an agent can actually pick up. Pure derived UI over existing fields.
 
-### A2. `@agent` as a first-class mention — **M**, Phase 4-dep
-Add CODE/SPEC agents to the existing @mention picker (and assignee picker). Mentioning `@code` / assigning an agent is wired in the UI now; the trigger fires once Phase 4 lands. Reuses `assignedAgentType` (already on the schema) + the mention flow.
+### A2. `@agent` as a first-class mention — **M**, Phase 5-dep
+Add CODE/SPEC agents to the existing @mention picker (and assignee picker). Mentioning `@code` / assigning an agent is wired in the UI now; the trigger fires once Phase 5 lands. Reuses `assignedAgentType` (already on the schema) + the mention flow.
 
-### A3. "Draft with agent" skeleton — **M**, Phase 4-dep
-A subtle button in the drawer that asks an agent to expand a one-line title into `goal` + `acceptanceCriteria` + `constraints`, streamed in as editable placeholder text. Stub the action until Phase 4; design the affordance now.
+### A3. "Draft with agent" skeleton — **M**, Phase 5-dep
+A subtle button in the drawer that asks an agent to expand a one-line title into `goal` + `acceptanceCriteria` + `constraints`, streamed in as editable placeholder text. Stub the action until Phase 5; design the affordance now.
 
-### A4. Agent swimlane / badge on the board — **S–M**, Phase 4-dep
+### A4. Agent swimlane / badge on the board — **S–M**, Phase 5-dep
 A faint "🤖 in progress by agent" treatment (badge now, optional swimlane later) so human vs. agent work reads at a glance. Fed by the same `ticket.updated` WS event + the agent scalar columns.
 
 ---
@@ -131,7 +131,7 @@ Empty members list leads with the copyable invite link (Members page already bui
 1. **Quick wins, no backend:** E2 Undo · A1 readiness meter · G1 confetti · G3 skeletons · G4 `?` overlay · C4 relative time · B4 focus mode.
 2. **Palette power:** D1 action surface · D2 frecency · D3 natural create.
 3. **Realtime flair:** E1 ticket presence · B1 ghost drag.
-4. **Agent-first (design now, wire in Phase 4):** A1→A2→A3→A4.
+4. **Agent-first (design now, wire in Phase 5):** A1→A2→A3→A4.
 5. **Bigger / backend:** C2 AC checklist · F1 burndown · G2 org accent · E3 grouping.
 
 ## Done-when (per shipped item)

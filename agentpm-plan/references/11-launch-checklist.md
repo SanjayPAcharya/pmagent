@@ -1,6 +1,6 @@
 # Reference: Launch Checklist & Ongoing Operations
 
-> Stable reference. Run the pre-launch list before the first real user (after Phase 4, when the MVP is feature-complete). Source: §18 of the original plan.
+> Stable reference. Run the pre-launch list before the first real user (after Phase 5, when the MVP is feature-complete). Source: §18 of the original plan.
 
 ## Pre-launch (before first user)
 

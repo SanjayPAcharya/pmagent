@@ -85,7 +85,7 @@ Sentry.init({
   integrations: [ new Sentry.Integrations.Prisma({ client: prisma }) ]
 })
 
-// Capture agent failures (Phase 4+)
+// Capture agent failures (Phase 5+)
 try {
   await runCodeAgent(payload)
 } catch (error) {

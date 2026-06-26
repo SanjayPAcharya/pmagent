@@ -65,7 +65,7 @@ describe('WS /ws', () => {
   it('delivers notification.new({userId}) only to that user\'s room')
 })
 
-// Agent assignment + concurrency (Phase 4)
+// Agent assignment + concurrency (Phase 5)
 describe('POST /api/tickets/:id/assign-agent', () => {
   it('enqueues BullMQ job with correct payload')
   it('updates ticket status to IN_PROGRESS and sets agentRunId')
@@ -84,7 +84,7 @@ describe('POST /api/tickets/:id/approve', () => {
   it('enforces prod deploy always requires human (even at autonomy level 2)')
 })
 
-// Code Agent (Phase 4)
+// Code Agent (Phase 5)
 describe('Code Agent - repo reader', () => {
   it('always includes README and package.json')
   it('scores files with matching keywords higher')

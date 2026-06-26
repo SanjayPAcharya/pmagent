@@ -1,4 +1,4 @@
-# Phase 4 — Third-Party Integration: GitHub App + Code Agent
+# Phase 5 — Third-Party Integration: GitHub App + Code Agent
 
 > **Goal:** The first AI agent. Connect a project to a GitHub repository via a GitHub App, then let a user assign a ticket to the **Code Agent**, which reads the repo, generates an implementation with the Anthropic API, opens a PR, and links it back to the ticket. Includes the job queue, the in-process worker, the approval gate, and PR-level rollback.
 
@@ -35,7 +35,7 @@
 
 Each agent is a self-contained, stateless async function (e.g. `runCodeAgent(payload)`) — all state lives in PostgreSQL. It takes a job payload, executes, logs every step, and returns.
 
-**Phase 4 execution:** agents run **in-process inside the BullMQ worker**. The worker pulls a job and calls the agent function directly — one long-lived worker process handles all runs, no per-run containers.
+**Phase 5 execution:** agents run **in-process inside the BullMQ worker**. The worker pulls a job and calls the agent function directly — one long-lived worker process handles all runs, no per-run containers.
 
 **Migration path (later):** because the agent is a pure function decoupled from how it's invoked, it can move into an isolated per-run ECS Fargate task (the container entrypoint calls the same function) without changing the agent logic. That isolation is introduced in Phase 6 alongside the QA Agent, which executes generated code.
 
@@ -479,7 +479,7 @@ start().catch((err) => { console.error('Agent worker failed to start:', err); pr
 
 **Deployment:** the worker is a separate long-lived process. Define the `AgentWorkerService` (`ecs.FargateService`) reserved in [phase-3](phase-3-dev-deployment-cicd.md)'s compute stack — it reuses the API image with `command: ['node', 'dist/worker.js']`, runs in a public subnet (no NAT) so it can reach Anthropic + GitHub, has no load balancer, and gets the `DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`, `GITHUB_APP_PRIVATE_KEY` secrets. For the earliest MVP it may be folded into the API container to save ~$36/mo (see [09-cost-estimates.md](../references/09-cost-estimates.md)).
 
-**Job lifecycle:** API enqueues + sets `IN_PROGRESS` → `QueueEvents` emits `agent.started` (WS) → worker runs `runCodeAgent()` → agent writes `AgentAction` + updates ticket (`IN_REVIEW`+PR on success, `BLOCKED` on failure) → `QueueEvents` emits `agent.completed`/`agent.failed` (WS) → notification workers fan out (Phase 5).
+**Job lifecycle:** API enqueues + sets `IN_PROGRESS` → `QueueEvents` emits `agent.started` (WS) → worker runs `runCodeAgent()` → agent writes `AgentAction` + updates ticket (`IN_REVIEW`+PR on success, `BLOCKED` on failure) → `QueueEvents` emits `agent.completed`/`agent.failed` (WS) → notification workers fan out (Phase 4).
 
 ---
 

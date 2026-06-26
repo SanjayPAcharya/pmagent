@@ -25,7 +25,7 @@
                                    │  DBs: agentpm,        │   └──────────────────────┘
                                    │       keycloak       │
                                    └──────────────────────┘
-        worker (reuses api image; consumes BullMQ — Phase 4) also on the VM
+        worker (reuses api image; consumes BullMQ — Phase 5) also on the VM
 ```
 
 ### Local dev — everything in containers
@@ -44,7 +44,7 @@
 Multi-stage Node build (see [phase-3](../phases/phase-3-dev-deployment-cicd.md) for the full file). `CMD ["node", "dist/index.js"]`.
 
 ### Agent worker — no separate image
-Reuses the API image with the command overridden to `node dist/worker.js` (wired in [phase-4](../phases/phase-4-github-code-agent.md)).
+Reuses the API image with the command overridden to `node dist/worker.js` (wired in [phase-5](../phases/phase-5-github-code-agent.md)).
 
 ### Web (frontend) — `apps/web/Dockerfile`
 The SPA is built, then served by nginx. This replaces the old S3+CloudFront hosting so dev and prod serve the frontend identically.
@@ -201,7 +201,7 @@ services:
       REDIS_URL: ${REDIS_URL}              # selfhost: container; managed: ElastiCache
       KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
       KEYCLOAK_API_AUDIENCE: agentpm-api
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}      # used from Phase 4
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}      # used from Phase 5
 
   web:
     image: ${REGISTRY:-ghcr.io/yourorg}/agentpm-web:${IMAGE_TAG:-dev}
@@ -244,7 +244,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # worker: enabled from Phase 4 (reuses the api image; same DATABASE_URL/REDIS_URL)
+  # worker: enabled from Phase 5 (reuses the api image; same DATABASE_URL/REDIS_URL)
 
 volumes:
   postgres_data:
@@ -350,7 +350,7 @@ services:
       KC_PROXY_HEADERS: xforwarded
   api:      { restart: unless-stopped }
   web:      { restart: unless-stopped }
-  # worker (Phase 4): { restart: unless-stopped }
+  # worker (Phase 5): { restart: unless-stopped }
 
   # Only created when --profile selfhost-data is active; ignored in managed mode.
   postgres: { restart: unless-stopped }

@@ -2,7 +2,7 @@
 
 > **Goal:** Complete the agent lifecycle from idea to deployed feature. Add the Spec, QA, Deploy, and Observability agents, introduce per-run container isolation, and build the graduated autonomy dial that governs which phase transitions need a human.
 
-**Depends on:** Phase 4 (Code Agent, queue, worker, approval gate), Phase 5 (notifications), Phase 3 (infra to extend for isolation + deploys).
+**Depends on:** Phase 5 (Code Agent, queue, worker, approval gate), Phase 4 (notifications), Phase 3 (infra to extend for isolation + deploys).
 
 > This maps to the original plan's **Phase 2 — Full Agent Suite** (Weeks 7–18).
 
@@ -55,14 +55,14 @@
 
 ## Agent isolation (graduates from in-process)
 
-The QA Agent executes generated code, so it needs hard sandboxing. This is where the worker's in-process dispatch (Phase 4) is replaced with an **ECS `runTask` per run** — each agent run gets its own Fargate task with no shared filesystem. Because every agent is a pure function decoupled from invocation, the agent code itself does not change; only the worker's dispatch does. Update the network/compute stacks ([phase-3](phase-3-dev-deployment-cicd.md)) to grant agent tasks their own security group (already reserved as `AgentSG`) and minimal IAM.
+The QA Agent executes generated code, so it needs hard sandboxing. This is where the worker's in-process dispatch (Phase 5) is replaced with an **ECS `runTask` per run** — each agent run gets its own Fargate task with no shared filesystem. Because every agent is a pure function decoupled from invocation, the agent code itself does not change; only the worker's dispatch does. Update the network/compute stacks ([phase-3](phase-3-dev-deployment-cicd.md)) to grant agent tasks their own security group (already reserved as `AgentSG`) and minimal IAM.
 
 ## Autonomy dial semantics
 
 `AutonomySettings` (per project) stores a level per phase: `0` = human approves, `1` = auto after N confirmed examples, `2` = fully auto. **`prodDeployLevel` is hard-capped at 1 — production always requires a human, enforced server-side and not configurable** (see [06-security-checklist.md](../references/06-security-checklist.md)).
 
 - Every phase transition checks the project's autonomy level **server-side**. Frontend cannot bypass; agents cannot self-promote past a gate.
-- When a gate requires a human, an `Approval` record is created and a notification fires ([phase-5](phase-5-notifications-channels.md)).
+- When a gate requires a human, an `Approval` record is created and a notification fires ([phase-4](phase-4-notifications-channels.md)).
 - Auto-approval at level 1 kicks in only after N confirmed human approvals of the same phase/agent, and every autonomy decision is written to an audit log.
 
 `AgentPhase` order: `SPEC → BUILD → REVIEW → TEST → STAGING → CANARY → PRODUCTION`. Each agent advances the ticket through these phases, gated by the dial.

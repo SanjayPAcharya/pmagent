@@ -14,9 +14,10 @@
 
 ## Now / Next / Blocked
 
-- **Current phase:** Phase 2.6 — UX Delight (non-agent items COMPLETE) · Phase 2.7 agent-first parked
-- **Now:** ✅ **Phase 2.6 — all non-agent items COMPLETE (25/25; A2–A4 parked in [2.7](agentpm-plan/phases/phase-2.7-agent-first.md)) and browser-verified.** Verified live in Chrome (single user): G2 theme `t` + per-org accent, C2 AC checkboxes (toggle persists), F2 drag-into-sprint, F1 burndown, plus Slices 1–3. **Realtime trio verified two-user** (2nd user in incognito): **E1** presence avatar, **B1** ghost-drag, **E3** notification grouping all confirmed working cross-session. **35 API tests green**; migration `20260625000000_org_accent` applied. Only-not-eyeballed (minor, build/test-verified): B3 mobile swipe, B5 (needs stale tickets), H2 (needs single-member org). B2 WIP pulse, B5 time-decay border, C1 story timeline, C3 slash commands, F3 capacity bar, H1 guided first ticket, H2 invite nudge. typecheck + build green. Browser-verified: C3 (`/status done` ran), C1 (merged story tab), B2 (N/limit badges), H1 (empty-board starter → create+open). B5/F3/H2 build+logic verified (need old tickets / story points / single-member org to display). **17 / 28 Phase-2.6 items now done.** Prior: **Slice 2 shipped + browser-verified (command-palette power):** D1 full action surface (open-ticket sub-pages: status/assign/sprint/label + global theme toggle — verified status change patches + closes), D2 frecency Recent (verified EMPL-4 surfaced after visit), D3 natural quick-create (verified "…!high @adish #sprint2" → created EMPL-4 with HIGH/Adish/Sprint 2). typecheck + build green. Prior: **Slice 1 shipped + browser-verified (7 quick wins, web-only):** A1 readiness ring (card + drawer ring updated 1/3→2/3 on save; goal/constraints now editable), E2 toast→Undo (verified: priority LOW→Undo reverted to HIGH via DOM observer), G1 done-confetti (verified: canvas injected on →DONE transition, reduced-motion aware), G3 layout-matched board skeleton (build-verified; load window sub-second), G4 `?` keyboard-help overlay (verified open), C4 relative time (verified "18h ago" + exact `title` on hover, drawer + bell), B4 focus mode (verified: non-mine cards dim, toggle + `f`). typecheck + build green; verified in Chrome against the live stack. (Phase 2 + 2F + 2.5 complete; **35 API tests** green.) **Bonus:** 2F C9 silent-SSO restore confirmed working on fresh tab. **Fix:** `cn` import in Board landed via a separate edit after the JSX edit — Vite served a stale transform (macOS bind-mount missed the change); `docker compose restart web` flushed it. See [[vite-stale-transform-restart-web]].
-- **Next:** **Phase 3 — deployment + CI/CD**, or **Phase 2.7** discussion (agent-first A2–A4). Optional: a 2-user pass to eyeball E1/B1/E3 realtime; `docker compose build web` to bake new deps into a clean image. Test data left in `Infinity/Employee Tracker` (EMPL-1 AC checklist, EMPL-5 drag-test ticket). Optional housekeeping: `docker compose build web` once convenient (bakes in cmdk/i18n/playwright deps), run `pnpm --filter @agentpm/web test:e2e` locally, and browser-verify Slice 1 + the pending 2F items (C9/C10/mention).
+- **Current phase:** Phase 3 — Containerized Deployment + CI/CD (next up). Phases 1 · 2 · 2F · 2.5 · 2.6 all ✅ complete.
+- **Now:** ✅ **Phase 2.6 complete & browser-verified** — all 25 non-agent items across 6 slices (single-user verified in Chrome; realtime **E1/B1/E3** verified two-user via incognito). **35 API tests green**; migration `20260625000000_org_accent` applied. Minor build-only-verified: B3 mobile swipe, B5 (needs stale tickets), H2 (single-member org).
+- **Decision (2026-06-25):** **all agent-related work is sequenced AFTER Phase 3.** Ship deployment/CI-CD first, then the agent block: agent-first UI (ex-[2.7](agentpm-plan/phases/phase-2.7-agent-first.md): A2/A3/A4) folds into **Phase 5** (Code Agent), followed by Phases 6–7. So nothing agent-shaped happens until the product is deployable.
+- **Next:** **Phase 3 — deployment + CI/CD** (`docker-compose.prod.yml` + Caddy + Makefile, managed RDS/ElastiCache, VM+DNS, GitHub Actions CI/CD, staging deploy). Optional housekeeping first: `docker compose build web` to bake new deps (cmdk/i18n/playwright) into a clean image; clean up test data in `Infinity/Employee Tracker` (EMPL-1 AC checklist, EMPL-5 drag-test ticket).
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -109,11 +110,11 @@ _Group C — polish / pre-existing:_
 ---
 
 ## Phase 2.6 — UX Delight & Agent-First Polish → [draft](agentpm-plan/phases/phase-2.6-ux-delight.md)
-**Status:** 🟢 **Slice 1 shipped (7 items)** — quick-win delight pass, web-only, typecheck/build green; **in-browser verification pending**. Remaining groups build selectively (not a gate). "Phase 4-dep" = UI now, action when the agent lands.
+**Status:** 🟢 **Slice 1 shipped (7 items)** — quick-win delight pass, web-only, typecheck/build green; **in-browser verification pending**. Remaining groups build selectively (not a gate). "Phase 5-dep" = UI now, action when the agent lands.
 
 _A — Agent-first signatures:_
 - [x] **A1** Ticket "readiness meter" (goal/AC/constraints fill → ring) — S _(ring on card + drawer; drawer now edits goal/constraints too)_
-- → **A2, A3, A4 moved to [Phase 2.7](agentpm-plan/phases/phase-2.7-agent-first.md)** (parked for discussion; imply an actual agent, wire with Phase 4)
+- → **A2, A3, A4 moved to [Phase 2.7](agentpm-plan/phases/phase-2.7-agent-first.md)** (parked for discussion; imply an actual agent, wire with Phase 5)
 
 _B — Board:_
 - [x] **B1** Live "ghost drag" via presence/WS — M _(ephemeral `ticket.drag` relay → faint ghost card w/ dragger avatar in target column — build+test verified)_
@@ -157,11 +158,11 @@ _H — Onboarding / empty states:_
 
 ---
 
-## Phase 2.7 — Agent-First Surfaces (PARKED) → [doc](agentpm-plan/phases/phase-2.7-agent-first.md)
-**Status:** ⏸️ **parked for discussion** — split out of 2.6 on 2026-06-25. UI can ship pre-agent but the *action* needs Phase 4, so we'll decide the agent UX deliberately rather than stub it.
-- [ ] **A2** `@agent` first-class in mention/assignee pickers — M, Phase 4-dep
-- [ ] **A3** "Draft with agent" goal/AC/constraints skeleton — M, Phase 4-dep
-- [ ] **A4** Agent swimlane/badge on the board — S–M, Phase 4-dep
+## Phase 2.7 — Agent-First Surfaces → [doc](agentpm-plan/phases/phase-2.7-agent-first.md)
+**Status:** ⏸️ **deferred to AFTER Phase 3 — folds into Phase 5.** Per the 2026-06-25 sequencing decision, all agent work waits until deployment/CI-CD (Phase 3) is done; the UI can ship pre-agent but the *action* needs Phase 5, so these land with it. (Kept numbered 2.7 for history; sequenced in the agent block, not before Phase 3.)
+- [ ] **A2** `@agent` first-class in mention/assignee pickers — M, Phase 5-dep
+- [ ] **A3** "Draft with agent" goal/AC/constraints skeleton — M, Phase 5-dep
+- [ ] **A4** Agent swimlane/badge on the board — S–M, Phase 5-dep
 
 ---
 
@@ -176,7 +177,14 @@ _H — Onboarding / empty states:_
 
 ---
 
-## Phase 4 — GitHub Integration + Code Agent → [plan](agentpm-plan/phases/phase-4-github-code-agent.md)
+## Phase 4 — Notifications & Channels → [plan](agentpm-plan/phases/phase-4-notifications-channels.md)
+**Status:** ⬜ not started
+- [ ] Email (SES) + notification worker + sprint digest cron
+- [ ] WhatsApp + Slack two-way (post-MVP)
+
+---
+
+## Phase 5 — GitHub Integration + Code Agent → [plan](agentpm-plan/phases/phase-5-github-code-agent.md)
 **Status:** ⬜ not started
 - [ ] GitHub App + connect flow + webhook receiver
 - [ ] Shared agent utils + repo reader + code generator + PR creator
@@ -184,13 +192,7 @@ _H — Onboarding / empty states:_
 - [ ] AgentAction logging + rollback + approval gate
 - [ ] Frontend: assign agent, activity feed, approval UI, PR link
 - [ ] Trial/billing guard on agent runs (cost control)
-
----
-
-## Phase 5 — Notifications & Channels → [plan](agentpm-plan/phases/phase-5-notifications-channels.md)
-**Status:** ⬜ not started
-- [ ] Email (SES) + notification worker + sprint digest cron
-- [ ] WhatsApp + Slack two-way (post-MVP)
+- [ ] Agent-first UI surfaces (A2/A3/A4 from Phase 2.7)
 
 ---
 
