@@ -38,9 +38,43 @@ services:
         done
         $$kc update realms/master -s sslRequired=NONE
         echo "keycloak-init: dev master realm sslRequired=NONE"
+
+        # ── Phase 2.8.5: social IdPs (create/update from env; skip any w/o creds) ──
+        upsert_idp() {
+          al="$$1"; pid="$$2"; cid="$$3"; sec="$$4"
+          if [ -z "$$cid" ]; then echo "keycloak-init: idp $$al skipped (no client id)"; return; fi
+          if $$kc get identity-provider/instances/$$al -r agentpm >/dev/null 2>&1; then
+            op=update; tgt=identity-provider/instances/$$al
+          else
+            op=create; tgt=identity-provider/instances
+          fi
+          $$kc $$op $$tgt -r agentpm -s alias=$$al -s providerId=$$pid \
+            -s enabled=true -s trustEmail=true -s storeToken=false \
+            -s "config.clientId=$$cid" -s "config.clientSecret=$$sec" -s "config.useJwksUrl=true" \
+            && echo "keycloak-init: idp $$al $$op"
+        }
+        upsert_idp google    google    "$$GOOGLE_CLIENT_ID"    "$$GOOGLE_CLIENT_SECRET"
+        upsert_idp microsoft microsoft "$$MICROSOFT_CLIENT_ID" "$$MICROSOFT_CLIENT_SECRET"
+        upsert_idp github    github    "$$GITHUB_CLIENT_ID"    "$$GITHUB_CLIENT_SECRET"
+
+        # Seamless first social login: disable the "Review Profile" step.
+        rp=$$($$kc get "authentication/flows/first%20broker%20login/executions" -r agentpm \
+              --fields id,displayName --format csv 2>/dev/null | grep -i "review profile" \
+              | head -1 | cut -d, -f1 | tr -d '"\r')
+        if [ -n "$$rp" ]; then
+          $$kc update "authentication/flows/first%20broker%20login/executions" -r agentpm \
+            -b '{"id":"'"$$rp"'","requirement":"DISABLED"}' \
+            && echo "keycloak-init: first-broker-login review-profile disabled"
+        fi
     environment:
       KC_ADMIN: ${KC_ADMIN}
       KC_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
 
   api:
     build:

@@ -15,6 +15,14 @@ export function login() {
   return keycloak.login()
 }
 
+// Phase 2.8.5: social sign-in straight from our page. `idpHint` tells Keycloak to
+// skip its own login screen and broker directly to the provider, so the user never
+// sees a Keycloak page. First-time logins auto-create the account (seamless signup).
+export type SocialIdp = 'google' | 'microsoft' | 'github'
+export function loginWith(idp: SocialIdp) {
+  return keycloak.login({ idpHint: idp })
+}
+
 export function register() {
   return keycloak.register()
 }
