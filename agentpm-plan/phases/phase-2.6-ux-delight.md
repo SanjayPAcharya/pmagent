@@ -1,6 +1,6 @@
 # Phase 2.6 — UX Delight & Agent-First Polish
 
-> **Status: ✅ COMPLETE** — all non-agent items (6 slices) shipped & browser-verified; the agent-implying items A2–A4 were split to [Phase 2.7](phase-2.7-agent-first.md) (parked → land with Phase 5). A creative pass that turns the working PM core (Phase 2 + 2.1 + 2.5) into something with a distinct point of view: **agent-first** project management. Most items build on primitives we already have — the Redis event bus + WS rooms, presence, the structured ticket schema (`goal`/`acceptanceCriteria`/`constraints`), the command palette, optimistic-update rollback state, completion counts — so they're high-impact for low effort.
+> **Status: ✅ COMPLETE** — all non-agent items (6 slices) shipped & browser-verified; the agent-implying items A2–A4 were split to [Phase 5.5](phase-5.5-agent-first.md) (parked → land with Phase 5). A creative pass that turns the working PM core (Phase 2 + 2.1 + 2.5) into something with a distinct point of view: **agent-first** project management. Most items build on primitives we already have — the Redis event bus + WS rooms, presence, the structured ticket schema (`goal`/`acceptanceCriteria`/`constraints`), the command palette, optimistic-update rollback state, completion counts — so they're high-impact for low effort.
 >
 > Effort: **S** ≈ <1h · **M** ≈ 1–3h · **L** ≈ half-day+. "Backend" = needs new/changed API; otherwise pure web. "Phase 5-dep" = the *action* lights up when the Code/Spec agent lands, but the UI ships now.
 
@@ -11,7 +11,7 @@ Phase 2.5 hardened the UX (theme, i18n, mobile, ⌘K, a11y). 2.6 gives it person
 
 ## Group A — Agent-first signatures (the differentiator)
 
-> **A2–A4 moved to [Phase 2.7](phase-2.7-agent-first.md)** (2026-06-25) — they imply an actual Code/Spec agent, so they're parked for discussion alongside Phase 5. **A1 stayed here** and shipped in Slice 1 (pure derived UI, no agent dependency).
+> **A2–A4 moved to [Phase 5.5](phase-5.5-agent-first.md)** (2026-06-25) — they imply an actual Code/Spec agent, so they're parked for discussion alongside Phase 5. **A1 stayed here** and shipped in Slice 1 (pure derived UI, no agent dependency).
 
 ### A1. Ticket "readiness meter" — **S**, no backend
 A small ring/badge on each card + drawer showing how agent-ready a ticket is, derived from how much of `goal` / `acceptanceCriteria` / `constraints` is filled. Empty AC → amber, all present → green. Nudges authors toward tickets an agent can actually pick up. Pure derived UI over existing fields.

@@ -1,6 +1,6 @@
-# Phase 2.7 — Agent-First Surfaces (parked → lands with Phase 5)
+# Phase 5.5 — Agent-First Surfaces (lands with Phase 5)
 
-> **Sequencing (2026-06-25): all agent-related work happens AFTER [Phase 3](phase-3-dev-deployment-cicd.md) (deployment + CI/CD).** These items therefore land with **[Phase 5](phase-5-github-code-agent.md)** (Code Agent), not before Phase 3 — the "2.7" number is kept only for history. Build deployment first; agent surfaces follow.
+> **Sequencing: all agent-related work happens AFTER [Phase 3](phase-3-dev-deployment-cicd.md) (deployment + CI/CD).** These items land **with [Phase 5](phase-5-github-code-agent.md)** (Code Agent) — hence renumbered **5.5** (was "2.7" while it sat parked in the 2.x line). Build deployment first; agent surfaces follow.
 
 > **Status: PARKED — to discuss.** Split out of [Phase 2.6](phase-2.6-ux-delight.md) on 2026-06-25. These are the "agent-first" delight items: their **UI** can ship before the Code/Spec agent exists, but their **action** only lights up once **[Phase 5](phase-5-github-code-agent.md)** lands. Parked here so 2.6 stays pure UX-on-existing-primitives, and so we can decide the agent UX deliberately rather than stubbing it piecemeal.
 >

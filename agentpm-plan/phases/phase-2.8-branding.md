@@ -1,14 +1,14 @@
-# Phase 2.8 — Branding (pmagent)
+# Phase 2.8 — Branding (PMAgent)
 
-> **Status: ⬜ NOT STARTED (plan/draft).** Rename the product's *public face* from "AgentPM" to **pmagent** everywhere a human reads it: the web app (browser title, header wordmark, landing, invite copy), the **Keycloak sign-in page**, and the API docs. **Display/branding only** — internal identifiers (workspace package names, the Keycloak realm id + client ids, DB names, the `agentpm.io` domain) are explicitly out of scope (see Non-goals): they're plumbing, not branding, and renaming them is a separate, riskier effort.
+> **Status: ✅ IMPLEMENTED (2026-06-26).** Wordmark **PMAgent** (camel-case); Keycloak **Tier 2** custom login theme. Renames the product's *public face* from "AgentPM" to **PMAgent** everywhere a human reads it: the web app (browser title, header wordmark, landing, invite copy), the **Keycloak sign-in page**, and the API docs. **Display/branding only** — internal identifiers (workspace package names, the Keycloak realm id + client ids, DB names, the `agentpm.io` domain) are explicitly out of scope (see Non-goals): they're plumbing, not branding, and renaming them is a separate, riskier effort.
 
 ## Goal
-Every user-visible surface says **pmagent** (lowercase wordmark, exactly as requested) — no remaining "AgentPM" text in the UI or on the login screen.
+Every user-visible surface says **PMAgent** (camel-case wordmark) — no remaining "AgentPM" text in the UI or on the login screen.
 
 ## Depends on
 - Phase 2 + 2.1 + 2.5 + 2.6 — the surfaces being rebranded already exist and are stable.
 - **No** new backend, migration, or dependency. Pure text/config.
-- **Sequencing:** runs **before Phase 3 (deploy)** so the first deployed build ships already-branded. Independent of the parked Phase 2.7 agent work.
+- **Sequencing:** runs **before Phase 3 (deploy)** so the first deployed build ships already-branded. Independent of the parked Phase 5.5 agent work.
 
 ## References
 - [01-tech-stack.md](../references/01-tech-stack.md) — Keycloak is the IdP; the API only verifies tokens, so branding the login page is realm config/theme, not app code.
@@ -55,10 +55,10 @@ Leaving these as `agentpm` avoids an invasive, auth-breaking rename. Revisit onl
 - Database names `agentpm` / `agentpm_test`, env-var values, the `agentpm-plan/` folder.
 - The `agentpm.io` domain + `api.` / `auth.` subdomains (a domain decision owned in Phase 3).
 
-## Decision needed
-- **Wordmark casing.** This doc uses the literal **`pmagent`** (all-lowercase, as requested). If the brand should render `PMAgent` / `PM Agent` / `PMAGENT`, it's a one-value change in `app.appName` + `displayNameHtml` — confirm before implementing.
-- **Keycloak Tier 1 vs Tier 2** — text display name now, or a full themed login with a logo.
-- Whether to schedule the identifier rename (Non-goals) as a separate future phase.
+## Decisions (settled 2026-06-26)
+- **Wordmark: `PMAgent`** (camel-case) — set in `common.appName`, `index.html` title, the Swagger title, the favicon, and the Keycloak realm `displayName`/`displayNameHtml`.
+- **Keycloak: Tier 2** — shipped a custom `pmagent` login theme (`infra/keycloak/themes/pmagent/login`: `theme.properties` inheriting the stock `keycloak` theme + `pmagent.css` brand styling + a wordmark `logo.svg`), mounted into the KC container; realm `loginTheme=pmagent`.
+- **Identifiers unchanged** — `@agentpm/*` packages, the realm/client ids, DB names, and `agentpm.io` stay as-is (revisit as a separate phase only if a true rename is ever wanted).
 
 ## Definition of Done
 - No "AgentPM" string remains in any user-facing surface — browser title, app header/landing wordmark, invite copy, Swagger title. (`grep -rI 'AgentPM' apps` surfaces nothing user-facing; the E2E assertion is **updated**, not removed.)

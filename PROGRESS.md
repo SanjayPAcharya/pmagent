@@ -14,10 +14,10 @@
 
 ## Now / Next / Blocked
 
-- **Current phase:** **Phase 2.8 — Branding (pmagent)** next up (a quick display-only rebrand before deploy), then **Phase 3** (deployment + CI/CD). Phases 1 · 2 · 2.1 · 2.5 · 2.6 all ✅ complete. (Phase 2.7 = agent-first UI, parked → lands with Phase 5.)
+- **Current phase:** **Phase 2.8.5 — Auth UX** frontend + plumbing done (social login pending your OAuth app creds); then **Phase 3** (deployment + CI/CD). Phases 1 · 2 · 2.1 · 2.5 · 2.6 · **2.8** all ✅ complete. (Phase 5.5 = agent-first UI, parked → lands with Phase 5.)
 - **Now:** ✅ **Phase 2.6 complete & browser-verified** — all 25 non-agent items across 6 slices (single-user verified in Chrome; realtime **E1/B1/E3** verified two-user via incognito). **35 API tests green**; migration `20260625000000_org_accent` applied. Minor build-only-verified: B3 mobile swipe, B5 (needs stale tickets), H2 (single-member org).
-- **Decision (2026-06-25):** **all agent-related work is sequenced AFTER Phase 3.** Ship deployment/CI-CD first, then the agent block: agent-first UI (ex-[2.7](agentpm-plan/phases/phase-2.7-agent-first.md): A2/A3/A4) folds into **Phase 5** (Code Agent), followed by Phases 6–7. So nothing agent-shaped happens until the product is deployable.
-- **Next:** **Phase 2.8 — branding → pmagent** ([plan](agentpm-plan/phases/phase-2.8-branding.md); display-only, no backend), then **Phase 3 — deployment + CI/CD** (`docker-compose.prod.yml` + Caddy + Makefile, managed RDS/ElastiCache, VM+DNS, GitHub Actions CI/CD, staging deploy). Optional housekeeping first: `docker compose build web` to bake new deps (cmdk/i18n/playwright) into a clean image; clean up test data in `Infinity/Employee Tracker` (EMPL-1 AC checklist, EMPL-5 drag-test ticket).
+- **Decision (2026-06-25):** **all agent-related work is sequenced AFTER Phase 3.** Ship deployment/CI-CD first, then the agent block: agent-first UI ([Phase 5.5](agentpm-plan/phases/phase-5.5-agent-first.md): A2/A3/A4) lands with **Phase 5** (Code Agent), followed by Phases 6–7. So nothing agent-shaped happens until the product is deployable.
+- **Next:** finish **Phase 2.8.5** — register the Google/Azure/GitHub OAuth apps and drop creds into `.env` to light up social login (code is in place); then **Phase 3 — deployment + CI/CD** (`docker-compose.prod.yml` + Caddy + Makefile, managed RDS/ElastiCache, VM+DNS, GitHub Actions CI/CD, staging deploy). Optional housekeeping first: `docker compose build web` to bake new deps (cmdk/i18n/playwright) into a clean image; clean up test data in `Infinity/Employee Tracker` (EMPL-1 AC checklist, EMPL-5 drag-test ticket).
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -112,7 +112,7 @@ _Group C — polish / pre-existing:_
 
 _A — Agent-first signatures:_
 - [x] **A1** Ticket "readiness meter" (goal/AC/constraints fill → ring) — S _(ring on card + drawer; drawer now edits goal/constraints too)_
-- → **A2, A3, A4 moved to [Phase 2.7](agentpm-plan/phases/phase-2.7-agent-first.md)** (parked for discussion; imply an actual agent, wire with Phase 5)
+- → **A2, A3, A4 moved to [Phase 5.5](agentpm-plan/phases/phase-5.5-agent-first.md)** (parked; imply an actual agent, wire with Phase 5)
 
 _B — Board:_
 - [x] **B1** Live "ghost drag" via presence/WS — M _(ephemeral `ticket.drag` relay → faint ghost card w/ dragger avatar in target column — build+test verified)_
@@ -156,13 +156,23 @@ _H — Onboarding / empty states:_
 
 ---
 
-## Phase 2.8 — Branding (pmagent) → [plan](agentpm-plan/phases/phase-2.8-branding.md)
-**Status:** ⬜ **not started (plan/draft)** — rename the product's public face from "AgentPM" to **pmagent** everywhere a human reads it (web + Keycloak sign-in + API docs). **Display/branding only**; identifiers (`@agentpm/*`, realm/client ids, DB names, `agentpm.io`) stay. No backend, no migration. Sequenced **before Phase 3** so the first deploy ships branded.
-- [ ] Web: `index.html` title · `en.json` `app.appName` + `invite.title` · Swagger `title` → **pmagent**
-- [ ] Keycloak sign-in: `realm-agentpm.json` `displayName`/`displayNameHtml` = **pmagent** (Tier 1; full login theme optional)
-- [ ] E2E brand assertion updated (`/pmagent/i`); web typecheck/build + 35 API tests green
-- [ ] (optional) favicon/logo asset · (optional) custom Keycloak login theme
-- Decisions open: wordmark casing (literal `pmagent` vs `PMAgent`); Keycloak Tier 1 vs 2; whether to ever rename identifiers.
+## Phase 2.8 — Branding (PMAgent) → [plan](agentpm-plan/phases/phase-2.8-branding.md)
+**Status:** ✅ **IMPLEMENTED (2026-06-26)** — product + Keycloak rebranded to **PMAgent** (camel-case). Web typecheck + build green; **35 API tests green** (host — the `node:20` container has no global `WebSocket`, so the 3 realtime tests only pass on Node ≥21/host). Keycloak login theme verified over HTTP (theme `pmagent.css` + `logo.svg` → 200; realm `displayName`/`loginTheme` set). Live pixel screenshot still worth a look.
+- [x] Web: `index.html` title + `favicon.svg` · `en.json` `common.appName` + `invite.title` · Swagger `title` → **PMAgent**
+- [x] Keycloak **Tier 2**: custom `pmagent` login theme (`infra/keycloak/themes/pmagent/login` — `theme.properties` + `pmagent.css` + wordmark `logo.svg`), mounted into the KC container; realm `displayName`/`displayNameHtml`=PMAgent + `loginTheme`=pmagent; client display names → PMAgent
+- [x] E2E brand assertion updated (`/PMAgent/i`); web typecheck/build + 35 API tests green
+- [x] favicon (`apps/web/public/favicon.svg`, PM monogram) + custom Keycloak login theme (logo + slate-900 brand)
+- Decisions settled: wordmark **PMAgent**; Keycloak **Tier 2**; identifiers (`@agentpm/*`, realm/client ids, `agentpm.io`) intentionally unchanged.
+
+---
+
+## Phase 2.8.5 — Auth UX: in-app OAuth (no Keycloak login page) → [plan](agentpm-plan/phases/phase-2.8.5-auth-ux.md)
+**Status:** 🟢 **frontend + IdP plumbing implemented (2026-06-26); social login pending OAuth creds.** In-app **Google/Microsoft/GitHub** buttons via `idpHint` (no Keycloak page) + email/password (**2.8.5b** → branded KC page). Web typecheck/build green; `keycloak-init` runs clean (exit 0): skips IdPs without creds, disables first-broker "Review Profile". Social round-trip verifiable once the OAuth apps are registered.
+- [x] Frontend: `lib/auth.ts` `loginWith(idp)` (`keycloak.login({ idpHint })`); `Landing.tsx` Google/MS/GitHub buttons (`ProviderIcons`) + email/password (→ branded KC page) + PMAgent logo; i18n
+- [x] Runtime IdP plumbing: `keycloak-init` extended (kcadm upsert google/microsoft/github from env, skip if no creds; disable first-broker "Review Profile" → seamless auto-create); `trustEmail`; `GOOGLE_/MICROSOFT_/GITHUB_CLIENT_*` in `.env`/`.env.example` (empty placeholders, never committed)
+- [x] Email/password mechanism — **decided: 2.8.5b hybrid** (branded Keycloak page)
+- [ ] Prereq (user): register OAuth apps (Google Cloud / Azure AD / GitHub) → redirect `…/realms/agentpm/broker/<provider>/endpoint` → drop client id+secret into `.env` → `docker compose up -d --force-recreate keycloak-init`
+- [ ] Verify the social round-trip in-browser on localhost with ≥1 real provider (blocked on creds)
 
 ---
 
@@ -192,7 +202,15 @@ _H — Onboarding / empty states:_
 - [ ] AgentAction logging + rollback + approval gate
 - [ ] Frontend: assign agent, activity feed, approval UI, PR link
 - [ ] Trial/billing guard on agent runs (cost control)
-- [ ] Agent-first UI surfaces — ex-[Phase 2.7](agentpm-plan/phases/phase-2.7-agent-first.md) (parked there): **A2** `@agent` in mention/assignee pickers · **A3** "Draft with agent" goal/AC/constraints · **A4** agent swimlane/badge on the board
+- [ ] Agent-first UI surfaces (A2/A3/A4) — land in **[Phase 5.5](agentpm-plan/phases/phase-5.5-agent-first.md)**
+
+---
+
+## Phase 5.5 — Agent-First Surfaces → [plan](agentpm-plan/phases/phase-5.5-agent-first.md)
+**Status:** ⬜ **parked → lands with Phase 5** — agent-first UI whose *action* needs the Code/Spec agent. Renumbered from 2.7 (it's an agent phase, so it sits right after Phase 5). A1 (readiness ring) already shipped in 2.6.
+- [ ] **A2** `@agent` first-class in mention/assignee pickers — M
+- [ ] **A3** "Draft with agent" goal/AC/constraints skeleton — M
+- [ ] **A4** Agent swimlane/badge on the board — S–M
 
 ---
 
@@ -213,6 +231,9 @@ _H — Onboarding / empty states:_
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-26 | P2.8.5 | **Auth UX — in-app OAuth (frontend + IdP plumbing).** `lib/auth.ts` `loginWith(idp)` via `keycloak.login({ idpHint })`; `Landing.tsx` redesigned — Google/Microsoft/GitHub buttons (`ProviderIcons`) + email/password → branded KC page + PMAgent logo + i18n. `keycloak-init` extended: kcadm upsert of google/microsoft/github IdPs from env (skip w/o creds) + disable first-broker "Review Profile" (seamless auto-create); `GOOGLE_/MICROSOFT_/GITHUB_CLIENT_*` added to `.env`/`.env.example` (empty). Email/password = **2.8.5b hybrid**. Web typecheck/build green; `keycloak-init` exit 0. Social round-trip pending user-registered OAuth apps. | — |
+| 2026-06-26 | plan | **Phase 2.8.5 (auth UX) drafted.** New `phases/phase-2.8.5-auth-ux.md`: in-app **Google/Microsoft/GitHub** sign-in via Keycloak `idpHint` (no hosted login page; backend unchanged), seamless first-broker auto-create, IdP secrets injected at runtime; email/password kept (open sub-decision: branded KC page vs custom ROPC). Wired into README build-flow + index and this tracker; sits in the Keycloak line before Phase 3. Plan only — **awaiting user go-ahead** to implement. | — |
+| 2026-06-26 | P2.8 | **Branding → PMAgent (implemented).** Web: `index.html` title + `favicon.svg`, `en.json` `common.appName`/`invite.title`, Swagger `title` → PMAgent; E2E assertion `/PMAgent/i`. Keycloak **Tier 2**: new `infra/keycloak/themes/pmagent/login` (`theme.properties` + `pmagent.css` + wordmark `logo.svg`), mounted into the KC container via compose; realm `displayName`/`displayNameHtml`=PMAgent + `loginTheme`=pmagent + client display names; applied to the running realm via `kcadm`. Login page verified over HTTP (theme css + logo → 200). Identifiers (`@agentpm/*`, realm/client ids, `agentpm.io`) intentionally unchanged. **35 API tests green** (host), web typecheck + build green. | — |
 | 2026-06-26 | plan | **Phase 2.8 (branding → pmagent) drafted.** New `phases/phase-2.8-branding.md`: rename the product's public face from "AgentPM" to **pmagent** across web (title, `app.appName`, invite copy, Swagger) + the Keycloak sign-in (`realm-agentpm.json` displayName) — **display only**; identifiers (`@agentpm/*`, realm/client ids, `agentpm.io`) explicitly out of scope. Wired into README build-flow + index and this tracker; sequenced before Phase 3. Plan only, not implemented. | — |
 | 2026-06-26 | plan | **Phase renumber + index refresh:** `2F` → **Phase 2.1** (renamed `phase-2.1-gap-closure.md`; it patches Phase 2, so it sits right after it) + marked ✅ COMPLETE (file previously still read draft/not-started). **Phase 2.7** kept parked but resequenced into the **Phase 5** agent block — folded A2/A3/A4 into Phase 5's deliverables and removed the floating 2.7 section that sat between 2.6 and Phase 3. Refreshed `agentpm-plan/README.md` build-flow + phases index (added 2.1/2.6/2.7, previously missing). Docs only, no code. | — |
 | 2026-06-25 | P2.6 | **Two-user realtime verification** (2nd user in incognito Chrome): ✅ **E1** presence avatar appears when both view EMPL-1; ✅ **B1** ghost-drag card shows while the other user drags; ✅ **E3** multiple changes by the other user group into one "N updates" row in the watcher's bell. Confirms the ephemeral WS relay works cross-session. | — |
