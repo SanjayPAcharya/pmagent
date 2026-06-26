@@ -14,10 +14,10 @@
 
 ## Now / Next / Blocked
 
-- **Current phase:** Phase 3 — Containerized Deployment + CI/CD (next up). Phases 1 · 2 · 2.1 · 2.5 · 2.6 all ✅ complete. (Phase 2.7 = agent-first UI, parked → lands with Phase 5.)
+- **Current phase:** **Phase 2.8 — Branding (pmagent)** next up (a quick display-only rebrand before deploy), then **Phase 3** (deployment + CI/CD). Phases 1 · 2 · 2.1 · 2.5 · 2.6 all ✅ complete. (Phase 2.7 = agent-first UI, parked → lands with Phase 5.)
 - **Now:** ✅ **Phase 2.6 complete & browser-verified** — all 25 non-agent items across 6 slices (single-user verified in Chrome; realtime **E1/B1/E3** verified two-user via incognito). **35 API tests green**; migration `20260625000000_org_accent` applied. Minor build-only-verified: B3 mobile swipe, B5 (needs stale tickets), H2 (single-member org).
 - **Decision (2026-06-25):** **all agent-related work is sequenced AFTER Phase 3.** Ship deployment/CI-CD first, then the agent block: agent-first UI (ex-[2.7](agentpm-plan/phases/phase-2.7-agent-first.md): A2/A3/A4) folds into **Phase 5** (Code Agent), followed by Phases 6–7. So nothing agent-shaped happens until the product is deployable.
-- **Next:** **Phase 3 — deployment + CI/CD** (`docker-compose.prod.yml` + Caddy + Makefile, managed RDS/ElastiCache, VM+DNS, GitHub Actions CI/CD, staging deploy). Optional housekeeping first: `docker compose build web` to bake new deps (cmdk/i18n/playwright) into a clean image; clean up test data in `Infinity/Employee Tracker` (EMPL-1 AC checklist, EMPL-5 drag-test ticket).
+- **Next:** **Phase 2.8 — branding → pmagent** ([plan](agentpm-plan/phases/phase-2.8-branding.md); display-only, no backend), then **Phase 3 — deployment + CI/CD** (`docker-compose.prod.yml` + Caddy + Makefile, managed RDS/ElastiCache, VM+DNS, GitHub Actions CI/CD, staging deploy). Optional housekeeping first: `docker compose build web` to bake new deps (cmdk/i18n/playwright) into a clean image; clean up test data in `Infinity/Employee Tracker` (EMPL-1 AC checklist, EMPL-5 drag-test ticket).
 - **Blocked:** none. Notes: **after changing app deps, rebuild that container** (`docker compose build api|web && up -d`) — `node_modules` is in the image (only source is mounted). **API source-only edits need `docker compose restart api`** — macOS bind-mount inotify doesn't reach `tsx watch` (Vite/web HMR is fine). `corepack` flake — pin `corepack pnpm@9.12.0`; `COREPACK_INTEGRITY_KEYS=0` for install. Realtime tests need Redis (host `:6379`). CI finalized in Phase 3.
 
 ---
@@ -156,6 +156,16 @@ _H — Onboarding / empty states:_
 
 ---
 
+## Phase 2.8 — Branding (pmagent) → [plan](agentpm-plan/phases/phase-2.8-branding.md)
+**Status:** ⬜ **not started (plan/draft)** — rename the product's public face from "AgentPM" to **pmagent** everywhere a human reads it (web + Keycloak sign-in + API docs). **Display/branding only**; identifiers (`@agentpm/*`, realm/client ids, DB names, `agentpm.io`) stay. No backend, no migration. Sequenced **before Phase 3** so the first deploy ships branded.
+- [ ] Web: `index.html` title · `en.json` `app.appName` + `invite.title` · Swagger `title` → **pmagent**
+- [ ] Keycloak sign-in: `realm-agentpm.json` `displayName`/`displayNameHtml` = **pmagent** (Tier 1; full login theme optional)
+- [ ] E2E brand assertion updated (`/pmagent/i`); web typecheck/build + 35 API tests green
+- [ ] (optional) favicon/logo asset · (optional) custom Keycloak login theme
+- Decisions open: wordmark casing (literal `pmagent` vs `PMAgent`); Keycloak Tier 1 vs 2; whether to ever rename identifiers.
+
+---
+
 ## Phase 3 — Containerized Deployment + CI/CD → [plan](agentpm-plan/phases/phase-3-dev-deployment-cicd.md)
 **Status:** ⬜ not started
 - [ ] `docker-compose.prod.yml` + Caddy config + `Makefile` (`up-managed` / `up-selfhost`)
@@ -203,6 +213,7 @@ _H — Onboarding / empty states:_
 
 | Date | Phase | Step / change | Commit |
 |---|---|---|---|
+| 2026-06-26 | plan | **Phase 2.8 (branding → pmagent) drafted.** New `phases/phase-2.8-branding.md`: rename the product's public face from "AgentPM" to **pmagent** across web (title, `app.appName`, invite copy, Swagger) + the Keycloak sign-in (`realm-agentpm.json` displayName) — **display only**; identifiers (`@agentpm/*`, realm/client ids, `agentpm.io`) explicitly out of scope. Wired into README build-flow + index and this tracker; sequenced before Phase 3. Plan only, not implemented. | — |
 | 2026-06-26 | plan | **Phase renumber + index refresh:** `2F` → **Phase 2.1** (renamed `phase-2.1-gap-closure.md`; it patches Phase 2, so it sits right after it) + marked ✅ COMPLETE (file previously still read draft/not-started). **Phase 2.7** kept parked but resequenced into the **Phase 5** agent block — folded A2/A3/A4 into Phase 5's deliverables and removed the floating 2.7 section that sat between 2.6 and Phase 3. Refreshed `agentpm-plan/README.md` build-flow + phases index (added 2.1/2.6/2.7, previously missing). Docs only, no code. | — |
 | 2026-06-25 | P2.6 | **Two-user realtime verification** (2nd user in incognito Chrome): ✅ **E1** presence avatar appears when both view EMPL-1; ✅ **B1** ghost-drag card shows while the other user drags; ✅ **E3** multiple changes by the other user group into one "N updates" row in the watcher's bell. Confirms the ephemeral WS relay works cross-session. | — |
 | 2026-06-25 | P2.6 | **Browser verification (Slices 4–6) in Chrome:** ✅ G2 theme `t` (light→dark), G2 accent (green preset → `--primary` recolor + persist + Reset), C2 AC checkboxes (1/3→2/3 toggle persisted), F2 drag EMPL-5 → Sprint 1 (2→3 tickets), F1 burndown (ideal+actual on completed sprints); no WS console errors. **Deferred:** E1/B1/E3 (since two-user verified ↑), B3 mobile, B5/H2 (specific data) — build/test-verified. | — |
