@@ -1,0 +1,19 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Claude Code local settings (machine-specific)
+.claude/
+
+# Env files — defense in depth (sourcecode/.gitignore also covers these).
+# Only the committed *.example files are tracked.
+.env
+.env.*
+!.env.example
+
+# Logs / temp
+*.log
