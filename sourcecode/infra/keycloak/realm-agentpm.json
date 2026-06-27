@@ -14,6 +14,8 @@
     {
       "clientId": "agentpm-web",
       "name": "PMAgent Web (SPA)",
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "http://localhost:3000/",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,

@@ -1,44 +1,303 @@
-/* PMAgent — Keycloak login theme (Phase 2.8, Tier 2).
-   Brand: slate-900 (#0f172a), matching the web app's --primary token. */
+/* PMAgent — Keycloak login / registration theme (Phase 2.8).
+   Mirrors the app's design tokens (light + dark) so the hosted sign-in / sign-up
+   pages match the app's Landing card. Dark/light is driven by the `.dark` class
+   on <html>, set by an early script from the shared `pmagent-theme` cookie. */
 
-.login-pf body {
-  background: #f1f5f9; /* slate-100 — clean backdrop for the white card */
+:root {
+  --pm-bg: 210 40% 96.1%;
+  --pm-card: 0 0% 100%;
+  --pm-fg: 222.2 84% 4.9%;
+  --pm-muted-fg: 215.4 16.3% 46.9%;
+  --pm-border: 214.3 31.8% 91.4%;
+  --pm-primary: 222.2 47.4% 11.2%;
+  --pm-primary-fg: 210 40% 98%;
+  --pm-ring: 222.2 84% 4.9%;
+}
+.dark {
+  --pm-bg: 222.2 47% 8%;
+  --pm-card: 222.2 84% 4.9%;
+  --pm-fg: 210 40% 98%;
+  --pm-muted-fg: 215 20.2% 65.1%;
+  --pm-border: 217.2 32.6% 17.5%;
+  --pm-primary: 210 40% 98%;
+  --pm-primary-fg: 222.2 47.4% 11.2%;
+  --pm-ring: 212.7 26.8% 83.9%;
 }
 
-/* Header: swap the realm display text for the PMAgent wordmark logo. */
-#kc-header-wrapper {
-  height: 44px;
-  margin: 16px auto 8px;
-  max-width: 220px;
-  background: url(../img/logo.svg) no-repeat center center;
-  background-size: contain;
-  /* hide the text node (realm displayNameHtml), show the logo instead */
-  text-indent: -9999px;
-  white-space: nowrap;
-  overflow: hidden;
-  color: transparent;
+/* ── Page ── */
+html,
+body,
+.login-pf,
+.login-pf-page {
+  background: hsl(var(--pm-bg)) !important;
+  color: hsl(var(--pm-fg));
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
+.login-pf-page { padding-top: 7vh; }
 
-/* Primary actions → the app's slate-900 primary. */
-.login-pf .btn-primary,
-input[type="submit"].btn-primary,
-#kc-login {
-  background: #0f172a;
-  border-color: #0f172a;
-}
-.login-pf .btn-primary:hover,
-#kc-login:hover {
-  background: #1e293b;
-  border-color: #1e293b;
-}
+/* Drop the stock header (realm logo above the card). */
+.login-pf-page-header,
+#kc-header { display: none !important; }
 
-/* Card polish to echo the app's surfaces. */
+/* ── Card: rounded-2xl, themed surface, subtle border + shadow ── */
 .card-pf {
-  border-top: 4px solid #0f172a;
-  border-radius: 10px;
+  position: relative;
+  width: 380px;
+  max-width: 92vw;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 2.25rem;
+  background: hsl(var(--pm-card)) !important;
+  border: 1px solid hsl(var(--pm-border)) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 2px rgba(2, 8, 23, 0.06) !important;
+  overflow: hidden;
 }
 
-/* Brand-colored links (register / forgot password). */
-.login-pf a {
-  color: #0f172a;
+/* Back link → the app's own login screen (top-left of the card). */
+#pmagent-back {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: hsl(var(--pm-muted-fg)) !important;
+  text-decoration: none;
+  z-index: 1;
 }
+#pmagent-back:hover { color: hsl(var(--pm-fg)) !important; }
+
+/* Inline PMAgent wordmark (currentColor → themes in light + dark). */
+#pmagent-logo {
+  color: hsl(var(--pm-fg));
+  margin: 0 auto 0.25rem;
+  text-align: center;
+}
+#pmagent-logo svg { height: 38px; width: auto; }
+
+/* Page title ("Sign in to your account" / "Register") — small + muted. */
+#kc-page-title {
+  margin: 0.25rem 0 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: hsl(var(--pm-muted-fg));
+  text-align: center;
+}
+
+/* ── Form layout: tighten spacing to match the app ── */
+#kc-form { margin-top: 0; }
+#kc-content,
+#kc-content-wrapper { background: transparent !important; }
+.pf-c-form__group,
+.form-group { margin-bottom: 1rem !important; }
+
+/* Labels. */
+.pf-c-form__label,
+.pf-c-form__label-text,
+#kc-form label,
+label {
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  color: hsl(var(--pm-fg)) !important;
+  margin-bottom: 0.35rem !important;
+}
+
+/* ── Inputs: match the app's <Input> (h-9, rounded-md, border-input, ring-1) ── */
+.pf-c-form-control,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"] {
+  height: 36px !important;
+  width: 100% !important;
+  border: 1px solid hsl(var(--pm-border)) !important;
+  border-radius: 6px !important;
+  padding: 0 0.75rem !important;
+  font-size: 0.875rem !important;
+  background: transparent !important;
+  color: hsl(var(--pm-fg)) !important;
+  box-shadow: none !important;
+}
+.pf-c-form-control::placeholder { color: hsl(var(--pm-muted-fg)); }
+.pf-c-form-control:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+  outline: none !important;
+  border-color: hsl(var(--pm-ring)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--pm-ring)) !important;
+}
+
+/* Password field with show/hide toggle → one integrated field. */
+.pf-c-input-group {
+  display: flex !important;
+  align-items: stretch;
+  border: 1px solid hsl(var(--pm-border)) !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  overflow: hidden;
+}
+.pf-c-input-group:focus-within {
+  border-color: hsl(var(--pm-ring)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--pm-ring)) !important;
+}
+.pf-c-input-group .pf-c-form-control {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pf-c-input-group .pf-c-button {
+  width: auto !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: hsl(var(--pm-muted-fg)) !important;
+  padding: 0 0.75rem !important;
+  box-shadow: none !important;
+}
+.pf-c-input-group .pf-c-button:hover { color: hsl(var(--pm-fg)) !important; }
+
+/* ── Primary button: full-width, themed primary ── */
+.pf-c-button.pf-m-primary,
+#kc-login,
+input[type="submit"] {
+  width: 100% !important;
+  height: 40px !important;
+  background: hsl(var(--pm-primary)) !important;
+  border: 1px solid hsl(var(--pm-primary)) !important;
+  border-radius: 6px !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: hsl(var(--pm-primary-fg)) !important;
+  box-shadow: none !important;
+  margin-top: 0.25rem;
+}
+.pf-c-button.pf-m-primary:hover,
+#kc-login:hover { filter: brightness(1.1); }
+
+/* ── Options row (remember me / forgot password) ── */
+#kc-form-options {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.8125rem;
+  background: transparent !important;
+}
+
+/* ── Links ── */
+a,
+#kc-registration a,
+#kc-info a,
+.login-pf-signup a {
+  color: hsl(var(--pm-fg)) !important;
+  font-weight: 500;
+  text-decoration: none;
+}
+a:hover { opacity: 0.8; }
+
+/* ── Footer ("New user? Register") — blend into the card, no grey band ── */
+#kc-info,
+#kc-info-wrapper,
+.login-pf-signup {
+  background: transparent !important;
+  border: none !important;
+  margin-top: 1rem;
+  padding: 0 !important;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: hsl(var(--pm-muted-fg)) !important;
+}
+
+/* ── Social provider buttons (shown once IdPs are configured) ── */
+#kc-social-providers ul { list-style: none; padding: 0; margin: 0.75rem 0 0; }
+#kc-social-providers li { margin-top: 0.5rem; }
+#kc-social-providers a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 1px solid hsl(var(--pm-border)) !important;
+  border-radius: 6px !important;
+  padding: 0.5rem 1rem !important;
+  background: transparent !important;
+  color: hsl(var(--pm-fg)) !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+#kc-social-providers a:hover { background: hsl(var(--pm-bg)) !important; }
+
+/* Alerts (errors) — keep readable on themed surfaces. */
+.pf-c-alert { font-size: 0.8125rem; }
+
+/* ════════════════════════════════════════════════════════════════
+   Hardening — beat PatternFly specificity + fix the registration page
+   (Bootstrap .form-group / .col-* rows, header grid, password toggle).
+   ════════════════════════════════════════════════════════════════ */
+
+/* Keep the card compact + centered regardless of any flex/stretch parent. */
+.login-pf-page .card-pf {
+  width: 360px !important;
+  max-width: 92vw !important;
+  margin: 0 auto !important;
+  padding: 2rem 1.75rem 2.5rem !important;
+  flex: 0 0 auto !important;
+  align-self: center !important;
+}
+
+/* Reset Bootstrap grid columns inside the card → single full-width column. */
+.card-pf [class*="col-"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  float: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.card-pf .form-group { margin: 0 0 0.85rem 0 !important; }
+
+/* Header: hide the "* Required fields" note, center the title. */
+.card-pf .subtitle { display: none !important; }
+.card-pf #kc-page-title { text-align: center !important; margin: 0.25rem 0 1.25rem !important; }
+
+/* Password show/hide toggle → one integrated field (PF draws borders as box-shadow). */
+.pf-c-input-group {
+  display: flex !important;
+  align-items: stretch !important;
+  border: 1px solid hsl(var(--pm-border)) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+.pf-c-input-group input.pf-c-form-control {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+.pf-c-input-group button.pf-c-button.pf-m-control {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: hsl(var(--pm-muted-fg)) !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 0 0.625rem !important;
+}
+.pf-c-input-group button.pf-c-button.pf-m-control:hover { color: hsl(var(--pm-fg)) !important; }
+
+/* PatternFly v4 draws control/input borders with ::after pseudo-elements —
+   the real reason the eye toggle kept its own box. Remove them so the input +
+   toggle read as one field. */
+.pf-c-input-group .pf-c-form-control::after,
+.pf-c-input-group .pf-c-button::after,
+.pf-c-input-group .pf-c-button.pf-m-control::after,
+.pf-c-form-control::after {
+  display: none !important;
+  content: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.pf-c-input-group .pf-c-button.pf-m-control { border-left: 0 !important; }

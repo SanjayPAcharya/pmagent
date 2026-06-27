@@ -17,9 +17,21 @@ export function resolveTheme(theme: Theme): 'light' | 'dark' {
   return theme === 'system' ? (systemPrefersDark() ? 'dark' : 'light') : theme
 }
 
+// Mirror the theme into a cookie so the Keycloak-hosted pages (a different origin)
+// can match it — cookies are shared across ports on the same host (dev) and across
+// subdomains when a parent domain is set (prod). The pmagent Keycloak theme reads it.
+function writeThemeCookie(theme: Theme) {
+  const host = location.hostname
+  const isLocal = host === 'localhost' || host === '127.0.0.1' || /^\d+(\.\d+){3}$/.test(host)
+  const parts = host.split('.')
+  const domain = isLocal || parts.length < 2 ? '' : `; domain=.${parts.slice(-2).join('.')}`
+  document.cookie = `pmagent-theme=${theme}; path=/; max-age=31536000; samesite=lax${domain}`
+}
+
 export function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle('dark', resolveTheme(theme) === 'dark')
   localStorage.setItem(KEY, theme)
+  writeThemeCookie(theme)
 }
 
 export function useTheme() {

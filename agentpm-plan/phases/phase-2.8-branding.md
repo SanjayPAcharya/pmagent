@@ -48,6 +48,10 @@ The realm JSON sets no display name today, so the stock login theme shows the ba
 
 > **Apply path (important):** the realm is import-only on a *fresh* boot, so an already-running Keycloak won't pick up the new `displayName` automatically. Either set it via the admin console / `kcadm` (`kcadm.sh update realms/agentpm -s displayName=pmagent -s 'displayNameHtml=<span>pmagent</span>'`), or recreate the KC container against the updated JSON (`docker compose up -d --force-recreate keycloak`). Commit the JSON change so future boots are branded by default.
 
+> **Login/register parity + theme bridge (shipped 2026-06-27, on top of Tier 2):** the `pmagent` theme now matches the app's Landing card — same tokens, app-style inputs, an integrated password show/hide toggle, an inline themed wordmark, and a **"‹ Back"** link on both pages back to the app (via the `agentpm-web` client `baseUrl`, set in the realm). It also follows the app's **light/dark/system** theme: since Keycloak can't read the app's `localStorage` cross-origin, the app mirrors the theme into a shared **`pmagent-theme` cookie** and the theme's early `<head>` script applies `.dark` (OS fallback) before paint.
+>
+> **Two caveats:** (1) `template.ftl` is a copy of **Keycloak 26.0.8**'s base template — re-sync on a KC image bump. (2) the prod cookie domain uses a **two-label heuristic** (`.example.com`) — revisit for multi-part TLDs (`.co.uk`).
+
 ## Non-goals (explicitly NOT in 2.8 — identifiers, not branding)
 Leaving these as `agentpm` avoids an invasive, auth-breaking rename. Revisit only as a separate, deliberate phase if a true package/infra rename is wanted:
 - Workspace package names `@agentpm/{api,web,shared-types}` (ripples through every import + tsconfig path).
