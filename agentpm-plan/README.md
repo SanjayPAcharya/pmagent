@@ -79,6 +79,7 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 | 2.6 | [phase-2.6-ux-delight.md](phases/phase-2.6-ux-delight.md) | UX delight — readiness rings, undo, confetti, palette power, ticket presence, burndown, per-org accent + theme |
 | 2.8 | [phase-2.8-branding.md](phases/phase-2.8-branding.md) | Branding — rename product + Keycloak sign-in to **pmagent** (display only; runs before Phase 3) |
 | 2.8.5 | [phase-2.8.5-auth-ux.md](phases/phase-2.8.5-auth-ux.md) | Auth UX — Google/Microsoft/GitHub sign-in on the app's own screen (Keycloak brokers via `idpHint`, no hosted login page); email/password kept |
+| 2.9.1 | [phase-2.9.1-deploy-config.md](phases/phase-2.9.1-deploy-config.md) | Deploy config reference — dev vs prod env files, infra to provision, mandatory vs deferrable for a testing deploy |
 | 3 | [phase-3-dev-deployment-cicd.md](phases/phase-3-dev-deployment-cicd.md) | Basic deployment to dev/staging with CI/CD |
 | 4 | [phase-4-notifications-channels.md](phases/phase-4-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
 | 5 | [phase-5-github-code-agent.md](phases/phase-5-github-code-agent.md) | Third-party integration: GitHub App + Code Agent + agent-first UI |
