@@ -1,0 +1,128 @@
+name: CI/CD
+
+# Test on PRs + pushes to main. On push to main: build images → push to GHCR →
+# deploy to the EC2 box (pull new images, migrate, up). See agentpm-plan Phase 3.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/sanjaypacharya   # GHCR requires a lowercase owner
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ── 1. Lint + typecheck + tests (Node 22: the realtime tests need a global WebSocket) ──
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sourcecode
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: agentpm
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: agentpm
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U agentpm" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      TEST_ADMIN_URL: postgresql://agentpm:test@localhost:5432/agentpm
+      TEST_DATABASE_URL: postgresql://agentpm:test@localhost:5432/agentpm_test
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: sourcecode/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agentpm/api exec prisma generate
+      - run: pnpm turbo lint typecheck
+      - run: pnpm turbo test
+
+  # ── 2. Build + push images to GHCR (only on push to main) ──
+  build-push:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build + push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: sourcecode
+          file: sourcecode/apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/agentpm-api:${{ github.sha }}
+            ${{ env.REGISTRY }}/agentpm-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - name: Build + push Web image (prod VITE_* baked in at build time)
+        uses: docker/build-push-action@v6
+        with:
+          context: sourcecode
+          file: sourcecode/apps/web/Dockerfile
+          push: true
+          build-args: |
+            VITE_API_URL=https://api.pmagent.sanjaykumarp.info
+            VITE_WS_URL=wss://api.pmagent.sanjaykumarp.info
+            VITE_KEYCLOAK_URL=https://auth.pmagent.sanjaykumarp.info
+            VITE_KEYCLOAK_REALM=agentpm
+            VITE_KEYCLOAK_CLIENT=agentpm-web
+          tags: |
+            ${{ env.REGISTRY }}/agentpm-web:${{ github.sha }}
+            ${{ env.REGISTRY }}/agentpm-web:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # ── 3. Deploy to the EC2 box: pull the new SHA images, migrate, up ──
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -e
+            cd /opt/pmagent/sourcecode
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${{ github.sha }}|" .env.prod
+            PC="docker compose --profile selfhost-data --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml"
+            $PC pull api web
+            $PC run --rm api pnpm prisma migrate deploy
+            $PC up -d
+            docker image prune -f
+            echo "deployed ${{ github.sha }}"
