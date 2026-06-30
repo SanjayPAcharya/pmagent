@@ -1,0 +1,20 @@
+# Phase 3 — production reverse proxy. Automatic HTTPS via Let's Encrypt.
+# Domains come from the env (.env.prod) so this file isn't hard-coded to one site.
+{
+	email {$ACME_EMAIL}
+}
+
+# App (nginx-served SPA)
+{$APP_DOMAIN} {
+	reverse_proxy web:80
+}
+
+# API (Fastify) — WebSocket upgrades are proxied transparently by Caddy.
+{$API_DOMAIN} {
+	reverse_proxy api:3001
+}
+
+# Keycloak (identity provider)
+{$AUTH_DOMAIN} {
+	reverse_proxy keycloak:8080
+}

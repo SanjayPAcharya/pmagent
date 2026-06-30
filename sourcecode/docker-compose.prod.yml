@@ -1,0 +1,68 @@
+# Production overlay — Caddy (auto-HTTPS) + production Keycloak + restart policies.
+# Deploy (self-hosted data on the box):
+#   docker compose --profile selfhost-data --env-file .env.prod \
+#     -f docker-compose.yml -f docker-compose.prod.yml up -d
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+      AUTH_DOMAIN: ${AUTH_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # Let's Encrypt certs — persist this across restarts
+      - caddy_config:/config
+    depends_on: [web, api, keycloak]
+
+  keycloak:
+    restart: unless-stopped
+    command: start --import-realm        # production mode (overrides the dev start-dev)
+    environment:
+      KC_HOSTNAME: ${AUTH_DOMAIN}
+      KC_HTTP_ENABLED: "true"            # TLS terminated by Caddy in front
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
+
+  # One-shot: point the SPA client at the prod domain, wire social IdPs, disable
+  # first-broker "Review Profile". Shares Keycloak's netns so localhost:8080 works.
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.0
+    network_mode: "service:keycloak"
+    depends_on:
+      keycloak:
+        condition: service_started
+    restart: "no"
+    entrypoint: ["bash", "/bootstrap/prod-bootstrap.sh"]
+    volumes:
+      - ./infra/keycloak/prod-bootstrap.sh:/bootstrap/prod-bootstrap.sh:ro
+    environment:
+      KC_ADMIN: ${KC_ADMIN}
+      KC_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+
+  api:
+    restart: unless-stopped
+  web:
+    restart: unless-stopped
+
+  # Only created with --profile selfhost-data (data on the box); ignored in managed mode.
+  postgres:
+    restart: unless-stopped
+  redis:
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
