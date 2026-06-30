@@ -17,23 +17,18 @@ FROM deps AS build
 COPY . .
 RUN pnpm --filter @agentpm/api build
 
-# prod-deps: production-only node_modules (keeps `prisma` CLI — it's a dependency)
-FROM base AS prod-deps
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY apps/api/package.json ./apps/api/
-COPY packages/shared-types/package.json ./packages/shared-types/
-RUN pnpm install --frozen-lockfile --prod
-
-# runner: slim runtime
+# runner: production runtime. pnpm keeps app deps + the generated Prisma client in
+# the per-package node_modules (a symlink farm into the root .pnpm store), NOT
+# hoisted to the root node_modules — so copy the whole resolved tree from `build`
+# to keep every symlink valid at runtime. (Can be slimmed later with `pnpm deploy`.)
 FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-COPY --from=prod-deps --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=build     --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build     --chown=nodejs:nodejs /app/apps/api/dist ./apps/api/dist
-COPY --from=build     --chown=nodejs:nodejs /app/apps/api/prisma ./apps/api/prisma
-COPY --from=build     --chown=nodejs:nodejs /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build --chown=nodejs:nodejs /app/pnpm-workspace.yaml /app/package.json ./
+COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nodejs:nodejs /app/packages ./packages
+COPY --from=build --chown=nodejs:nodejs /app/apps/api ./apps/api
 WORKDIR /app/apps/api
 USER nodejs
 EXPOSE 3001

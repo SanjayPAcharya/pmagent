@@ -11,7 +11,9 @@ until $kc config credentials --server http://localhost:8080 --realm master \
   echo "prod-bootstrap: waiting for keycloak…"; sleep 3
 done
 
-# 1. Point the agentpm-web client at the prod domain.
+# 1. Point the agentpm-web client at the prod domain. URL fields go via -s; the
+#    dotted attribute keys (post.logout.redirect.uris, pkce…) break kcadm's -s
+#    dotted-key parsing, so set the attributes map by merging a JSON rep (-f -).
 cid=$($kc get clients -r agentpm -q clientId=agentpm-web --fields id --format csv 2>/dev/null | tr -d '"\r')
 if [ -n "$cid" ]; then
   $kc update "clients/$cid" -r agentpm \
@@ -19,8 +21,10 @@ if [ -n "$cid" ]; then
     -s "baseUrl=$PUBLIC_APP_URL/" \
     -s "redirectUris=[\"$PUBLIC_APP_URL/*\"]" \
     -s "webOrigins=[\"$PUBLIC_APP_URL\"]" \
-    -s "attributes.post.logout.redirect.uris=$PUBLIC_APP_URL/*" \
-    && echo "prod-bootstrap: agentpm-web client -> $PUBLIC_APP_URL"
+    && echo "prod-bootstrap: agentpm-web client URLs -> $PUBLIC_APP_URL"
+  printf '{"attributes":{"post.logout.redirect.uris":"%s/*","pkce.code.challenge.method":"S256"}}' "$PUBLIC_APP_URL" \
+    | $kc update "clients/$cid" -r agentpm -f - \
+    && echo "prod-bootstrap: post-logout + pkce attributes set"
 fi
 
 # 2. Social identity providers (create/update from env; skip any without creds).

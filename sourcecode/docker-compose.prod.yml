@@ -24,7 +24,7 @@ services:
     restart: unless-stopped
     command: start --import-realm        # production mode (overrides the dev start-dev)
     environment:
-      KC_HOSTNAME: ${AUTH_DOMAIN}
+      KC_HOSTNAME: https://${AUTH_DOMAIN}   # full URL w/ scheme — bare host makes KC emit http://host:8080 in OIDC metadata
       KC_HTTP_ENABLED: "true"            # TLS terminated by Caddy in front
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_STRICT: "false"
