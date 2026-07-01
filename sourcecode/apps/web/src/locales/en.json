@@ -16,6 +16,24 @@
     "any": "Any",
     "undo": "Undo"
   },
+  "nav": {
+    "board": "Board",
+    "sprints": "Sprints",
+    "members": "Members",
+    "openMenu": "Open navigation"
+  },
+  "tree": {
+    "title": "Workspace",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "noOrgs": "No organizations yet.",
+    "noProjects": "No projects yet.",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites"
+  },
+  "breadcrumb": {
+    "home": "Home"
+  },
   "landing": {
     "tagline": "AI-agent-first project management",
     "headline": "Project management, built for AI agents.",
