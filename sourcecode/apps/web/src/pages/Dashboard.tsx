@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
+import { Skeleton } from '../components/ui/skeleton'
 
 export default function Dashboard() {
   const qc = useQueryClient()
@@ -44,16 +45,24 @@ export default function Dashboard() {
       {create.isError && <p className="mt-2 text-sm text-destructive">{(create.error as Error).message}</p>}
 
       <ul className="mt-6 divide-y divide-border rounded-lg border bg-card">
-        {orgs.data?.organizations.map((o) => (
-          <li key={o.id}>
-            <Link to={`/orgs/${o.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-accent">
-              <span className="font-medium text-foreground">{o.name}</span>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{o.role}</span>
-            </Link>
-          </li>
-        ))}
-        {orgs.data?.organizations.length === 0 && (
+        {orgs.isPending ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <li key={i} className="flex items-center justify-between px-4 py-3">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-5 w-14 rounded-full" />
+            </li>
+          ))
+        ) : orgs.data && orgs.data.organizations.length === 0 ? (
           <li className="px-4 py-6 text-center text-sm text-muted-foreground">{t('dashboard.empty')}</li>
+        ) : (
+          orgs.data?.organizations.map((o) => (
+            <li key={o.id}>
+              <Link to={`/orgs/${o.slug}`} className="flex items-center justify-between px-4 py-3 hover:bg-accent">
+                <span className="font-medium text-foreground">{o.name}</span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{o.role}</span>
+              </Link>
+            </li>
+          ))
         )}
       </ul>
     </div>

@@ -449,7 +449,7 @@ export default function Board() {
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
           {t('board.loadError', { message: (tickets.error as Error).message })}
         </div>
-      ) : tickets.isLoading ? (
+      ) : !tickets.data ? (
         <BoardSkeleton />
       ) : counts.total === 0 ? (
         <div className="mx-auto mt-8 max-w-md rounded-xl border bg-card p-6 text-center">

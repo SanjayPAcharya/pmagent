@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
+import { Skeleton } from '../components/ui/skeleton'
 
 export default function OrgProjects() {
   const { slug = '' } = useParams()
@@ -61,16 +62,24 @@ export default function OrgProjects() {
       )}
 
       <ul className="mt-6 divide-y divide-border rounded-lg border bg-card">
-        {projects.data?.projects.map((p) => (
-          <li key={p.id} className="px-4 py-3 hover:bg-accent">
-            <Link to={`/orgs/${slug}/projects/${p.slug}`} className="flex items-baseline gap-2">
-              <span className="font-medium text-foreground">{p.name}</span>
-              <span className="text-xs text-muted-foreground">/{p.slug}</span>
-            </Link>
-          </li>
-        ))}
-        {projects.data?.projects.length === 0 && (
+        {projects.isPending ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <li key={i} className="flex items-baseline gap-2 px-4 py-3">
+              <Skeleton className="h-5 w-44" />
+              <Skeleton className="h-4 w-16" />
+            </li>
+          ))
+        ) : projects.data && projects.data.projects.length === 0 ? (
           <li className="px-4 py-6 text-center text-sm text-muted-foreground">{t('projects.empty')}</li>
+        ) : (
+          projects.data?.projects.map((p) => (
+            <li key={p.id} className="px-4 py-3 hover:bg-accent">
+              <Link to={`/orgs/${slug}/projects/${p.slug}`} className="flex items-baseline gap-2">
+                <span className="font-medium text-foreground">{p.name}</span>
+                <span className="text-xs text-muted-foreground">/{p.slug}</span>
+              </Link>
+            </li>
+          ))
         )}
       </ul>
     </div>
