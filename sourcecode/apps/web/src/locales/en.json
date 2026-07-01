@@ -51,14 +51,31 @@
   "dashboard": {
     "title": "Your organizations",
     "newOrgPlaceholder": "New organization name",
-    "empty": "No organizations yet — create one above."
+    "empty": "No organizations yet — create one above.",
+    "metricProjects": "Projects",
+    "metricMembers": "Members",
+    "metricOpen": "Open",
+    "countProjects": "{{count}} projects",
+    "countMembers": "{{count}} members",
+    "countOpen": "{{count}} open"
   },
   "projects": {
     "backToOrgs": "← organizations",
     "title": "{{org}} · projects",
     "membersLink": "Members & invites →",
     "newProjectPlaceholder": "New project name",
-    "empty": "No projects yet."
+    "keyPlaceholder": "KEY",
+    "descriptionPlaceholder": "Description (optional)",
+    "empty": "No projects yet — create one above.",
+    "metricProjects": "Projects",
+    "metricMembers": "Members",
+    "metricOpen": "Open tickets",
+    "metricSprints": "Active sprints",
+    "pendingInvites": "{{count}} pending invite(s)",
+    "noActiveSprint": "No active sprint",
+    "daysLeft": "{{count}}d left",
+    "overdue": "overdue",
+    "updated": "updated {{time}}"
   },
   "members": {
     "backToProjects": "← projects",
