@@ -18,6 +18,9 @@
   },
   "landing": {
     "tagline": "AI-agent-first project management",
+    "headline": "Project management, built for AI agents.",
+    "subtitle": "PMAgent gives your team and your AI agents one shared board — plan, assign, and ship without the busywork.",
+    "cardHint": "Choose how you'd like to continue.",
     "signIn": "Sign in",
     "signInEmail": "Sign in with email",
     "createAccount": "Create account",
