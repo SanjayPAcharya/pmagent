@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { prisma } from '../db/client.js'
 import { requireAuth, requireOrgRole } from '../middleware/auth.middleware.js'
 import { guardLastOwner, ROLE_ORDER } from '../services/authz.js'
+import { orgListStats } from '../services/stats.service.js'
+import { recentActivity } from '../services/activity.service.js'
 import { ApiError } from '../lib/errors.js'
 import { slugify } from '../lib/slug.js'
 
@@ -68,20 +70,65 @@ const routes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ org })
   })
 
-  // List orgs the caller belongs to (with their role)
+  // List orgs the caller belongs to (with their role + at-a-glance counts)
   app.get('/', async (request) => {
     const memberships = await prisma.orgMember.findMany({
       where: { userId: request.userId! },
       include: { organization: true },
       orderBy: { joinedAt: 'asc' },
     })
-    return { organizations: memberships.map((m) => ({ ...m.organization, role: m.role })) }
+    const stats = await orgListStats(memberships.map((m) => m.organization.id))
+    return {
+      organizations: memberships.map((m) => ({
+        ...m.organization,
+        role: m.role,
+        ...(stats.get(m.organization.id) ?? { projectCount: 0, memberCount: 0, openTicketCount: 0 }),
+      })),
+    }
   })
 
   app.get('/:slug', { preHandler: requireOrgRole('MEMBER') }, async (request) => {
     const { slug } = request.params as { slug: string }
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
-    return { org }
+    const [projectCount, memberCount, ticketGroups, activeSprintCount, previewMembers, pendingInviteCount] =
+      await Promise.all([
+        prisma.project.count({ where: { orgId: org.id } }),
+        prisma.orgMember.count({ where: { orgId: org.id } }),
+        prisma.ticket.groupBy({
+          by: ['status'],
+          where: { project: { orgId: org.id }, archivedAt: null },
+          _count: { _all: true },
+        }),
+        prisma.sprint.count({ where: { project: { orgId: org.id }, status: 'ACTIVE' } }),
+        prisma.orgMember.findMany({
+          where: { orgId: org.id },
+          include: { user: true },
+          orderBy: { joinedAt: 'asc' },
+          take: 5,
+        }),
+        prisma.orgInvite.count({ where: { orgId: org.id, acceptedAt: null, expiresAt: { gt: new Date() } } }),
+      ])
+    const ticketsByStatus = Object.fromEntries(ticketGroups.map((g) => [g.status, g._count._all]))
+    return {
+      org: {
+        ...org,
+        stats: { projectCount, memberCount, ticketsByStatus, activeSprintCount },
+        membersPreview: previewMembers.map((m) => ({
+          userId: m.userId,
+          name: m.user.name,
+          avatarUrl: m.user.avatarUrl,
+          initials: initialsOf(m.user.name, m.user.email),
+        })),
+        pendingInviteCount,
+      },
+    }
+  })
+
+  // Recent activity across all of the org's tickets (for the overview feed)
+  app.get('/:slug/activity', { preHandler: requireOrgRole('MEMBER') }, async (request) => {
+    const { slug } = request.params as { slug: string }
+    const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
+    return { activity: await recentActivity({ ticket: { project: { orgId: org.id } } }) }
   })
 
   app.patch('/:slug', { preHandler: requireOrgRole('ADMIN') }, async (request) => {
