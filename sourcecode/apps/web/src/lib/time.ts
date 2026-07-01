@@ -19,6 +19,14 @@ export function formatRelative(iso: string, now: number = Date.now()): string {
   return new Date(iso).toLocaleDateString()
 }
 
+// Whole days from now until an ISO date (negative = past). null if no date.
+export function daysUntil(iso?: string | null, now: number = Date.now()): number | null {
+  if (!iso) return null
+  const end = new Date(iso).getTime()
+  if (Number.isNaN(end)) return null
+  return Math.ceil((end - now) / 86_400_000)
+}
+
 // B5 — time-decay: a card's left border darkens the longer since `updatedAt`,
 // a calm staleness signal (no nagging badge). Fresh cards show nothing.
 export function staleBorderClass(iso: string, now: number = Date.now()): string {

@@ -44,8 +44,62 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 // ── Types (subset of the API responses) ──
 export interface User { id: string; email: string; name: string; avatarUrl: string | null }
-export interface Organization { id: string; name: string; slug: string; role?: string; accentColor?: string | null }
-export interface Project { id: string; orgId: string; name: string; slug: string; description: string | null }
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  role?: string
+  accentColor?: string | null
+  plan?: 'FREE' | 'PRO' | 'TEAM'
+  createdAt?: string
+  // At-a-glance counts (present on the orgs list endpoint)
+  projectCount?: number
+  memberCount?: number
+  openTicketCount?: number
+}
+export interface OrgStats {
+  projectCount: number
+  memberCount: number
+  ticketsByStatus: Partial<Record<TicketStatus, number>>
+  activeSprintCount: number
+}
+export interface MemberPreview { userId: string; name: string; avatarUrl: string | null; initials: string }
+export interface OrgDetail extends Organization {
+  stats: OrgStats
+  membersPreview: MemberPreview[]
+  pendingInviteCount: number
+}
+export interface ActiveSprintSummary {
+  id: string
+  name: string
+  endDate: string | null
+  total: number
+  done: number
+}
+export interface Project {
+  id: string
+  orgId: string
+  name: string
+  slug: string
+  key: string
+  description: string | null
+  defaultBranch?: string
+  createdAt?: string
+  updatedAt?: string
+  // Per-project rollups (present on the projects list endpoint)
+  openTicketCount?: number
+  byStatus?: Partial<Record<TicketStatus, number>>
+  activeSprint?: ActiveSprintSummary | null
+}
+export interface ActivityItem {
+  id: string
+  type: string
+  fromValue: string | null
+  toValue: string | null
+  createdAt: string
+  actor: { id: string; name: string; avatarUrl: string | null } | null
+  ticket: { id: string; number: number; title: string; projectId: string; projectKey: string; projectSlug: string }
+}
 export interface Member {
   userId: string
   role: 'OWNER' | 'ADMIN' | 'MEMBER'
@@ -176,14 +230,17 @@ export interface UpdateTicketInput {
 export const api = {
   me: () => request<{ user: User }>('GET', '/api/me'),
   listOrgs: () => request<{ organizations: Organization[] }>('GET', '/api/orgs'),
-  getOrg: (slug: string) => request<{ org: Organization }>('GET', `/api/orgs/${slug}`),
+  getOrg: (slug: string) => request<{ org: OrgDetail }>('GET', `/api/orgs/${slug}`),
   createOrg: (name: string) => request<{ org: Organization }>('POST', '/api/orgs', { name }),
   updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
     request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
+  orgActivity: (slug: string) => request<{ activity: ActivityItem[] }>('GET', `/api/orgs/${slug}/activity`),
   listProjects: (orgId: string) =>
     request<{ projects: Project[] }>('GET', `/api/projects?orgId=${encodeURIComponent(orgId)}`),
-  createProject: (orgId: string, name: string) =>
-    request<{ project: Project }>('POST', '/api/projects', { orgId, name }),
+  createProject: (orgId: string, name: string, body?: { key?: string; description?: string }) =>
+    request<{ project: Project }>('POST', '/api/projects', { orgId, name, ...body }),
+  projectActivity: (projectId: string) =>
+    request<{ activity: ActivityItem[] }>('GET', `/api/projects/${projectId}/activity`),
 
   // Members & invites (Phase 2D)
   listMembers: (slug: string) => request<{ members: Member[] }>('GET', `/api/orgs/${slug}/members`),

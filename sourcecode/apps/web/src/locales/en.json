@@ -16,8 +16,29 @@
     "any": "Any",
     "undo": "Undo"
   },
+  "nav": {
+    "board": "Board",
+    "sprints": "Sprints",
+    "members": "Members",
+    "openMenu": "Open navigation"
+  },
+  "tree": {
+    "title": "Workspace",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "noOrgs": "No organizations yet.",
+    "noProjects": "No projects yet.",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites"
+  },
+  "breadcrumb": {
+    "home": "Home"
+  },
   "landing": {
     "tagline": "AI-agent-first project management",
+    "headline": "Project management, built for AI agents.",
+    "subtitle": "PMAgent gives your team and your AI agents one shared board — plan, assign, and ship without the busywork.",
+    "cardHint": "Choose how you'd like to continue.",
     "signIn": "Sign in",
     "signInEmail": "Sign in with email",
     "createAccount": "Create account",
@@ -30,14 +51,45 @@
   "dashboard": {
     "title": "Your organizations",
     "newOrgPlaceholder": "New organization name",
-    "empty": "No organizations yet — create one above."
+    "empty": "No organizations yet — create one above.",
+    "metricProjects": "Projects",
+    "metricMembers": "Members",
+    "metricOpen": "Open",
+    "countProjects": "{{count}} projects",
+    "countMembers": "{{count}} members",
+    "countOpen": "{{count}} open"
   },
   "projects": {
     "backToOrgs": "← organizations",
     "title": "{{org}} · projects",
     "membersLink": "Members & invites →",
     "newProjectPlaceholder": "New project name",
-    "empty": "No projects yet."
+    "keyPlaceholder": "KEY",
+    "descriptionPlaceholder": "Description (optional)",
+    "empty": "No projects yet — create one above.",
+    "metricProjects": "Projects",
+    "metricMembers": "Members",
+    "metricOpen": "Open tickets",
+    "metricSprints": "Active sprints",
+    "pendingInvites": "{{count}} pending invite(s)",
+    "noActiveSprint": "No active sprint",
+    "daysLeft": "{{count}}d left",
+    "overdue": "overdue",
+    "updated": "updated {{time}}",
+    "menu": "Project actions",
+    "copyKey": "Copy key"
+  },
+  "activity": {
+    "title": "Recent activity",
+    "system": "System",
+    "created": "created",
+    "statusChanged": "moved to {{status}}",
+    "priorityChanged": "set priority to {{priority}}",
+    "assigned": "reassigned",
+    "sprintChanged": "changed the sprint of",
+    "watched": "started watching",
+    "unwatched": "stopped watching",
+    "updated": "updated"
   },
   "members": {
     "backToProjects": "← projects",

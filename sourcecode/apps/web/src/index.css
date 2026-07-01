@@ -56,3 +56,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Landing parallax — slow float for the backdrop glows (see ParallaxBackground). */
+@keyframes float-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(22px, -28px, 0) scale(1.06); }
+}
+@keyframes float-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-26px, 20px, 0) scale(1.08); }
+}
+@keyframes float-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(16px, 24px, 0) scale(1.05); }
+}
