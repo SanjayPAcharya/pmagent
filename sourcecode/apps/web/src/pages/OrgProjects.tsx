@@ -8,6 +8,8 @@ import { Skeleton } from '../components/ui/skeleton'
 import { MetricChip } from '../components/MetricChip'
 import { StatusBar } from '../components/StatusBar'
 import { AvatarStack } from '../components/AvatarStack'
+import { ActivityFeed } from '../components/ActivityFeed'
+import { ProjectMenu } from '../components/ProjectMenu'
 import { DensityToggle, type Density } from '../components/DensityToggle'
 import { useLocalStorageState } from '../lib/useLocalStorage'
 import { useFavorites, useIsFavorite, toggleFavorite } from '../lib/favorites'
@@ -67,7 +69,10 @@ function ProjectCard({ orgSlug, project }: { orgSlug: string; project: Project }
       <div className="relative flex items-center gap-2">
         <span className={keyBadge}>{project.key}</span>
         <span className="truncate font-medium text-foreground">{project.name}</span>
-        <FavoriteButton id={project.id} className="ml-auto" />
+        <div className="relative z-10 ml-auto flex items-center">
+          <FavoriteButton id={project.id} />
+          <ProjectMenu orgSlug={orgSlug} project={project} />
+        </div>
       </div>
       {project.description && (
         <p className="relative mt-1 line-clamp-2 text-xs text-muted-foreground">{project.description}</p>
@@ -101,7 +106,10 @@ function ProjectRow({ orgSlug, project }: { orgSlug: string; project: Project })
         )}
         <span>{project.openTicketCount ?? 0} open</span>
       </span>
-      <FavoriteButton id={project.id} />
+      <div className="relative z-10 ml-auto flex items-center sm:ml-0">
+        <FavoriteButton id={project.id} />
+        <ProjectMenu orgSlug={orgSlug} project={project} />
+      </div>
     </div>
   )
 }
@@ -116,6 +124,11 @@ export default function OrgProjects() {
     queryKey: ['projects', orgId],
     queryFn: () => api.listProjects(orgId as string),
     enabled: Boolean(orgId),
+  })
+  const activity = useQuery({
+    queryKey: ['org-activity', slug],
+    queryFn: () => api.orgActivity(slug),
+    enabled: Boolean(slug),
   })
   const [name, setName] = useState('')
   const [key, setKey] = useState('')
@@ -238,6 +251,8 @@ export default function OrgProjects() {
           ))}
         </div>
       )}
+
+      {activity.data && <ActivityFeed orgSlug={slug} items={activity.data.activity} />}
     </div>
   )
 }

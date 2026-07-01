@@ -75,7 +75,21 @@
     "noActiveSprint": "No active sprint",
     "daysLeft": "{{count}}d left",
     "overdue": "overdue",
-    "updated": "updated {{time}}"
+    "updated": "updated {{time}}",
+    "menu": "Project actions",
+    "copyKey": "Copy key"
+  },
+  "activity": {
+    "title": "Recent activity",
+    "system": "System",
+    "created": "created",
+    "statusChanged": "moved to {{status}}",
+    "priorityChanged": "set priority to {{priority}}",
+    "assigned": "reassigned",
+    "sprintChanged": "changed the sprint of",
+    "watched": "started watching",
+    "unwatched": "stopped watching",
+    "updated": "updated"
   },
   "members": {
     "backToProjects": "← projects",
