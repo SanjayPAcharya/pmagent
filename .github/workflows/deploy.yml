@@ -111,18 +111,26 @@ jobs:
     steps:
       - name: SSH deploy
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE_TAG: ${{ github.sha }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 15m
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_TAG
           script: |
             set -e
             cd /opt/pmagent/sourcecode
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${{ github.sha }}|" .env.prod
+            # authenticate to GHCR with the run's token → pulls work whether the
+            # packages are public or private.
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=$IMAGE_TAG|" .env.prod
             PC="docker compose --profile selfhost-data --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml"
             $PC pull api web
             $PC run --rm api pnpm prisma migrate deploy
             $PC up -d
             docker image prune -f
-            echo "deployed ${{ github.sha }}"
+            echo "deployed $IMAGE_TAG"
