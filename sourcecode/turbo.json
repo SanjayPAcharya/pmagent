@@ -4,7 +4,10 @@
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
     "lint": {},
     "typecheck": { "dependsOn": ["^build"] },
-    "test": { "dependsOn": ["^build"] },
+    "test": {
+      "dependsOn": ["^build"],
+      "passThroughEnv": ["TEST_ADMIN_URL", "TEST_DATABASE_URL", "REDIS_URL", "DATABASE_URL", "NODE_ENV"]
+    },
     "dev": { "cache": false, "persistent": true }
   }
 }
