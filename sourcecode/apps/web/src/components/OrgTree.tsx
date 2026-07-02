@@ -49,7 +49,7 @@ export function OrgTree({ onNavigate, onCollapse }: { onNavigate?: () => void; o
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
+      <div className="scrollbar-slim flex-1 overflow-y-auto px-2 pb-4">
         <NavLink
           to="/my-work"
           onClick={onNavigate}

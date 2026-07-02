@@ -57,6 +57,28 @@
   }
 }
 
+/* Slim, theme-aware scrollbars for in-app scroll surfaces (board columns, list
+   table, drawer). The default OS scrollbar renders as a stark white track in
+   dark mode. Firefox uses the two shorthand props; WebKit the pseudo-elements. */
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+.scrollbar-slim::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scrollbar-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 9999px;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
+}
+
 /* Landing parallax — slow float for the backdrop glows (see ParallaxBackground). */
 @keyframes float-a {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }

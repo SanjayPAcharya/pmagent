@@ -86,7 +86,7 @@ export function RelationsSection({ ticketId, projectId }: Props) {
               onKeyDown={(e) => e.stopPropagation()}
             />
           </div>
-          <div className="max-h-56 overflow-y-auto">
+          <div className="scrollbar-slim max-h-56 overflow-y-auto">
             {options.map((c) => (
               <DropdownMenuItem key={c.id} onClick={() => onPick(c)}>
                 <span className="mr-2 font-mono text-[10px] text-muted-foreground">{c.key}</span>

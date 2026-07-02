@@ -180,7 +180,7 @@ export default function ProjectList() {
           {t('board.loadError', { message: (tickets.error as Error).message })}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card">
+        <div className="scrollbar-slim overflow-x-auto rounded-lg border bg-card">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b bg-muted/40">
               <tr>

@@ -504,7 +504,7 @@ export default function Board() {
             setActiveId(null)
           }}
         >
-          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:snap-none">
+          <div className="scrollbar-slim flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:snap-none">
             {BOARD_COLUMNS.map((s) => (
               <Column
                 key={s}
