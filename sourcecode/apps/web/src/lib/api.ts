@@ -154,6 +154,8 @@ export interface Ticket {
   createdAt: string
   updatedAt: string
 }
+/** Ticket from a cross-project surface (search / my-work) — carries link slugs. */
+export type TicketHit = Ticket & { orgSlug: string; projectSlug: string }
 export interface TicketRef {
   id: string
   number: number
@@ -310,8 +312,8 @@ export const api = {
   removeDependency: (id: string, dependsOnId: string) =>
     request<void>('DELETE', `/api/tickets/${id}/dependencies/${dependsOnId}`),
   searchTickets: (q: string) =>
-    request<{ items: Ticket[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
-  myWork: () => request<{ assigned: Ticket[]; watching: Ticket[] }>('GET', '/api/me/work'),
+    request<{ items: TicketHit[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
+  myWork: () => request<{ assigned: TicketHit[]; watching: TicketHit[] }>('GET', '/api/me/work'),
   batchUpdateTickets: (ids: string[], patch: BatchPatch) =>
     request<{ updated: number }>('POST', '/api/tickets/batch', { ids, patch }),
 

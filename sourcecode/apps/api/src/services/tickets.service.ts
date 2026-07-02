@@ -30,6 +30,19 @@ export function serializeTicket(t: TicketWithIncludes) {
   }
 }
 
+// Cross-project surfaces (global search, my-work) need the org slug to build
+// links; the plain include stays lean for project-scoped lists.
+export const ticketIncludeWithOrg = {
+  ...ticketInclude,
+  project: { select: { id: true, name: true, slug: true, key: true, organization: { select: { slug: true } } } },
+} satisfies Prisma.TicketInclude
+
+type TicketWithOrg = Prisma.TicketGetPayload<{ include: typeof ticketIncludeWithOrg }>
+
+export function serializeTicketWithOrg(t: TicketWithOrg) {
+  return { ...serializeTicket(t), orgSlug: t.project.organization.slug, projectSlug: t.project.slug }
+}
+
 // ─── Cross-scope validation ──────────────────────────────────
 // Every referenced entity must live in the ticket's own org/project, checked
 // after the org-role gate. A mismatch is a 400 (caller error), not a 403.

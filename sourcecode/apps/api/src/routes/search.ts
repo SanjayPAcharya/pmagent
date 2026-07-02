@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
-import { ticketInclude, serializeTicket } from '../services/tickets.service.js'
+import { ticketIncludeWithOrg, serializeTicketWithOrg } from '../services/tickets.service.js'
 
 const searchQuery = z.object({
   q: z.string().min(1).max(200),
@@ -31,11 +31,11 @@ const searchRoutes: FastifyPluginAsync = async (app) => {
         project: { organization: { members: { some: { userId } } } },
         OR: or,
       },
-      include: ticketInclude,
+      include: ticketIncludeWithOrg,
       orderBy: { updatedAt: 'desc' },
       take: limit,
     })
-    return { items: rows.map(serializeTicket) }
+    return { items: rows.map(serializeTicketWithOrg) }
   })
 }
 

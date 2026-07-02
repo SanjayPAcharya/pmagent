@@ -16,6 +16,7 @@ import {
   Tag,
   SunMoon,
   Clock,
+  Search,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
@@ -59,6 +60,18 @@ export function CommandPalette() {
       setPage('root')
     }
   }
+
+  // Global search (3.1): debounce the root query and hit /api/search across orgs.
+  const [searchDebounced, setSearchDebounced] = useState('')
+  useEffect(() => {
+    const id = setTimeout(() => setSearchDebounced(page === 'root' ? query.trim() : ''), 250)
+    return () => clearTimeout(id)
+  }, [query, page])
+  const globalHits = useQuery({
+    queryKey: ['global-search', searchDebounced],
+    queryFn: () => api.searchTickets(searchDebounced),
+    enabled: open && page === 'root' && searchDebounced.length >= 2,
+  })
 
   const m = location.pathname.match(/^\/orgs\/([^/]+)(?:\/projects\/([^/]+))?/)
   const slug = m?.[1]
@@ -292,6 +305,26 @@ export function CommandPalette() {
                     <span className="truncate">{tk.title}</span>
                   </CommandItem>
                 ))}
+              </CommandGroup>
+            )}
+
+            {searchDebounced.length >= 2 && (globalHits.data?.items.length ?? 0) > 0 && (
+              <CommandGroup heading={t('palette.everywhere')}>
+                {globalHits.data!.items
+                  .filter((hit) => !tickets.data?.items.some((tk) => tk.id === hit.id))
+                  .slice(0, 8)
+                  .map((hit) => (
+                    <CommandItem
+                      key={hit.id}
+                      value={`global ${hit.key} ${hit.title}`}
+                      onSelect={() => go(`/orgs/${hit.orgSlug}/projects/${hit.projectSlug}/ticket/${hit.number}`)}
+                    >
+                      <Search className="h-4 w-4" />
+                      <span className="font-mono text-xs text-muted-foreground">{hit.key}</span>
+                      <span className="truncate">{hit.title}</span>
+                      <span className="ml-auto truncate text-xs text-muted-foreground">{hit.projectSlug}</span>
+                    </CommandItem>
+                  ))}
               </CommandGroup>
             )}
 

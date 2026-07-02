@@ -24,6 +24,7 @@
   },
   "tree": {
     "title": "Workspace",
+    "myWork": "My work",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
     "noOrgs": "No organizations yet.",
@@ -128,6 +129,13 @@
     "signInButton": "Sign in to accept",
     "accepting": "Accepting invitation…",
     "goToDashboard": "Go to dashboard"
+  },
+  "mywork": {
+    "title": "My work",
+    "assigned": "Assigned to me",
+    "watching": "Watching",
+    "emptyAssigned": "Nothing assigned to you right now.",
+    "emptyWatching": "You're not watching any other tickets."
   },
   "relations": {
     "parent": "Parent",
@@ -276,6 +284,7 @@
   "palette": {
     "placeholder": "Search, or type to create — !high @user #sprint",
     "noResults": "No results.",
+    "everywhere": "All projects",
     "actions": "Actions",
     "createTicket": "Create ticket: “{{title}}”",
     "tickets": "Tickets",

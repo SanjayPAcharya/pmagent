@@ -12,7 +12,7 @@ Phases 3.1–3.5 are the "feature-rich & simple" track: high-value, low-complexi
 2. ✅ **List/table view** — `/orgs/:slug/projects/:projectSlug/list`; filter bar + sortable columns; board⇄list toggle persisted; rows open the ticket drawer.
 3. ✅ **Relationships panel** in `TicketDrawer` — parent picker, subtasks, blocked-by/blocks add/remove, links between tickets.
 4. ✅ **Blocked badges** — red badge on `TicketCard` + list rows when `blockedBy > 0`.
-5. **Global search in ⌘K + My-work page** — debounced cross-project group in the palette; `/my-work` (assigned vs watching). — **M**
+5. ✅ **Global search in ⌘K + My-work page** — debounced cross-project group in the palette; `/my-work` (assigned vs watching) + rail entry.
 6. **Bulk actions** — multi-select on board/list + floating action bar (status/assign/sprint/label/archive) via `batchUpdateTickets`. — **L**
 
 ## Endpoints (shipped in step 1)
