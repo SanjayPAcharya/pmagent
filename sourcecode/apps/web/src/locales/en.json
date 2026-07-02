@@ -152,6 +152,7 @@
     "colPoints": "Pts",
     "colUpdated": "Updated",
     "blocked": "Blocked",
+    "blockedHint": "Blocked by {{count}} open ticket(s)",
     "empty": "No tickets yet — create one from the board.",
     "emptyFiltered": "No tickets match these filters."
   },

@@ -11,7 +11,7 @@ Phases 3.1–3.5 are the "feature-rich & simple" track: high-value, low-complexi
 1. ✅ **Backend** — `relations.service.ts` (parent/subtasks/blockedBy/blocks, cycle guards), `blockedBy` count on list responses, `PATCH parentId`, `POST /tickets/batch`, `GET /api/search`, `GET /api/me/work`. Tests in `pm-depth.test.ts` (44/44).
 2. ✅ **List/table view** — `/orgs/:slug/projects/:projectSlug/list`; filter bar + sortable columns; board⇄list toggle persisted; rows open the ticket drawer.
 3. ✅ **Relationships panel** in `TicketDrawer` — parent picker, subtasks, blocked-by/blocks add/remove, links between tickets.
-4. **Blocked badges** — red badge on `TicketCard` + list rows when `blockedBy > 0`. — **S**
+4. ✅ **Blocked badges** — red badge on `TicketCard` + list rows when `blockedBy > 0`.
 5. **Global search in ⌘K + My-work page** — debounced cross-project group in the palette; `/my-work` (assigned vs watching). — **M**
 6. **Bulk actions** — multi-select on board/list + floating action bar (status/assign/sprint/label/archive) via `batchUpdateTickets`. — **L**
 

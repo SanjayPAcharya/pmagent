@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
-import { Eye, MoreHorizontal } from 'lucide-react'
+import { Ban, Eye, MoreHorizontal } from 'lucide-react'
 import type { Member, Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, BOARD_COLUMNS, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { staleBorderClass } from '@/lib/time'
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 
 /** Pure visual — reused by the draggable card and the drag overlay. */
 export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; dragging?: boolean; viewers?: Member[] }) {
+  const { t } = useTranslation()
   return (
     <div
       className={cn(
@@ -53,6 +54,14 @@ export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; 
           <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', PRIORITY_CLASS[ticket.priority])}>
             {ticket.priority}
           </span>
+          {(ticket.blockedBy ?? 0) > 0 && (
+            <span
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+              title={t('list.blockedHint', { count: ticket.blockedBy })}
+            >
+              <Ban className="h-3 w-3" /> {t('list.blocked')}
+            </span>
+          )}
           {/* E1 — live viewers currently on this ticket */}
           {viewers && viewers.length > 0 && (
             <div className="flex -space-x-1.5" title={viewers.map((v) => v.name).join(', ')}>
