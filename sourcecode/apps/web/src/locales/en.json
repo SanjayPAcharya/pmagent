@@ -129,6 +129,23 @@
     "accepting": "Accepting invitation…",
     "goToDashboard": "Go to dashboard"
   },
+  "list": {
+    "viewBoard": "Board",
+    "viewList": "List",
+    "allStatuses": "All statuses",
+    "allLabels": "All labels",
+    "colKey": "Key",
+    "colTitle": "Title",
+    "colStatus": "Status",
+    "colPriority": "Priority",
+    "colAssignee": "Assignee",
+    "colSprint": "Sprint",
+    "colPoints": "Pts",
+    "colUpdated": "Updated",
+    "blocked": "Blocked",
+    "empty": "No tickets yet — create one from the board.",
+    "emptyFiltered": "No tickets match these filters."
+  },
   "board": {
     "completion": "Project completion",
     "completionSummary": "{{done}}/{{total}} done · {{pct}}%",

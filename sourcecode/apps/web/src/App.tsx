@@ -5,6 +5,7 @@ import Layout from './pages/Layout'
 import Dashboard from './pages/Dashboard'
 import OrgProjects from './pages/OrgProjects'
 import Board from './pages/Board'
+import ProjectList from './pages/ProjectList'
 import Sprints from './pages/Sprints'
 import Members from './pages/Members'
 import InviteAccept from './pages/InviteAccept'
@@ -31,6 +32,8 @@ export default function App() {
             <Route path="/orgs/:slug/members" element={<Members />} />
             <Route path="/orgs/:slug/projects/:projectSlug" element={<Board />} />
             <Route path="/orgs/:slug/projects/:projectSlug/ticket/:number" element={<Board />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/list" element={<ProjectList />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/list/ticket/:number" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/sprints" element={<Sprints />} />
           </Route>
         </Route>

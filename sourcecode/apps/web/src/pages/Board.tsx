@@ -24,6 +24,7 @@ import { Column } from '@/components/board/Column'
 import { TicketCardBody } from '@/components/board/TicketCard'
 import { BoardSkeleton } from '@/components/board/BoardSkeleton'
 import { TicketDrawer } from '@/components/TicketDrawer'
+import ViewToggle from '@/components/ViewToggle'
 import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fireConfetti } from '@/lib/confetti'
@@ -346,6 +347,7 @@ export default function Board() {
           <h2 className="text-xl font-semibold text-foreground">{project?.name ?? projectSlug}</h2>
         </div>
         <div className="flex items-center gap-4">
+          <ViewToggle slug={slug} projectSlug={projectSlug} active="board" />
           <button
             onClick={() => setFocusMine((v) => !v)}
             aria-pressed={focusMine}
