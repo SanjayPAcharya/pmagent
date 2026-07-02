@@ -138,6 +138,7 @@ export async function buildServer() {
   await app.register(import('./routes/sprints.js'), { prefix: '/api/sprints' })
   await app.register(import('./routes/notifications.js'), { prefix: '/api/notifications' })
   await app.register(import('./routes/invites.js'), { prefix: '/api/invites' })
+  await app.register(import('./routes/search.js'), { prefix: '/api/search' })
   return app
 }
 

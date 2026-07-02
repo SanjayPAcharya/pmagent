@@ -150,8 +150,29 @@ export interface Ticket {
   createdBy: User
   labels: Label[]
   watcherIds: string[]
+  blockedBy?: number // count of incomplete dependencies (present on list responses)
   createdAt: string
   updatedAt: string
+}
+export interface TicketRef {
+  id: string
+  number: number
+  key: string
+  title: string
+  status: TicketStatus
+}
+export interface TicketRelations {
+  parent: TicketRef | null
+  subtasks: TicketRef[]
+  blockedBy: TicketRef[]
+  blocks: TicketRef[]
+}
+export interface BatchPatch {
+  status?: TicketStatus
+  assignedToId?: string | null
+  sprintId?: string | null
+  addLabelIds?: string[]
+  archived?: boolean
 }
 export interface Comment {
   id: string
@@ -225,6 +246,7 @@ export interface UpdateTicketInput {
   sprintId?: string | null
   assignedToId?: string | null
   labelIds?: string[]
+  parentId?: string | null
 }
 
 export const api = {
@@ -280,6 +302,18 @@ export const api = {
     request<{ ok: true }>('POST', `/api/tickets/${id}/watchers`, { userId }),
   removeWatcher: (id: string, userId: string) =>
     request<void>('DELETE', `/api/tickets/${id}/watchers/${userId}`),
+
+  // Relationships, search, my-work, bulk
+  getRelations: (id: string) => request<{ relations: TicketRelations }>('GET', `/api/tickets/${id}/relations`),
+  addDependency: (id: string, dependsOnId: string) =>
+    request<{ ok: true }>('POST', `/api/tickets/${id}/dependencies`, { dependsOnId }),
+  removeDependency: (id: string, dependsOnId: string) =>
+    request<void>('DELETE', `/api/tickets/${id}/dependencies/${dependsOnId}`),
+  searchTickets: (q: string) =>
+    request<{ items: Ticket[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
+  myWork: () => request<{ assigned: Ticket[]; watching: Ticket[] }>('GET', '/api/me/work'),
+  batchUpdateTickets: (ids: string[], patch: BatchPatch) =>
+    request<{ updated: number }>('POST', '/api/tickets/batch', { ids, patch }),
 
   // Labels (Phase 2F)
   listLabels: (orgId: string) => request<{ labels: Label[] }>('GET', `/api/labels?orgId=${encodeURIComponent(orgId)}`),

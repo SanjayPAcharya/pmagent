@@ -176,6 +176,7 @@ export interface UpdateTicketInput {
   sprintId?: string | null
   assignedToId?: string | null
   labelIds?: string[]
+  parentId?: string | null
 }
 
 /**
@@ -198,6 +199,20 @@ export async function updateTicket(
     if (input.assignedToId) await assertOrgMember(tx, orgId, input.assignedToId, 'Assignee')
     if (input.sprintId) await assertSprintInProject(tx, before.projectId, input.sprintId)
     if (has('labelIds')) await assertLabelsInOrg(tx, orgId, input.labelIds ?? [])
+    // Parent must be in the same project; walk ancestors to reject a cycle.
+    if (has('parentId') && input.parentId) {
+      if (input.parentId === ticketId) throw new ApiError(400, 'A ticket cannot be its own parent', 'CYCLE')
+      await assertTicketsInProject(tx, before.projectId, [input.parentId], 'Parent ticket')
+      let cursor: string | null = input.parentId
+      for (let i = 0; i < 100 && cursor; i++) {
+        const p: { parentId: string | null } | null = await tx.ticket.findUnique({
+          where: { id: cursor },
+          select: { parentId: true },
+        })
+        if (p?.parentId === ticketId) throw new ApiError(400, 'That would create a circular parent link', 'CYCLE')
+        cursor = p?.parentId ?? null
+      }
+    }
 
     const activity: { type: TicketActivityType; fromValue: string | null; toValue: string | null }[] = []
 
@@ -234,6 +249,7 @@ export async function updateTicket(
         position: input.position,
         dueDate: has('dueDate') ? (input.dueDate ? new Date(input.dueDate) : null) : undefined,
         sprintId: has('sprintId') ? input.sprintId : undefined,
+        parentId: has('parentId') ? input.parentId : undefined,
         assignedToId: has('assignedToId') ? input.assignedToId : undefined,
         // Replace the whole label set when labelIds is provided.
         labels: has('labelIds')
