@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ChevronDown, X } from 'lucide-react'
-import { api, type Member, type Priority, type Ticket, type TicketStatus, type UpdateTicketInput } from '@/lib/api'
+import { api, type Comment as CommentType, type Member, type Priority, type Ticket, type TicketStatus, type UpdateTicketInput } from '@/lib/api'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { renderMarkdown } from '@/lib/markdown'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -236,8 +236,80 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
     setComment((prev) => prev.replace(/@([\w.]*)$/, `@${m.name} `))
     setMentions((prev) => [...prev.filter((x) => x.label !== m.name), { label: m.name, userId: m.userId }])
   }
+  // Mentions render as highlighted chips: swap the `@[uuid]` token for a styled
+  // <span> BEFORE markdown; DOMPurify keeps the span + class, strips anything else.
   const renderCommentBody = (body: string) =>
-    renderMarkdown(body.replace(/@\[([0-9a-f-]{36})\]/gi, (_m, id) => '@' + (members.find((x) => x.userId === id)?.name ?? 'user')))
+    renderMarkdown(
+      body.replace(
+        /@\[([0-9a-f-]{36})\]/gi,
+        (_m, id) =>
+          `<span class="rounded bg-primary/10 px-1 py-0.5 text-xs font-medium text-primary">@${
+            members.find((x) => x.userId === id)?.name ?? 'user'
+          }</span>`,
+      ),
+    )
+
+  // 3.2 C3 — reaction chips under each comment. Fixed set; click toggles mine.
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
+  const myId = me.data?.user.id
+  const REACTION_EMOJI = ['👍', '🎉', '👀', '❤️']
+  const CommentReactions = ({ c }: { c: CommentType }) => {
+    const grouped = REACTION_EMOJI.map((emoji) => {
+      const rows = (c.reactions ?? []).filter((r) => r.emoji === emoji)
+      return { emoji, count: rows.length, mine: rows.some((r) => r.userId === myId) }
+    })
+    const toggle = async (emoji: string, mine: boolean) => {
+      try {
+        if (mine) await api.removeReaction(ticketId, c.id, emoji)
+        else await api.addReaction(ticketId, c.id, emoji)
+        qc.invalidateQueries({ queryKey: ['comments', ticketId] })
+      } catch (e) {
+        toast.error((e as Error).message)
+      }
+    }
+    return (
+      <div className="mt-2 flex items-center gap-1">
+        {grouped
+          .filter((g) => g.count > 0)
+          .map((g) => (
+            <button
+              key={g.emoji}
+              onClick={() => toggle(g.emoji, g.mine)}
+              aria-pressed={g.mine}
+              className={cn(
+                'flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition-colors',
+                g.mine ? 'border-primary/40 bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-accent',
+              )}
+            >
+              {g.emoji} {g.count}
+            </button>
+          ))}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={t('drawer.addReaction')}
+              className="rounded-full border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-accent group-hover/comment:opacity-100 focus-visible:opacity-100"
+            >
+              +🙂
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <div className="flex gap-1 p-1">
+              {grouped.map((g) => (
+                <button
+                  key={g.emoji}
+                  onClick={() => toggle(g.emoji, g.mine)}
+                  className={cn('rounded px-1.5 py-1 text-base hover:bg-accent', g.mine && 'bg-primary/10')}
+                >
+                  {g.emoji}
+                </button>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    )
+  }
 
   const SpecField = ({ label, body }: { label: string; body: string }) => (
     <div className="rounded-md border bg-muted/20 p-3">
@@ -626,7 +698,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   </Button>
                 </div>
                 {comments.data?.comments.map((c) => (
-                  <div key={c.id} className="rounded-md border p-3">
+                  <div key={c.id} className="group/comment rounded-md border p-3">
                     <div className="mb-1 text-xs font-medium text-foreground">
                       {c.author?.name ?? 'System'}{' '}
                       <span className="text-muted-foreground">
@@ -634,6 +706,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                       </span>
                     </div>
                     <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body) }} />
+                    <CommentReactions c={c} />
                   </div>
                 ))}
                 {comments.data?.comments.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noComments')}</p>}
@@ -657,7 +730,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
               <TabsContent value="story" className="space-y-2">
                 {storyItems.map((item) =>
                   item.comment ? (
-                    <div key={item.id} className="rounded-md border p-3">
+                    <div key={item.id} className="group/comment rounded-md border p-3">
                       <div className="mb-1 text-xs font-medium text-foreground">
                         {item.comment.author?.name ?? 'System'}{' '}
                         <span className="text-muted-foreground">
@@ -665,6 +738,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                         </span>
                       </div>
                       <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(item.comment.body) }} />
+                      <CommentReactions c={item.comment} />
                     </div>
                   ) : (
                     <div key={item.id} className="flex items-center gap-2 px-1 text-xs text-muted-foreground">

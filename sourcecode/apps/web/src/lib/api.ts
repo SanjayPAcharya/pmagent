@@ -182,6 +182,7 @@ export interface Comment {
   isInternal: boolean
   createdAt: string
   author: User | null
+  reactions?: { userId: string; emoji: string }[]
 }
 export interface Activity {
   id: string
@@ -300,6 +301,10 @@ export const api = {
   addComment: (id: string, body: string) =>
     request<{ comment: Comment }>('POST', `/api/tickets/${id}/comments`, { body }),
   listActivity: (id: string) => request<{ activity: Activity[] }>('GET', `/api/tickets/${id}/activity`),
+  addReaction: (ticketId: string, commentId: string, emoji: string) =>
+    request<{ ok: true }>('POST', `/api/tickets/${ticketId}/comments/${commentId}/reactions`, { emoji }),
+  removeReaction: (ticketId: string, commentId: string, emoji: string) =>
+    request<void>('DELETE', `/api/tickets/${ticketId}/comments/${commentId}/reactions/${encodeURIComponent(emoji)}`),
   addWatcher: (id: string, userId: string) =>
     request<{ ok: true }>('POST', `/api/tickets/${id}/watchers`, { userId }),
   removeWatcher: (id: string, userId: string) =>

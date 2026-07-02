@@ -29,6 +29,7 @@ model User {
   ticketActivity  TicketActivity[]
   sentInvites     OrgInvite[]      @relation("InvitesSent")
   comments        Comment[]
+  reactions       CommentReaction[]
   notifications   Notification[]
 
   @@index([email])
@@ -198,10 +199,26 @@ model Comment {
   isInternal Boolean    @default(false)
   createdAt  DateTime   @default(now())
 
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  ticket    Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  reactions CommentReaction[]
 
   @@index([ticketId])
+}
+
+// 3.2 C3 — lightweight comment reactions (fixed emoji set, one row per user+emoji).
+model CommentReaction {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commentId String   @db.Uuid
+  userId    String   @db.Uuid
+  emoji     String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+  @@index([commentId])
 }
 
 model TicketWatcher {

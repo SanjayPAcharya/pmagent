@@ -245,6 +245,7 @@
     "slashUnknown": "Couldn’t run /{{cmd}} — check the value",
     "commentPlaceholder": "Add a comment… @ to mention, / for commands",
     "noComments": "No comments yet.",
+    "addReaction": "Add reaction",
     "noActivity": "No activity yet.",
     "deleteTicket": "Delete ticket",
     "deleteConfirm": "Delete this ticket? It will be archived and removed from the board.",

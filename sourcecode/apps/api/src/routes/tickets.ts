@@ -225,9 +225,38 @@ const routes: FastifyPluginAsync = async (app) => {
     const comments = await prisma.comment.findMany({
       where: { ticketId: t.id },
       orderBy: { createdAt: 'asc' },
-      include: { author: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+      include: {
+        author: { select: { id: true, name: true, email: true, avatarUrl: true } },
+        reactions: { select: { userId: true, emoji: true } },
+      },
     })
     return { comments }
+  })
+
+  // ── Comment reactions (3.2 C3) — fixed emoji set, one per user+emoji ──
+  const reactionEmoji = z.enum(['👍', '🎉', '👀', '❤️'])
+  const commentParams = idParams.extend({ commentId: z.string().uuid() })
+
+  r.post('/:ticketId/comments/:commentId/reactions', { schema: { params: commentParams, body: z.object({ emoji: reactionEmoji }), tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'MEMBER')
+    const { commentId } = request.params
+    const comment = await prisma.comment.findUnique({ where: { id: commentId }, select: { ticketId: true } })
+    if (!comment || comment.ticketId !== t.id) throw new ApiError(404, 'Comment not found')
+    await prisma.commentReaction.upsert({
+      where: { commentId_userId_emoji: { commentId, userId: request.userId!, emoji: request.body.emoji } },
+      create: { commentId, userId: request.userId!, emoji: request.body.emoji },
+      update: {},
+    })
+    return reply.code(201).send({ ok: true })
+  })
+
+  r.delete('/:ticketId/comments/:commentId/reactions/:emoji', { schema: { params: commentParams.extend({ emoji: z.string() }), tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'MEMBER')
+    const { commentId, emoji } = request.params
+    const comment = await prisma.comment.findUnique({ where: { id: commentId }, select: { ticketId: true } })
+    if (!comment || comment.ticketId !== t.id) throw new ApiError(404, 'Comment not found')
+    await prisma.commentReaction.deleteMany({ where: { commentId, userId: request.userId!, emoji } })
+    return reply.code(204).send()
   })
 
   // ── Watchers (CC) ───────────────────────────────────────

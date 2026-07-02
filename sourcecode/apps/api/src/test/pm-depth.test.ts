@@ -193,3 +193,45 @@ describe('batch update', () => {
     expect(denied.statusCode).toBe(403)
   })
 })
+
+describe('comment reactions (3.2 C3)', () => {
+  it('adds (idempotent), lists, and removes reactions; rejects unknown emoji', async () => {
+    const owner = await tokenFor('rx-owner')
+    const { projectId } = await makeOrgProject(owner, 'Reaction Org')
+    const tk = await createTicket(owner, { projectId, title: 'React to me' })
+    const c = await app.inject({
+      method: 'POST', url: `/api/tickets/${tk.id}/comments`, headers: bearer(owner), payload: { body: 'Nice!' },
+    })
+    const commentId = c.json().comment.id as string
+
+    const add = await app.inject({
+      method: 'POST', url: `/api/tickets/${tk.id}/comments/${commentId}/reactions`,
+      headers: bearer(owner), payload: { emoji: '👍' },
+    })
+    expect(add.statusCode).toBe(201)
+    // idempotent — same user+emoji twice stays one row
+    await app.inject({
+      method: 'POST', url: `/api/tickets/${tk.id}/comments/${commentId}/reactions`,
+      headers: bearer(owner), payload: { emoji: '👍' },
+    })
+
+    let list = await app.inject({ method: 'GET', url: `/api/tickets/${tk.id}/comments`, headers: bearer(owner) })
+    expect(list.json().comments[0].reactions).toHaveLength(1)
+    expect(list.json().comments[0].reactions[0].emoji).toBe('👍')
+
+    const bad = await app.inject({
+      method: 'POST', url: `/api/tickets/${tk.id}/comments/${commentId}/reactions`,
+      headers: bearer(owner), payload: { emoji: '💣' },
+    })
+    expect(bad.statusCode).toBe(400)
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/tickets/${tk.id}/comments/${commentId}/reactions/${encodeURIComponent('👍')}`,
+      headers: bearer(owner),
+    })
+    expect(del.statusCode).toBe(204)
+    list = await app.inject({ method: 'GET', url: `/api/tickets/${tk.id}/comments`, headers: bearer(owner) })
+    expect(list.json().comments[0].reactions).toHaveLength(0)
+  })
+})
