@@ -28,9 +28,12 @@ interface Props {
   viewers?: Record<string, Member[]>
   /** B1: other viewers' in-flight drags landing in this column. */
   ghosts?: GhostInfo[]
+  /** 3.1 bulk: multi-select state. */
+  selectedIds?: Set<string>
+  onToggleSelect?: (id: string) => void
 }
 
-export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, focusUserId, viewers, ghosts }: Props) {
+export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, focusUserId, viewers, ghosts, selectedIds, onToggleSelect }: Props) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
@@ -101,6 +104,8 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, fo
               onStatusChange={onStatusChange}
               dimmed={Boolean(focusUserId) && t.assignedToId !== focusUserId}
               viewers={viewers?.[t.id]}
+              selected={selectedIds?.has(t.id)}
+              onToggleSelect={onToggleSelect}
             />
           ))}
         </SortableContext>

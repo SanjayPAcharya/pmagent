@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import { Skeleton } from '../components/ui/skeleton'
 import { TicketDrawer } from '../components/TicketDrawer'
 import ViewToggle from '../components/ViewToggle'
+import { BulkBar } from '../components/BulkBar'
 
 const TYPES: TicketType[] = ['FEATURE', 'BUG', 'CHORE', 'SPIKE']
 // Columns whose header toggles a server-side sort (field ↔ -field).
@@ -97,6 +98,20 @@ export default function ProjectList() {
     return null
   }
 
+  // 3.1 bulk — multi-select; cleared when project or filters change the visible set.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  useEffect(() => setSelectedIds(new Set()), [projectId])
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const visibleIds = tickets.data?.items.map((tk) => tk.id) ?? []
+  const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
+  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(visibleIds))
+
   const drawerTicket = number ? tickets.data?.items.find((tk) => tk.number === Number(number)) : undefined
   const base = `/orgs/${slug}/projects/${projectSlug}`
   const closeDrawer = () => navigate(`${base}/list`)
@@ -126,7 +141,7 @@ export default function ProjectList() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={t('board.searchPlaceholder')}
+          placeholder={t('board.search')}
           className="h-8 w-48 rounded-md border border-input bg-transparent px-2 text-sm"
         />
         <select value={status} onChange={(e) => setStatus(e.target.value as TicketStatus | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
@@ -134,19 +149,19 @@ export default function ProjectList() {
           {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
         <select value={priority} onChange={(e) => setPriority(e.target.value as Priority | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.allPriorities')}</option>
+          <option value="">{t('board.priorityAny')}</option>
           {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
         <select value={type} onChange={(e) => setType(e.target.value as TicketType | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.allTypes')}</option>
+          <option value="">{t('board.typeAny')}</option>
           {TYPES.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
         </select>
         <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.allAssignees')}</option>
+          <option value="">{t('board.assigneeAny')}</option>
           {members.data?.members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
         </select>
         <select value={sprintFilter} onChange={(e) => setSprintFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.allSprints')}</option>
+          <option value="">{t('board.sprintAny')}</option>
           {sprints.data?.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select value={labelFilter} onChange={(e) => setLabelFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
@@ -169,6 +184,15 @@ export default function ProjectList() {
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
+                <th className="w-8 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    aria-label={t('bulk.selectAll')}
+                    className="h-4 w-4 cursor-pointer rounded border-input accent-primary"
+                  />
+                </th>
                 <th className={sortableTh} onClick={() => toggleSort('key')}>{t('list.colKey')}{sortIcon('key')}</th>
                 <th className={th}>{t('list.colTitle')}</th>
                 <th className={th}>{t('list.colStatus')}</th>
@@ -183,7 +207,7 @@ export default function ProjectList() {
               {!tickets.data
                 ? Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-full max-w-24" /></td>
                       ))}
                     </tr>
@@ -192,8 +216,17 @@ export default function ProjectList() {
                     <tr
                       key={tk.id}
                       onClick={() => navigate(`${base}/list/ticket/${tk.number}`)}
-                      className="cursor-pointer hover:bg-accent"
+                      className={cn('cursor-pointer hover:bg-accent', selectedIds.has(tk.id) && 'bg-accent/60')}
                     >
+                      <td className="w-8 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(tk.id)}
+                          onChange={() => toggleSelect(tk.id)}
+                          aria-label={t('bulk.selectTicket', { key: tk.key })}
+                          className="h-4 w-4 cursor-pointer rounded border-input accent-primary"
+                        />
+                      </td>
                       <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-muted-foreground">{tk.key}</td>
                       <td className="max-w-[360px] px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -237,7 +270,7 @@ export default function ProjectList() {
                   ))}
               {tickets.data && tickets.data.items.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
                     {hasFilters ? t('list.emptyFiltered') : t('list.empty')}
                   </td>
                 </tr>
@@ -254,6 +287,17 @@ export default function ProjectList() {
           members={members.data?.members ?? []}
           onClose={closeDrawer}
           onChanged={() => qc.invalidateQueries({ queryKey: ['tickets', projectId] })}
+        />
+      )}
+
+      {selectedIds.size > 0 && projectId && (
+        <BulkBar
+          selectedIds={[...selectedIds]}
+          projectId={projectId}
+          members={members.data?.members ?? []}
+          sprints={sprints.data?.sprints ?? []}
+          labels={labels.data?.labels ?? []}
+          onClear={() => setSelectedIds(new Set())}
         />
       )}
     </div>

@@ -130,6 +130,21 @@
     "accepting": "Accepting invitation…",
     "goToDashboard": "Go to dashboard"
   },
+  "bulk": {
+    "selected": "{{count}} selected",
+    "selectAll": "Select all",
+    "selectTicket": "Select {{key}}",
+    "status": "Status",
+    "assign": "Assign",
+    "sprint": "Sprint",
+    "label": "Label",
+    "noLabels": "No labels yet.",
+    "archive": "Archive",
+    "confirmArchive": "Confirm?",
+    "clear": "Clear selection",
+    "updated": "{n} tickets updated",
+    "archived": "{n} tickets archived"
+  },
   "mywork": {
     "title": "My work",
     "assigned": "Assigned to me",

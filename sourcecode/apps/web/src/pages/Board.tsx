@@ -25,6 +25,7 @@ import { TicketCardBody } from '@/components/board/TicketCard'
 import { BoardSkeleton } from '@/components/board/BoardSkeleton'
 import { TicketDrawer } from '@/components/TicketDrawer'
 import ViewToggle from '@/components/ViewToggle'
+import { BulkBar } from '@/components/BulkBar'
 import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fireConfetti } from '@/lib/confetti'
@@ -112,6 +113,17 @@ export default function Board() {
   const [viewers, setViewers] = useState<string[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [focusMine, setFocusMine] = useState(false)
+  // 3.1 bulk — multi-selected ticket ids; cleared when the project changes.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  useEffect(() => setSelectedIds(new Set()), [projectId])
+  const labels = useQuery({ queryKey: ['labels', orgId], queryFn: () => api.listLabels(orgId!), enabled: Boolean(orgId) })
   // E1 — userIds viewing each ticket; B1 — other viewers' in-flight drags.
   const [ticketViewers, setTicketViewers] = useState<Record<string, string[]>>({})
   const [ghosts, setGhosts] = useState<Record<string, { actorId: string; status: TicketStatus }>>({})
@@ -504,6 +516,8 @@ export default function Board() {
                 focusUserId={focusMine ? myId : null}
                 viewers={viewersByTicket}
                 ghosts={ghostsByStatus[s] ?? []}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
               />
             ))}
           </div>
@@ -525,6 +539,17 @@ export default function Board() {
           viewers={viewersByTicket[drawerTicket.id]}
           onClose={closeDrawer}
           onChanged={() => qc.invalidateQueries({ queryKey: ticketsPrefix })}
+        />
+      )}
+
+      {selectedIds.size > 0 && projectId && (
+        <BulkBar
+          selectedIds={[...selectedIds]}
+          projectId={projectId}
+          members={members.data?.members ?? []}
+          sprints={sprints.data?.sprints ?? []}
+          labels={labels.data?.labels ?? []}
+          onClear={() => setSelectedIds(new Set())}
         />
       )}
     </div>

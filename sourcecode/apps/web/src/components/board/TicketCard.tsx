@@ -101,9 +101,12 @@ interface TicketCardProps {
   dimmed?: boolean
   /** E1: members currently viewing this ticket (minus me). */
   viewers?: Member[]
+  /** 3.1 bulk: multi-select checkbox state. */
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers }: TicketCardProps) {
+export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers, selected, onToggleSelect }: TicketCardProps) {
   const { t } = useTranslation()
   // useSortable gives within-column reordering (cards shift to make room) plus
   // cross-column moves. The 5px activation distance (set on the board) lets a
@@ -173,6 +176,24 @@ export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers }: 
       )}
     >
       <TicketCardBody ticket={ticket} viewers={viewers} />
+      {onToggleSelect && (
+        <div
+          className={cn(
+            'absolute -left-1.5 -top-1.5 transition-opacity',
+            selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+          )}
+          onPointerDown={stop}
+          onClick={stop}
+        >
+          <input
+            type="checkbox"
+            checked={Boolean(selected)}
+            onChange={() => onToggleSelect(ticket.id)}
+            aria-label={t('bulk.selectTicket', { key: ticket.key })}
+            className="h-4 w-4 cursor-pointer rounded border-input accent-primary"
+          />
+        </div>
+      )}
       <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={stop} onClick={stop}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
