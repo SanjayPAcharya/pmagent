@@ -129,6 +129,15 @@
     "accepting": "Accepting invitation…",
     "goToDashboard": "Go to dashboard"
   },
+  "relations": {
+    "parent": "Parent",
+    "setParent": "Set parent",
+    "subtasks": "Subtasks",
+    "blockedBy": "Blocked by",
+    "blocks": "Blocks",
+    "searchTickets": "Search tickets…",
+    "noMatches": "No matching tickets."
+  },
   "list": {
     "viewBoard": "Board",
     "viewList": "List",

@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
+import { RelationsSection } from '@/components/RelationsSection'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
@@ -517,6 +518,9 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                 </Button>
               </div>
             </div>
+
+            {/* Relationships — parent / subtasks / blocked-by / blocks (3.1) */}
+            <RelationsSection ticketId={ticketId} projectId={ticket.projectId} />
 
             {/* Spec — description + the agent-ready fields (goal/AC/constraints).
                 The readiness ring (A1) reflects how much of the spec is filled. */}
