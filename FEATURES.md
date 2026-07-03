@@ -85,8 +85,11 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Organizations & members
 - Roles: **Owner** (full control), **Admin** (manage members, projects, templates), **Member** (day-to-day work). The last Owner can never be accidentally removed.
 - Invite links expire after 7 days and can be revoked; email-adds work for existing accounts.
-- **Workspace accent color** per organization — the whole app follows it.
 - Overview page shows projects/members/open-ticket counts and a **recent activity feed**.
+
+## Settings
+- **Organization settings** (from the "Settings" link on an org's page): rename the org, pick its **workspace accent color** (the whole app follows it), see your plan, and — for Owners — a danger zone to delete the org (type its name to confirm).
+- **Project settings** (from a project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to delete the project (type-to-confirm). Everything is role-gated — members see it read-only.
 
 ## Navigation
 - **Workspace sidebar** — collapsible org → project tree; star ⭐ projects to pin them on top; collapses to a slide-out menu on mobile.
@@ -140,6 +143,6 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 
 ## Coming next (planned)
 - Project insights: velocity trends, cycle time, workload charts.
-- Organization & project settings pages, error monitoring, API access.
+- Error monitoring, plan limits, and API access.
 - Email/Slack notifications and digests.
 - **The headline act:** assign a ticket to an AI agent that writes the code and opens a pull request — the reason it's called PMAgent.

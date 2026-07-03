@@ -1,15 +1,15 @@
 # Phase 3.5 — Platform Hygiene: settings UI, monitoring, plan limits, API access
 
-> **Status: 📋 PLANNED**. Pre-launch checklist material (pairs with `references/06-security-checklist.md`, `08-monitoring.md`, `11-launch-checklist.md`). Mostly UI over existing endpoints + wiring documented-but-unshipped ops.
+> **Status: 🔨 IN PROGRESS** (2026-07-03, on `dev`) — H1+H2 settings pages done & browser-verified; H3–H5 pending. Pre-launch checklist material (pairs with `references/06-security-checklist.md`, `08-monitoring.md`, `11-launch-checklist.md`). Mostly UI over existing endpoints + wiring documented-but-unshipped ops.
 
 ## Why 3.5 exists
 Endpoints exist without UI (org rename/accent/delete, project rename/branch/delete), monitoring is documented but not wired, `PlanType` is decorative, and "agent-first" needs programmatic access eventually. Closing these makes the product self-serve for a testing team.
 
 ## Items
-### H1. Org settings page — **M**, no backend
+### H1. ✅ Org settings page
 `/orgs/:slug/settings`: rename, accent color (move the picker from Members), plan display, danger zone (delete org, OWNER-gated, type-to-confirm). All endpoints exist.
 
-### H2. Project settings page — **M**, no backend
+### H2. ✅ Project settings page
 Rename, description, default branch, danger zone (delete/archive). Entry from the tree context menu's stubbed "Settings".
 
 ### H3. Error monitoring — **M**

@@ -289,6 +289,8 @@ export const api = {
   listOrgs: () => request<{ organizations: Organization[] }>('GET', '/api/orgs'),
   getOrg: (slug: string) => request<{ org: OrgDetail }>('GET', `/api/orgs/${slug}`),
   createOrg: (name: string) => request<{ org: Organization }>('POST', '/api/orgs', { name }),
+  deleteOrg: (slug: string) => request<void>('DELETE', `/api/orgs/${slug}`),
+  deleteProject: (projectId: string) => request<void>('DELETE', `/api/projects/${projectId}`),
   updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
     request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
   orgActivity: (slug: string) => request<{ activity: ActivityItem[] }>('GET', `/api/orgs/${slug}/activity`),

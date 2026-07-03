@@ -79,7 +79,31 @@
     "overdue": "overdue",
     "updated": "updated {{time}}",
     "menu": "Project actions",
-    "copyKey": "Copy key"
+    "copyKey": "Copy key",
+    "settingsLink": "Settings"
+  },
+  "settings": {
+    "orgTitle": "Organization settings",
+    "projectTitle": "Project settings",
+    "backToOrg": "← projects",
+    "backToProject": "← board",
+    "general": "General",
+    "orgName": "Organization name",
+    "projectName": "Project name",
+    "description": "Description",
+    "defaultBranch": "Default branch",
+    "keyImmutable": "Project key can't be changed",
+    "plan": "Plan",
+    "planHint": "Free plan",
+    "saved": "Saved",
+    "dangerTitle": "Danger zone",
+    "typeToConfirm": "Type “{{name}}” to confirm",
+    "deleteOrgWarning": "Permanently delete this organization and every project, ticket, sprint, and invite in it. This cannot be undone.",
+    "deleteOrg": "Delete organization",
+    "orgDeleted": "Organization deleted",
+    "deleteProjectWarning": "Permanently delete this project and all of its tickets and sprints. This cannot be undone.",
+    "deleteProject": "Delete project",
+    "projectDeleted": "Project deleted"
   },
   "activity": {
     "title": "Recent activity",
