@@ -152,6 +152,8 @@
     "export": "Export CSV",
     "import": "Import CSV",
     "nothingToImport": "No usable rows found — the file needs a Title or Summary column.",
+    "sample": "Sample CSV",
+    "sampleHint": "Download an example file showing the expected import format",
     "previewTitle": "{{count}} tickets ready to import",
     "skipped": "({{count}} rows skipped — missing title)",
     "andMore": "…and {{count}} more",
