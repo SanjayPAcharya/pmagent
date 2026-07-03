@@ -70,7 +70,16 @@ export function OrgTree({ onNavigate, onCollapse }: { onNavigate?: () => void; o
             ))}
           </div>
         ) : orgs.data && orgs.data.organizations.length === 0 ? (
-          <p className="px-2 py-3 text-xs text-muted-foreground">{t('tree.noOrgs')}</p>
+          <div className="px-2 py-2">
+            <p className="mb-2 text-xs text-muted-foreground">{t('tree.noOrgs')}</p>
+            <Link
+              to="/"
+              onClick={onNavigate}
+              className="flex items-center gap-1.5 rounded-md border border-dashed border-primary/40 px-2 py-1.5 text-sm font-medium text-primary hover:bg-primary/5"
+            >
+              + {t('tree.createFirstOrg')}
+            </Link>
+          </div>
         ) : (
           orgs.data?.organizations.map((o) => (
             <OrgNode

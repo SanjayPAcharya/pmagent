@@ -9,6 +9,8 @@ PMAgent is a project-management tool built for teams — and designed from day o
 
 # Part 1 — Getting started, step by step
 
+> 💡 The app tracks these same steps for you: a **Getting started checklist** appears on your home screen with a progress bar, and each unfinished step is a link that takes you to the right place. Dismiss it anytime with the ✕.
+
 ## Step 1 · Create your account
 
 On the welcome screen, either:
@@ -137,7 +139,6 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ---
 
 ## Coming next (planned)
-- **In-app getting-started checklist** guiding new users through the steps above.
 - Project insights: velocity trends, cycle time, workload charts.
 - Organization & project settings pages, error monitoring, API access.
 - Email/Slack notifications and digests.

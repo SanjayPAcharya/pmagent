@@ -28,6 +28,7 @@
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
     "noOrgs": "No organizations yet.",
+    "createFirstOrg": "Create your first organization",
     "noProjects": "No projects yet.",
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites"
@@ -130,6 +131,23 @@
     "accepting": "Accepting invitation…",
     "goToDashboard": "Go to dashboard"
   },
+  "onboard": {
+    "title": "Getting started",
+    "progress": "{{done}} of {{total}} done",
+    "dismiss": "Hide this checklist",
+    "org": "Create an organization",
+    "orgHint": "use the box above",
+    "project": "Create a project",
+    "projectHint": "open your organization",
+    "ticket": "Create your first ticket",
+    "ticketHint": "open the project board",
+    "move": "Move a ticket on the board",
+    "moveHint": "drag a card to the next column",
+    "invite": "Invite a teammate",
+    "inviteHint": "share an invite link",
+    "palette": "Try the command palette",
+    "paletteHint": "or press ⌘K / Ctrl-K"
+  },
   "csv": {
     "export": "Export CSV",
     "import": "Import CSV",
@@ -172,7 +190,10 @@
     "assigned": "Assigned to me",
     "watching": "Watching",
     "emptyAssigned": "Nothing assigned to you right now.",
-    "emptyWatching": "You're not watching any other tickets."
+    "emptyWatching": "You're not watching any other tickets.",
+    "noOrgsTitle": "Welcome to PMAgent",
+    "noOrgsHint": "You're not part of any organization yet. Create one — it takes a few seconds — and your work will show up here.",
+    "goCreate": "Create your organization"
   },
   "relations": {
     "parent": "Parent",
