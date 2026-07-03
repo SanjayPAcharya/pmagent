@@ -1,0 +1,65 @@
+# Phase 3.6 — Polish, hardening & carried-over hygiene
+
+> **Status: 📋 PLANNED** (opened 2026-07-03). A deliberate consolidation pass: finish the 3.5 hygiene items that were paused, then walk back through everything shipped in the 3.x arc (org/project redesign, 3.1 PM depth, 3.2 collaboration, 3.4 workflow, 3.5 settings) and close the loose ends before starting Phase 4. **No new feature surface** beyond the carried-over 3.5 work — this phase makes what exists feel finished.
+
+## Why 3.6 exists
+The 3.x track shipped fast and broad. A focused polish phase (a) prevents small rough edges from compounding, (b) adds the test coverage the frontend never got, and (c) lands the remaining pre-launch hygiene. This is the last stop before the notification-channels / agent work.
+
+---
+
+## Part A — Carried over from 3.5 (paused there)
+
+### A1. Error monitoring *(was 3.5 H3)* — **M**
+Sentry (or self-hosted GlitchTip to stay in the Docker ethos) in api + web; release tag from the CI SHA; alert on new issues. **Blocked on:** a DSN / monitoring backend from the owner. Follows `references/08-monitoring.md`.
+
+### A2. Soft plan limits *(was 3.5 H4)* — **S–M**
+Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a friendly 402-style error + an upgrade hint in the UI. No billing — just the seam so Stripe can slot in later without schema churn. Self-contained; good to do first of the three.
+
+### A3. Personal access tokens + webhooks *(was 3.5 H5)* — **L**, Phase-5 prerequisite
+`ApiToken { userId, hash, scopes, lastUsedAt }` + `Webhook { orgId, url, secret, events }`; token auth path alongside Keycloak JWT; webhook delivery on `ticket.*` events (reuse the event bus). The bridge the GitHub agent (Phase 5) stands on — schedule right before Phase 5.
+
+---
+
+## Part B — Polish loose ends (audit of shipped 3.x work)
+
+### Consistency & discoverability
+- **Settings entry points are inconsistent** — org Settings is a text link on the projects header; project Settings lives in the card ⋯ menu; neither is in the workspace tree. Pick one consistent pattern (e.g. a gear in the tree per org/project) and keep the others as secondary.
+- **Templates card is empty for pre-existing orgs** until you click "Add starter templates." Consider auto-seeding on first project create, or a clearer first-run hint.
+- **Empty/loading states are uneven** — settings pages, MyWork sections, and some cards show nothing (not a skeleton) while loading; several pages have polished empty states, others are bare. Normalize.
+
+### Edge cases & data
+- **CSV import ignores labels and assignee** — export writes an Assignee/Labels column, but import drops them. Either round-trip them (match by name/email within the org) or document the one-way limitation in the sample header.
+- **Delete flows** — after deleting an org/project, confirm the sidebar tree, breadcrumbs, and any cached accent (`useOrgAccent`) all clear; no stale nav.
+- **W3 automation vs. the plan** — implemented trio is `unblockNudge / autoTodoOnAssign / subtasksDoneNudge`; the 3.4 plan text also listed "IN_REVIEW → notify watchers." Reconcile the doc with what shipped (watchers already get `ticket.updated`), or add the toggle.
+- **subtasksDoneNudge** was wired but only unblock-nudge was browser-verified — verify the subtasks-done path end to end.
+
+### Notifications
+- New types (`TICKET_UNBLOCKED`, `SUBTASKS_DONE`) render via their body text (fine) but have **no per-type icon/label** in the bell. Add icons + i18n labels for a consistent feed.
+
+### Mobile & accessibility
+- **Comment reactions:** the "+" add-reaction button is hover-only (`group-hover`), so on touch you can't react to a comment that has no reactions yet. Make it tap-reachable.
+- Audit the new surfaces (BulkBar, DangerZone, CsvTools, settings, ticket-drawer wide mode) on a phone: tap targets, the drawer's two-column mode, the floating bulk bar over the mobile nav.
+- a11y sweep: labels/roles on the new dropdowns, checkboxes, and the color picker.
+
+### i18n & copy
+- Sweep `locales/en.json` for **orphan keys** (removed with the Members accent card) and **missing keys** referenced by the new components; verify no raw `t('…')` keys render (the list-view filter bug earlier).
+- Consistent sentence case + voice per the CDS copy rules across the new pages.
+
+### Testing
+- **The web app has no test runner** (`"test": "echo no-tests"`). Stand up Vitest + a couple of unit tests for the pure logic added this arc: `lib/csv.ts` round-trip (`mapRows`), `automationSettings`, frecency, favorites.
+- **API gaps:** no tests for `DELETE /api/orgs/:slug` and `DELETE /api/projects/:projectId`, nor for the new `role` field on `GET /api/orgs/:slug`. Add them.
+
+### Performance / correctness nits
+- Confirm the org/project list `stats` queries stay cheap as data grows (they're grouped, but re-check the N+1 boundary).
+- Double-check optimistic updates + query invalidation keys are consistent across the new mutations (settings saves, template create, reactions, bulk).
+
+---
+
+## Suggested order
+1. **Testing scaffold** (web Vitest + the API delete/role tests) — do this first so the rest of the polish is guarded.
+2. **Quick consistency/UX nits** (settings entry points, empty/loading states, reaction touch fix, notification icons).
+3. **Edge cases** (CSV labels, delete-flow cleanup, W3 reconcile + subtasks verify).
+4. **A2 plan limits**, then **A1 monitoring** (when a DSN exists), then **A3 tokens/webhooks** right before Phase 5.
+
+## Guardrail
+This is polish, not scope growth. Anything that turns into a real new feature gets its own phase.

@@ -85,7 +85,8 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 | 3.2 | [phase-3.2-collaboration.md](phases/phase-3.2-collaboration.md) | Collaboration — @mention autocomplete UI, markdown rendering, comment reactions, attachments |
 | 3.3 | [phase-3.3-insights-reporting.md](phases/phase-3.3-insights-reporting.md) | Insights — velocity trend, cycle time, cumulative flow, workload, per-project Reports tab |
 | 3.4 | [phase-3.4-workflow-automation.md](phases/phase-3.4-workflow-automation.md) | Simple workflow — ticket templates, unblock nudges, fixed automation toggles, CSV import/export |
-| 3.5 | [phase-3.5-platform-hygiene.md](phases/phase-3.5-platform-hygiene.md) | Hygiene — org/project settings UI, error monitoring, soft plan limits, API tokens + webhooks (pre-Phase-5 bridge) |
+| 3.5 | [phase-3.5-platform-hygiene.md](phases/phase-3.5-platform-hygiene.md) | Hygiene — org/project **settings pages** (done); monitoring / plan limits / API tokens **moved to 3.6** |
+| 3.6 | [phase-3.6-polish-hardening.md](phases/phase-3.6-polish-hardening.md) | Polish & hardening — carried-over hygiene (monitoring, plan limits, tokens/webhooks) + a loose-ends audit across the 3.x arc + the first web test scaffold |
 | 4 | [phase-4-notifications-channels.md](phases/phase-4-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
 | 5 | [phase-5-github-code-agent.md](phases/phase-5-github-code-agent.md) | Third-party integration: GitHub App + Code Agent + agent-first UI |
 | 5.5 | [phase-5.5-agent-first.md](phases/phase-5.5-agent-first.md) | Agent-first surfaces (@agent, draft-with-agent, agent swimlane) — **parked; lands with Phase 5** (was 2.7) |
