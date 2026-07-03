@@ -103,7 +103,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## List view
 - **Board ⇄ List** toggle (remembered per browser).
 - Filterable, sortable table; row click opens the ticket panel.
-- **Export CSV** of exactly what your filters show; **Import CSV** with a preview and Jira-compatible headers (Summary, Issue Type, Story Points…).
+- **Export CSV** of exactly what your filters show; **Import CSV** with a preview and Jira-compatible headers (Summary, Issue Type, Story Points…). Not sure of the format? Click **Sample CSV** to download a ready-made example you can open, edit, and re-import.
 
 ## Tickets
 - Slide-in panel with a **pinned header** (number, title, status, priority, type) and an **expand-width** ⤢ button (two-column layout on big screens).
