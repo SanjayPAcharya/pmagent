@@ -42,7 +42,7 @@ function SprintChip({ project }: { project: Project }) {
   const s = project.activeSprint
   if (!s) {
     return (
-      <div className="relative mt-3 rounded-lg border border-dashed px-2.5 py-1.5 text-xs text-muted-foreground">
+      <div className="mt-3 rounded-lg border border-dashed px-2.5 py-1.5 text-xs text-muted-foreground">
         {t('projects.noActiveSprint')}
       </div>
     )
@@ -50,7 +50,7 @@ function SprintChip({ project }: { project: Project }) {
   const pct = s.total > 0 ? Math.round((s.done / s.total) * 100) : 0
   const dleft = daysUntil(s.endDate)
   return (
-    <div className="relative mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+    <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
       <Rocket className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{s.name}</span>
       <span className="shrink-0">· {pct}%</span>
@@ -65,8 +65,10 @@ function ProjectCard({ orgSlug, project }: { orgSlug: string; project: Project }
   const { t } = useTranslation()
   return (
     <div className="group relative rounded-xl border bg-card p-4 transition-colors hover:border-primary/40">
+      {/* Overlay link makes the WHOLE card clickable. Content stays non-positioned
+          so the overlay paints above it; only the star/menu lift over it (z-10). */}
       <Link to={`/orgs/${orgSlug}/projects/${project.slug}`} className="absolute inset-0" aria-label={project.name} />
-      <div className="relative flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <span className={keyBadge}>{project.key}</span>
         <span className="truncate font-medium text-foreground">{project.name}</span>
         <div className="relative z-10 ml-auto flex items-center">
@@ -75,12 +77,12 @@ function ProjectCard({ orgSlug, project }: { orgSlug: string; project: Project }
         </div>
       </div>
       {project.description && (
-        <p className="relative mt-1 line-clamp-2 text-xs text-muted-foreground">{project.description}</p>
+        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{project.description}</p>
       )}
-      <StatusBar byStatus={project.byStatus} className="relative mt-3" />
+      <StatusBar byStatus={project.byStatus} className="mt-3" />
       <SprintChip project={project} />
       {project.updatedAt && (
-        <div className="relative mt-3 text-xs text-muted-foreground">
+        <div className="mt-3 text-xs text-muted-foreground">
           {t('projects.updated', { time: formatRelative(project.updatedAt) })}
         </div>
       )}
@@ -96,8 +98,8 @@ function ProjectRow({ orgSlug, project }: { orgSlug: string; project: Project })
       <Link to={`/orgs/${orgSlug}/projects/${project.slug}`} className="absolute inset-0" aria-label={project.name} />
       <span className={keyBadge}>{project.key}</span>
       <span className="truncate font-medium text-foreground">{project.name}</span>
-      <StatusBar byStatus={project.byStatus} showLegend={false} className="relative hidden w-24 shrink-0 sm:block" />
-      <span className="relative ml-auto hidden shrink-0 items-center gap-3 text-xs text-muted-foreground sm:flex">
+      <StatusBar byStatus={project.byStatus} showLegend={false} className="hidden w-24 shrink-0 sm:block" />
+      <span className="ml-auto hidden shrink-0 items-center gap-3 text-xs text-muted-foreground sm:flex">
         {s && (
           <span className="inline-flex items-center gap-1">
             <Rocket className="h-3 w-3" />
