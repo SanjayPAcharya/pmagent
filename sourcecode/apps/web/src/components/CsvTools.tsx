@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Download, Upload } from 'lucide-react'
+import { Download, FileDown, Upload } from 'lucide-react'
 import { api, type ImportTicketRow, type Priority, type Sprint, type Ticket, type TicketStatus, type TicketType } from '@/lib/api'
 import { STATUS_LABEL } from '@/lib/board'
 import { downloadCsv, parseCsv } from '@/lib/csv'
@@ -33,7 +33,25 @@ const TYPE_MAP: Record<string, TicketType> = {
 }
 const PRIORITY_SET = new Set(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 
-function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: number } {
+// Downloadable example of the accepted import format. Exercises the quirks on
+// purpose: quoted commas, a multi-line acceptance-criteria cell, mixed
+// Jira-style values ("To Do", "Story"), and optional cells left empty.
+export const SAMPLE_CSV_ROWS: string[][] = [
+  ['Title', 'Description', 'Status', 'Priority', 'Type', 'Story Points', 'Acceptance Criteria'],
+  [
+    'Set up the login page',
+    'Users can sign in with email, or Google',
+    'To Do',
+    'High',
+    'Feature',
+    '3',
+    '- [ ] Form validates the email\n- [ ] Errors are shown inline',
+  ],
+  ['Fix crash on save', 'The app crashes when saving an empty form', 'Backlog', 'Urgent', 'Bug', '2', ''],
+  ['Update onboarding docs', '', 'In Progress', 'Low', 'Task', '1', ''],
+]
+
+export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: number } {
   if (grid.length < 2) return { rows: [], skipped: 0 }
   const headers = grid[0].map((h) => h.trim().toLowerCase())
   const col = (field: keyof ImportTicketRow) => headers.findIndex((h) => HEADER_ALIASES[field].includes(h))
@@ -87,12 +105,14 @@ export function CsvTools({ projectId, projectKey, items, sprints }: Props) {
     downloadCsv(`${projectKey.toLowerCase()}-tickets.csv`, [header, ...rows])
   }
 
+  const downloadSample = () => downloadCsv('pmagent-import-sample.csv', SAMPLE_CSV_ROWS)
+
   const onFile = async (f: File | undefined) => {
     if (!f) return
     const text = await f.text()
     const mapped = mapRows(parseCsv(text))
     if (mapped.rows.length === 0) {
-      toast.error(t('csv.nothingToImport'))
+      toast.error(t('csv.nothingToImport'), { action: { label: t('csv.sample'), onClick: downloadSample } })
       return
     }
     setPreview(mapped)
@@ -123,6 +143,10 @@ export function CsvTools({ projectId, projectKey, items, sprints }: Props) {
         <Button variant="ghost" size="sm" onClick={() => fileRef.current?.click()} className="gap-1.5">
           <Upload className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">{t('csv.import')}</span>
+        </Button>
+        <Button variant="ghost" size="sm" onClick={downloadSample} title={t('csv.sampleHint')} className="gap-1.5">
+          <FileDown className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{t('csv.sample')}</span>
         </Button>
         <input
           ref={fileRef}

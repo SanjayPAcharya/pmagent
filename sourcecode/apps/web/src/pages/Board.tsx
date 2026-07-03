@@ -27,6 +27,7 @@ import { TicketDrawer } from '@/components/TicketDrawer'
 import ViewToggle from '@/components/ViewToggle'
 import { BulkBar } from '@/components/BulkBar'
 import { ProjectTools } from '@/components/ProjectTools'
+import { ONBOARD_MOVED_KEY } from '@/components/GettingStarted'
 import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fireConfetti } from '@/lib/confetti'
@@ -235,6 +236,7 @@ export default function Board() {
     )
     try {
       await api.updateTicket(id, { status: target, position })
+      localStorage.setItem(ONBOARD_MOVED_KEY, '1')
       // Only narrate (with undo) when the column actually changed — silent on
       // pure within-column reorders so dragging doesn't spam toasts.
       if (announce && fromStatus && fromStatus !== target) {

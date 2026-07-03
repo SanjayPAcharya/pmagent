@@ -45,8 +45,10 @@ export default function Layout() {
 
   const ThemeIcon = theme === 'dark' ? Sun : theme === 'light' ? Moon : Monitor
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
-      <header className="sticky top-0 z-30 border-b bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
+      {/* Chrome (header + rail) sits on a quiet muted tint; content stays on the
+          clean background — subtle two-surface split, hairline borders only. */}
+      <header className="sticky top-0 z-30 border-b bg-muted/40 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center gap-3 px-4 sm:px-6">
           <Button
             variant="ghost"
@@ -82,7 +84,7 @@ export default function Layout() {
       <div className="mx-auto flex w-full max-w-[1600px] flex-1">
         {/* Desktop rail */}
         {collapsed ? (
-          <div className="hidden shrink-0 border-r bg-background p-2 lg:block">
+          <div className="hidden shrink-0 border-r bg-muted/40 p-2 lg:block">
             <Button
               variant="ghost"
               size="icon"
@@ -94,7 +96,7 @@ export default function Layout() {
             </Button>
           </div>
         ) : (
-          <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-64 shrink-0 overflow-hidden border-r bg-background lg:block">
+          <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-64 shrink-0 overflow-hidden border-r bg-muted/40 lg:block">
             <OrgTree onCollapse={() => setCollapsed(true)} />
           </aside>
         )}

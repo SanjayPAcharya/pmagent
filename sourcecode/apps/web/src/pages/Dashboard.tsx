@@ -6,6 +6,7 @@ import { api, type Organization } from '../lib/api'
 import { Skeleton } from '../components/ui/skeleton'
 import { MetricChip } from '../components/MetricChip'
 import { DensityToggle, type Density } from '../components/DensityToggle'
+import { GettingStarted } from '../components/GettingStarted'
 import { useLocalStorageState } from '../lib/useLocalStorage'
 import { cn } from '../lib/utils'
 
@@ -70,6 +71,8 @@ export default function Dashboard() {
         </button>
       </form>
       {create.isError && <p className="mt-2 text-sm text-destructive">{(create.error as Error).message}</p>}
+
+      {orgs.data && <GettingStarted orgs={orgs.data.organizations} />}
 
       {orgs.isPending ? (
         <div className={cn('mt-6', density === 'grid' ? 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3' : 'space-y-2')}>

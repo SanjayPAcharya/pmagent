@@ -9,9 +9,28 @@ import { cn } from '../lib/utils'
 import { Skeleton } from '../components/ui/skeleton'
 
 // Everything relevant to me, across all orgs: assigned first, watching second.
+// Brand-new accounts (no orgs) get a welcome pointing at the next step instead
+// of two empty lists — this page must never be a dead-end.
 export default function MyWork() {
   const { t } = useTranslation()
   const work = useQuery({ queryKey: ['my-work'], queryFn: api.myWork })
+  const orgs = useQuery({ queryKey: ['orgs'], queryFn: api.listOrgs })
+
+  if (orgs.data && orgs.data.organizations.length === 0) {
+    return (
+      <div className="mx-auto mt-12 max-w-md rounded-xl border bg-card p-8 text-center">
+        <UserCircle2 className="mx-auto h-10 w-10 text-muted-foreground" />
+        <h2 className="mt-3 text-lg font-semibold text-foreground">{t('mywork.noOrgsTitle')}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t('mywork.noOrgsHint')}</p>
+        <Link
+          to="/"
+          className="mt-5 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          {t('mywork.goCreate')}
+        </Link>
+      </div>
+    )
+  }
 
   const row = (tk: TicketHit) => (
     <li key={tk.id}>

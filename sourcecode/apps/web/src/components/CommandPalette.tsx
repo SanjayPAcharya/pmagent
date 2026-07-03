@@ -24,6 +24,7 @@ import { useTheme } from '@/lib/theme'
 import { getRecent } from '@/lib/frecency'
 import { parseQuickCreate } from '@/lib/parseQuickCreate'
 import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command'
+import { ONBOARD_PALETTE_KEY } from '@/components/GettingStarted'
 
 // Global ⌘K / Ctrl-K palette.
 // D1: full action surface — when a ticket is open, change status / assign /
@@ -46,6 +47,7 @@ export function CommandPalette() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
+        localStorage.setItem(ONBOARD_PALETTE_KEY, '1')
         setOpen((o) => !o)
       }
     }
