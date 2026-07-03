@@ -24,6 +24,7 @@
   },
   "tree": {
     "title": "Workspace",
+    "myWork": "My work",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
     "noOrgs": "No organizations yet.",
@@ -129,6 +130,77 @@
     "accepting": "Accepting invitation…",
     "goToDashboard": "Go to dashboard"
   },
+  "csv": {
+    "export": "Export CSV",
+    "import": "Import CSV",
+    "nothingToImport": "No usable rows found — the file needs a Title or Summary column.",
+    "previewTitle": "{{count}} tickets ready to import",
+    "skipped": "({{count}} rows skipped — missing title)",
+    "andMore": "…and {{count}} more",
+    "confirmImport": "Import {{count}} tickets",
+    "imported": "{{count}} tickets imported"
+  },
+  "templates": {
+    "title": "Ticket templates",
+    "empty": "No templates yet.",
+    "restoreDefaults": "Add starter templates",
+    "seeded": "Starter templates added",
+    "created": "Template created",
+    "deleted": "Template deleted",
+    "newTemplate": "New template",
+    "namePlaceholder": "Template name",
+    "descriptionPlaceholder": "Description (markdown)…",
+    "acPlaceholder": "Acceptance criteria — one \"- [ ]\" line per item…"
+  },
+  "bulk": {
+    "selected": "{{count}} selected",
+    "selectAll": "Select all",
+    "selectTicket": "Select {{key}}",
+    "status": "Status",
+    "assign": "Assign",
+    "sprint": "Sprint",
+    "label": "Label",
+    "noLabels": "No labels yet.",
+    "archive": "Archive",
+    "confirmArchive": "Confirm?",
+    "clear": "Clear selection",
+    "updated": "{n} tickets updated",
+    "archived": "{n} tickets archived"
+  },
+  "mywork": {
+    "title": "My work",
+    "assigned": "Assigned to me",
+    "watching": "Watching",
+    "emptyAssigned": "Nothing assigned to you right now.",
+    "emptyWatching": "You're not watching any other tickets."
+  },
+  "relations": {
+    "parent": "Parent",
+    "setParent": "Set parent",
+    "subtasks": "Subtasks",
+    "blockedBy": "Blocked by",
+    "blocks": "Blocks",
+    "searchTickets": "Search tickets…",
+    "noMatches": "No matching tickets."
+  },
+  "list": {
+    "viewBoard": "Board",
+    "viewList": "List",
+    "allStatuses": "All statuses",
+    "allLabels": "All labels",
+    "colKey": "Key",
+    "colTitle": "Title",
+    "colStatus": "Status",
+    "colPriority": "Priority",
+    "colAssignee": "Assignee",
+    "colSprint": "Sprint",
+    "colPoints": "Pts",
+    "colUpdated": "Updated",
+    "blocked": "Blocked",
+    "blockedHint": "Blocked by {{count}} open ticket(s)",
+    "empty": "No tickets yet — create one from the board.",
+    "emptyFiltered": "No tickets match these filters."
+  },
   "board": {
     "completion": "Project completion",
     "completionSummary": "{{done}}/{{total}} done · {{pct}}%",
@@ -161,7 +233,15 @@
     "firstStep1": "Name it — what needs doing?",
     "firstStep2": "Add a goal & acceptance criteria in the drawer.",
     "firstStep3": "Drag it across the board as it progresses.",
-    "firstTicketPlaceholder": "e.g. Add CSV export to reports"
+    "firstTicketPlaceholder": "e.g. Add CSV export to reports",
+    "fromTemplate": "New from template",
+    "noTemplates": "No templates in this organization.",
+    "templateCreated": "{{key}} created from template",
+    "automation": "Automation",
+    "autoUnblockNudge": "Notify when a ticket becomes unblocked",
+    "autoTodoOnAssign": "Assigning moves Backlog → To Do",
+    "autoSubtasksDone": "Notify when all subtasks are done",
+    "automationSaved": "Automation updated"
   },
   "drawer": {
     "noDescription": "No description",
@@ -195,6 +275,12 @@
     "slashUnknown": "Couldn’t run /{{cmd}} — check the value",
     "commentPlaceholder": "Add a comment… @ to mention, / for commands",
     "noComments": "No comments yet.",
+    "addReaction": "Add reaction",
+    "details": "Details",
+    "peopleLabels": "People & labels",
+    "relationships": "Relationships",
+    "widenDrawer": "Expand panel",
+    "narrowDrawer": "Collapse panel",
     "noActivity": "No activity yet.",
     "deleteTicket": "Delete ticket",
     "deleteConfirm": "Delete this ticket? It will be archived and removed from the board.",
@@ -249,6 +335,7 @@
   "palette": {
     "placeholder": "Search, or type to create — !high @user #sprint",
     "noResults": "No results.",
+    "everywhere": "All projects",
     "actions": "Actions",
     "createTicket": "Create ticket: “{{title}}”",
     "tickets": "Tickets",

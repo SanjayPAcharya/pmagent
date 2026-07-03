@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { ChevronDown, X } from 'lucide-react'
-import { api, type Member, type Priority, type Ticket, type TicketStatus, type UpdateTicketInput } from '@/lib/api'
+import { ChevronDown, ChevronRight, Eye, Maximize2, Minimize2, Tag, X } from 'lucide-react'
+import { api, type Comment as CommentType, type Member, type Priority, type Ticket, type TicketStatus, type TicketType as TicketKind, type UpdateTicketInput } from '@/lib/api'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
+import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { renderMarkdown } from '@/lib/markdown'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
@@ -16,12 +17,15 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
+import { RelationsSection } from '@/components/RelationsSection'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
 import { cn } from '@/lib/utils'
 
 // C3 — slash command palette shown when the comment box starts with "/".
+const TICKET_TYPES: TicketKind[] = ['FEATURE', 'BUG', 'CHORE', 'SPIKE']
+
 const SLASH_COMMANDS: { cmd: string; args: string }[] = [
   { cmd: 'status', args: 'done · in progress · blocked …' },
   { cmd: 'assign', args: 'name · none' },
@@ -58,6 +62,13 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
   // Mentions inserted via the picker: the editor shows "@Display Name", and we
   // remember name→userId so we can convert to the server token "@[uuid]" on send.
   const [mentions, setMentions] = useState<{ label: string; userId: string }[]>([])
+
+  // Layout prefs — wide mode (two-column on lg) + per-section collapse, both persisted.
+  const [wide, setWide] = useLocalStorageState('agentpm-drawer-wide', false)
+  const [openSections, setOpenSections] = useLocalStorageState<Record<string, boolean>>('agentpm-drawer-sections', {})
+  const sectionOpen = (id: string, dflt: boolean) => openSections[id] ?? dflt
+  const toggleSection = (id: string, dflt: boolean) =>
+    setOpenSections((p) => ({ ...p, [id]: !(p[id] ?? dflt) }))
 
   useEffect(() => {
     if (ticket) {
@@ -235,8 +246,80 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
     setComment((prev) => prev.replace(/@([\w.]*)$/, `@${m.name} `))
     setMentions((prev) => [...prev.filter((x) => x.label !== m.name), { label: m.name, userId: m.userId }])
   }
+  // Mentions render as highlighted chips: swap the `@[uuid]` token for a styled
+  // <span> BEFORE markdown; DOMPurify keeps the span + class, strips anything else.
   const renderCommentBody = (body: string) =>
-    renderMarkdown(body.replace(/@\[([0-9a-f-]{36})\]/gi, (_m, id) => '@' + (members.find((x) => x.userId === id)?.name ?? 'user')))
+    renderMarkdown(
+      body.replace(
+        /@\[([0-9a-f-]{36})\]/gi,
+        (_m, id) =>
+          `<span class="rounded bg-primary/10 px-1 py-0.5 text-xs font-medium text-primary">@${
+            members.find((x) => x.userId === id)?.name ?? 'user'
+          }</span>`,
+      ),
+    )
+
+  // 3.2 C3 — reaction chips under each comment. Fixed set; click toggles mine.
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
+  const myId = me.data?.user.id
+  const REACTION_EMOJI = ['👍', '🎉', '👀', '❤️']
+  const CommentReactions = ({ c }: { c: CommentType }) => {
+    const grouped = REACTION_EMOJI.map((emoji) => {
+      const rows = (c.reactions ?? []).filter((r) => r.emoji === emoji)
+      return { emoji, count: rows.length, mine: rows.some((r) => r.userId === myId) }
+    })
+    const toggle = async (emoji: string, mine: boolean) => {
+      try {
+        if (mine) await api.removeReaction(ticketId, c.id, emoji)
+        else await api.addReaction(ticketId, c.id, emoji)
+        qc.invalidateQueries({ queryKey: ['comments', ticketId] })
+      } catch (e) {
+        toast.error((e as Error).message)
+      }
+    }
+    return (
+      <div className="mt-2 flex items-center gap-1">
+        {grouped
+          .filter((g) => g.count > 0)
+          .map((g) => (
+            <button
+              key={g.emoji}
+              onClick={() => toggle(g.emoji, g.mine)}
+              aria-pressed={g.mine}
+              className={cn(
+                'flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition-colors',
+                g.mine ? 'border-primary/40 bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-accent',
+              )}
+            >
+              {g.emoji} {g.count}
+            </button>
+          ))}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={t('drawer.addReaction')}
+              className="rounded-full border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-accent group-hover/comment:opacity-100 focus-visible:opacity-100"
+            >
+              +🙂
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <div className="flex gap-1 p-1">
+              {grouped.map((g) => (
+                <button
+                  key={g.emoji}
+                  onClick={() => toggle(g.emoji, g.mine)}
+                  className={cn('rounded px-1.5 py-1 text-base hover:bg-accent', g.mine && 'bg-primary/10')}
+                >
+                  {g.emoji}
+                </button>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    )
+  }
 
   const SpecField = ({ label, body }: { label: string; body: string }) => (
     <div className="rounded-md border bg-muted/20 p-3">
@@ -290,13 +373,14 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-xl">
+      <SheetContent className={cn('w-full p-0 [&>button]:hidden', wide ? 'sm:max-w-[min(72rem,92vw)]' : 'sm:max-w-xl')}>
         {!ticket ? (
-          <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+          <p className="p-6 text-sm text-muted-foreground">{t('common.loading')}</p>
         ) : (
           <>
-            <SheetHeader>
-              <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+            {/* Sticky header — key, title, status / priority / type stay visible while scrolling */}
+            <div className="sticky top-0 z-20 border-b bg-background px-6 pb-3 pt-4">
+              <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                 {ticket.key}
                 {/* E1 — others currently viewing this ticket */}
                 {viewers && viewers.length > 0 && (
@@ -309,6 +393,23 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                     ))}
                   </span>
                 )}
+                <span className="ml-auto flex items-center gap-1">
+                  <button
+                    onClick={() => setWide((w) => !w)}
+                    aria-pressed={wide}
+                    title={wide ? t('drawer.narrowDrawer') : t('drawer.widenDrawer')}
+                    className="hidden rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground sm:inline-flex"
+                  >
+                    {wide ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                  </button>
+                  <button
+                    onClick={onClose}
+                    aria-label={t('common.back')}
+                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </span>
               </div>
               <SheetTitle>
                 <Input
@@ -318,44 +419,82 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   className="border-none px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
                 />
               </SheetTitle>
-            </SheetHeader>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {/* Status */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      {STATUS_LABEL[ticket.status]} <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {ALL_STATUSES.map((s) => (
+                      <DropdownMenuItem key={s} onClick={() => s !== ticket.status && patch({ status: s as TicketStatus })}>
+                        {STATUS_LABEL[s]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {/* Status */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    {STATUS_LABEL[ticket.status]} <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {ALL_STATUSES.map((s) => (
-                    <DropdownMenuItem key={s} onClick={() => s !== ticket.status && patch({ status: s as TicketStatus })}>
-                      {STATUS_LABEL[s]}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                {/* Priority */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn(PRIORITY_CLASS[ticket.priority], 'border-none')}>
+                      {ticket.priority} <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {PRIORITIES.map((p) => (
+                      <DropdownMenuItem key={p} onClick={() => p !== ticket.priority && patch({ priority: p as Priority })}>
+                        {p}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              {/* Priority */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn(PRIORITY_CLASS[ticket.priority], 'border-none')}>
-                    {ticket.priority} <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {PRIORITIES.map((p) => (
-                    <DropdownMenuItem key={p} onClick={() => p !== ticket.priority && patch({ priority: p as Priority })}>
-                      {p}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                {/* Type */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      {ticket.type} <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {TICKET_TYPES.map((ty) => (
+                      <DropdownMenuItem key={ty} onClick={() => ty !== ticket.type && patch({ type: ty })}>
+                        {ty}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
-            {/* Metadata grid */}
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            {/* Body — in wide mode: main (spec + conversation) left, meta sidebar right */}
+            <div className="px-6 py-4">
+              <div className={cn(wide && 'lg:flex lg:flex-row-reverse lg:gap-6')}>
+                <div className={cn('space-y-3', wide && 'lg:w-[300px] lg:shrink-0')}>
+
+            {/* Details — assignee / points / due / sprint */}
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                onClick={() => toggleSection('details', true)}
+                aria-expanded={sectionOpen('details', true)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left"
+              >
+                <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', sectionOpen('details', true) && 'rotate-90')} />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('drawer.details')}</span>
+                {!sectionOpen('details', true) && (
+                  <span className="ml-auto truncate text-xs text-muted-foreground">
+                    {assignee?.name ?? t('drawer.unassigned')}
+                    {currentSprint ? ` · ${currentSprint.name}` : ''}
+                  </span>
+                )}
+              </button>
+              {sectionOpen('details', true) && (
+                <div className="border-t px-3 pb-3 pt-2">
+                  <div className={cn('grid gap-4', wide ? 'grid-cols-1' : 'grid-cols-2')}>
               <div>
                 <Label>{t('drawer.assignee')}</Label>
                 <DropdownMenu>
@@ -421,8 +560,30 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
               </div>
             </div>
 
-            {/* Watchers */}
-            <div className="mt-4">
+                </div>
+              )}
+            </div>
+
+            {/* People & labels — watchers + labels grouped */}
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                onClick={() => toggleSection('people', false)}
+                aria-expanded={sectionOpen('people', false)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left"
+              >
+                <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', sectionOpen('people', false) && 'rotate-90')} />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('drawer.peopleLabels')}</span>
+                {!sectionOpen('people', false) && (
+                  <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" /> {watchers.length}</span>
+                    <span className="flex items-center gap-0.5"><Tag className="h-3 w-3" /> {ticket.labels.length}</span>
+                  </span>
+                )}
+              </button>
+              {sectionOpen('people', false) && (
+                <div className="border-t px-3 pb-3 pt-2">
+            <div>
               <Label>{t('drawer.watchers')}</Label>
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 {watchers.map((w) => (
@@ -518,9 +679,40 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
               </div>
             </div>
 
+                </div>
+              )}
+            </div>
+
+            {/* Relationships — parent / subtasks / blocked-by / blocks (3.1) */}
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                onClick={() => toggleSection('relations', false)}
+                aria-expanded={sectionOpen('relations', false)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left"
+              >
+                <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', sectionOpen('relations', false) && 'rotate-90')} />
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('drawer.relationships')}</span>
+                {(ticket.blockedBy ?? 0) > 0 && !sectionOpen('relations', false) && (
+                  <span className="ml-auto rounded-full bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
+                    {t('list.blocked')}
+                  </span>
+                )}
+              </button>
+              {sectionOpen('relations', false) && (
+                <div className="border-t px-3 pb-3 pt-0 [&>div]:mt-3">
+                  <RelationsSection ticketId={ticketId} projectId={ticket.projectId} />
+                </div>
+              )}
+            </div>
+                </div>
+
+                {/* Main column — spec + conversation */}
+                <div className={cn('mt-4', wide && 'lg:mt-0 lg:min-w-0 lg:flex-1')}>
+
             {/* Spec — description + the agent-ready fields (goal/AC/constraints).
                 The readiness ring (A1) reflects how much of the spec is filled. */}
-            <div className="mt-4">
+            <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Label>{t('drawer.spec')}</Label>
@@ -622,7 +814,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   </Button>
                 </div>
                 {comments.data?.comments.map((c) => (
-                  <div key={c.id} className="rounded-md border p-3">
+                  <div key={c.id} className="group/comment rounded-md border p-3">
                     <div className="mb-1 text-xs font-medium text-foreground">
                       {c.author?.name ?? 'System'}{' '}
                       <span className="text-muted-foreground">
@@ -630,6 +822,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                       </span>
                     </div>
                     <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(c.body) }} />
+                    <CommentReactions c={c} />
                   </div>
                 ))}
                 {comments.data?.comments.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noComments')}</p>}
@@ -653,7 +846,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
               <TabsContent value="story" className="space-y-2">
                 {storyItems.map((item) =>
                   item.comment ? (
-                    <div key={item.id} className="rounded-md border p-3">
+                    <div key={item.id} className="group/comment rounded-md border p-3">
                       <div className="mb-1 text-xs font-medium text-foreground">
                         {item.comment.author?.name ?? 'System'}{' '}
                         <span className="text-muted-foreground">
@@ -661,6 +854,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                         </span>
                       </div>
                       <div className="prose prose-sm max-w-none text-sm" dangerouslySetInnerHTML={{ __html: renderCommentBody(item.comment.body) }} />
+                      <CommentReactions c={item.comment} />
                     </div>
                   ) : (
                     <div key={item.id} className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
@@ -676,11 +870,14 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                 {storyItems.length === 0 && <p className="text-sm text-muted-foreground">{t('drawer.noActivity')}</p>}
               </TabsContent>
             </Tabs>
+                </div>
+              </div>
 
-            <div className="mt-8 border-t pt-4">
-              <Button variant="destructive" size="sm" onClick={remove}>
-                {t('drawer.deleteTicket')}
-              </Button>
+              <div className="mt-8 border-t pt-4">
+                <Button variant="destructive" size="sm" onClick={remove}>
+                  {t('drawer.deleteTicket')}
+                </Button>
+              </div>
             </div>
           </>
         )}

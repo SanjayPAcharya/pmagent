@@ -20,6 +20,14 @@ const updateProjectSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   description: z.string().max(2000).optional(),
   defaultBranch: z.string().min(1).max(100).optional(),
+  // 3.4 W3 — partial automation toggles; merged into the stored JSON.
+  automation: z
+    .object({
+      unblockNudge: z.boolean().optional(),
+      autoTodoOnAssign: z.boolean().optional(),
+      subtasksDoneNudge: z.boolean().optional(),
+    })
+    .optional(),
 })
 
 async function uniqueProjectSlug(orgId: string, base: string): Promise<string> {
@@ -96,10 +104,20 @@ const routes: FastifyPluginAsync = async (app) => {
   })
 
   app.patch('/:projectId', async (request) => {
-    await loadProjectAuthorized(request, 'ADMIN')
+    const existing = await loadProjectAuthorized(request, 'ADMIN')
     const body = updateProjectSchema.parse(request.body)
     const { projectId } = request.params as { projectId: string }
-    const project = await prisma.project.update({ where: { id: projectId }, data: body })
+    const { automation, ...rest } = body
+    const project = await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        ...rest,
+        // Merge toggles so a single-switch PATCH doesn't wipe the others.
+        ...(automation
+          ? { automation: { ...((existing.automation as Record<string, unknown>) ?? {}), ...automation } }
+          : {}),
+      },
+    })
     return { project }
   })
 

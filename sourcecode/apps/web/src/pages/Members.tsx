@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { TemplatesCard } from '@/components/TemplatesCard'
 
 function inviteLink(token: string) {
   return `${window.location.origin}/invite/${token}`
@@ -130,6 +131,8 @@ export default function Members() {
           )}
         </CardContent>
       </Card>
+
+      {org.data?.org.id && <TemplatesCard orgId={org.data.org.id} />}
 
       <Card>
         <CardHeader className="pb-2">

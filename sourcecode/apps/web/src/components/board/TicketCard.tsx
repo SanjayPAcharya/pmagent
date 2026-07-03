@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
-import { Eye, MoreHorizontal } from 'lucide-react'
+import { Ban, Eye, MoreHorizontal } from 'lucide-react'
 import type { Member, Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, BOARD_COLUMNS, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { staleBorderClass } from '@/lib/time'
@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 
 /** Pure visual — reused by the draggable card and the drag overlay. */
 export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; dragging?: boolean; viewers?: Member[] }) {
+  const { t } = useTranslation()
   return (
     <div
       className={cn(
@@ -53,6 +54,14 @@ export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; 
           <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', PRIORITY_CLASS[ticket.priority])}>
             {ticket.priority}
           </span>
+          {(ticket.blockedBy ?? 0) > 0 && (
+            <span
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+              title={t('list.blockedHint', { count: ticket.blockedBy })}
+            >
+              <Ban className="h-3 w-3" /> {t('list.blocked')}
+            </span>
+          )}
           {/* E1 — live viewers currently on this ticket */}
           {viewers && viewers.length > 0 && (
             <div className="flex -space-x-1.5" title={viewers.map((v) => v.name).join(', ')}>
@@ -92,9 +101,12 @@ interface TicketCardProps {
   dimmed?: boolean
   /** E1: members currently viewing this ticket (minus me). */
   viewers?: Member[]
+  /** 3.1 bulk: multi-select checkbox state. */
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers }: TicketCardProps) {
+export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers, selected, onToggleSelect }: TicketCardProps) {
   const { t } = useTranslation()
   // useSortable gives within-column reordering (cards shift to make room) plus
   // cross-column moves. The 5px activation distance (set on the board) lets a
@@ -164,6 +176,24 @@ export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers }: 
       )}
     >
       <TicketCardBody ticket={ticket} viewers={viewers} />
+      {onToggleSelect && (
+        <div
+          className={cn(
+            'absolute -left-1.5 -top-1.5 transition-opacity',
+            selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+          )}
+          onPointerDown={stop}
+          onClick={stop}
+        >
+          <input
+            type="checkbox"
+            checked={Boolean(selected)}
+            onChange={() => onToggleSelect(ticket.id)}
+            aria-label={t('bulk.selectTicket', { key: ticket.key })}
+            className="h-4 w-4 cursor-pointer rounded border-input accent-primary"
+          />
+        </div>
+      )}
       <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={stop} onClick={stop}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

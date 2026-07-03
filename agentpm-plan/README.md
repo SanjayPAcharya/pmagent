@@ -81,6 +81,11 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 | 2.8.5 | [phase-2.8.5-auth-ux.md](phases/phase-2.8.5-auth-ux.md) | Auth UX — Google/Microsoft/GitHub sign-in on the app's own screen (Keycloak brokers via `idpHint`, no hosted login page); email/password kept |
 | 2.9.1 | [phase-2.9.1-deploy-config.md](phases/phase-2.9.1-deploy-config.md) | Deploy config reference — dev vs prod env files, infra to provision, mandatory vs deferrable for a testing deploy |
 | 3 | [phase-3-dev-deployment-cicd.md](phases/phase-3-dev-deployment-cicd.md) | Basic deployment to dev/staging with CI/CD |
+| 3.1 | [phase-3.1-pm-depth.md](phases/phase-3.1-pm-depth.md) | PM depth — global search, list/table view, my-work, ticket relationships (parent/deps), blocked badges, bulk actions |
+| 3.2 | [phase-3.2-collaboration.md](phases/phase-3.2-collaboration.md) | Collaboration — @mention autocomplete UI, markdown rendering, comment reactions, attachments |
+| 3.3 | [phase-3.3-insights-reporting.md](phases/phase-3.3-insights-reporting.md) | Insights — velocity trend, cycle time, cumulative flow, workload, per-project Reports tab |
+| 3.4 | [phase-3.4-workflow-automation.md](phases/phase-3.4-workflow-automation.md) | Simple workflow — ticket templates, unblock nudges, fixed automation toggles, CSV import/export |
+| 3.5 | [phase-3.5-platform-hygiene.md](phases/phase-3.5-platform-hygiene.md) | Hygiene — org/project settings UI, error monitoring, soft plan limits, API tokens + webhooks (pre-Phase-5 bridge) |
 | 4 | [phase-4-notifications-channels.md](phases/phase-4-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
 | 5 | [phase-5-github-code-agent.md](phases/phase-5-github-code-agent.md) | Third-party integration: GitHub App + Code Agent + agent-first UI |
 | 5.5 | [phase-5.5-agent-first.md](phases/phase-5.5-agent-first.md) | Agent-first surfaces (@agent, draft-with-agent, agent swimlane) — **parked; lands with Phase 5** (was 2.7) |

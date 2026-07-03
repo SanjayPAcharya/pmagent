@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
+import { ticketIncludeWithOrg, serializeTicketWithOrg } from '../services/tickets.service.js'
+import { blockedByCounts } from '../services/relations.service.js'
 
 const updateMeSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -28,6 +30,34 @@ const meRoutes: FastifyPluginAsync = async (app) => {
       data: parsed.data,
     })
     return { user }
+  })
+
+  // GET /api/me/work — tickets assigned to or watched by me, across all my orgs
+  app.get('/work', async (request) => {
+    const userId = request.userId!
+    const memberOf = { project: { organization: { members: { some: { userId } } } } }
+    const [assigned, watching] = await Promise.all([
+      prisma.ticket.findMany({
+        where: { assignedToId: userId, archivedAt: null, ...memberOf },
+        include: ticketIncludeWithOrg,
+        orderBy: [{ status: 'asc' }, { dueDate: 'asc' }, { updatedAt: 'desc' }],
+        take: 100,
+      }),
+      prisma.ticket.findMany({
+        where: {
+          watchers: { some: { userId } },
+          archivedAt: null,
+          ...memberOf,
+          OR: [{ assignedToId: null }, { assignedToId: { not: userId } }],
+        },
+        include: ticketIncludeWithOrg,
+        orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
+        take: 100,
+      }),
+    ])
+    const blocked = await blockedByCounts([...assigned, ...watching].map((t) => t.id))
+    const ser = (t: (typeof assigned)[number]) => ({ ...serializeTicketWithOrg(t), blockedBy: blocked.get(t.id) ?? 0 })
+    return { assigned: assigned.map(ser), watching: watching.map(ser) }
   })
 }
 

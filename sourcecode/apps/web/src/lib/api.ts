@@ -90,6 +90,25 @@ export interface Project {
   openTicketCount?: number
   byStatus?: Partial<Record<TicketStatus, number>>
   activeSprint?: ActiveSprintSummary | null
+  automation?: AutomationSettings | null
+}
+export interface AutomationSettings {
+  unblockNudge?: boolean
+  autoTodoOnAssign?: boolean
+  subtasksDoneNudge?: boolean
+}
+export interface TicketTemplate {
+  id: string
+  orgId: string
+  name: string
+  type: TicketType
+  priority: Priority
+  title: string | null
+  description: string | null
+  acceptanceCriteria: string | null
+  goal: string | null
+  constraints: string | null
+  labelIds: string[]
 }
 export interface ActivityItem {
   id: string
@@ -150,8 +169,40 @@ export interface Ticket {
   createdBy: User
   labels: Label[]
   watcherIds: string[]
+  blockedBy?: number // count of incomplete dependencies (present on list responses)
   createdAt: string
   updatedAt: string
+}
+/** Ticket from a cross-project surface (search / my-work) — carries link slugs. */
+export type TicketHit = Ticket & { orgSlug: string; projectSlug: string }
+export interface TicketRef {
+  id: string
+  number: number
+  key: string
+  title: string
+  status: TicketStatus
+}
+export interface TicketRelations {
+  parent: TicketRef | null
+  subtasks: TicketRef[]
+  blockedBy: TicketRef[]
+  blocks: TicketRef[]
+}
+export interface ImportTicketRow {
+  title: string
+  description?: string
+  status?: TicketStatus
+  priority?: Priority
+  type?: TicketType
+  storyPoints?: number
+  acceptanceCriteria?: string
+}
+export interface BatchPatch {
+  status?: TicketStatus
+  assignedToId?: string | null
+  sprintId?: string | null
+  addLabelIds?: string[]
+  archived?: boolean
 }
 export interface Comment {
   id: string
@@ -159,6 +210,7 @@ export interface Comment {
   isInternal: boolean
   createdAt: string
   author: User | null
+  reactions?: { userId: string; emoji: string }[]
 }
 export interface Activity {
   id: string
@@ -206,6 +258,10 @@ export interface CreateTicketInput {
   priority?: Priority
   type?: TicketType
   description?: string
+  acceptanceCriteria?: string
+  goal?: string
+  constraints?: string
+  labelIds?: string[]
   assignedToId?: string
   sprintId?: string
   storyPoints?: number
@@ -225,6 +281,7 @@ export interface UpdateTicketInput {
   sprintId?: string | null
   assignedToId?: string | null
   labelIds?: string[]
+  parentId?: string | null
 }
 
 export const api = {
@@ -241,6 +298,17 @@ export const api = {
     request<{ project: Project }>('POST', '/api/projects', { orgId, name, ...body }),
   projectActivity: (projectId: string) =>
     request<{ activity: ActivityItem[] }>('GET', `/api/projects/${projectId}/activity`),
+  updateProject: (projectId: string, body: { name?: string; description?: string; defaultBranch?: string; automation?: AutomationSettings }) =>
+    request<{ project: Project }>('PATCH', `/api/projects/${projectId}`, body),
+
+  // Templates (3.4 W1)
+  listTemplates: (orgId: string) =>
+    request<{ templates: TicketTemplate[] }>('GET', `/api/templates?orgId=${encodeURIComponent(orgId)}`),
+  createTemplate: (body: Partial<TicketTemplate> & { orgId: string; name: string }) =>
+    request<{ template: TicketTemplate }>('POST', '/api/templates', body),
+  deleteTemplate: (id: string) => request<void>('DELETE', `/api/templates/${id}`),
+  seedDefaultTemplates: (orgId: string) =>
+    request<{ templates: TicketTemplate[] }>('POST', '/api/templates/seed-defaults', { orgId }),
 
   // Members & invites (Phase 2D)
   listMembers: (slug: string) => request<{ members: Member[] }>('GET', `/api/orgs/${slug}/members`),
@@ -276,10 +344,28 @@ export const api = {
   addComment: (id: string, body: string) =>
     request<{ comment: Comment }>('POST', `/api/tickets/${id}/comments`, { body }),
   listActivity: (id: string) => request<{ activity: Activity[] }>('GET', `/api/tickets/${id}/activity`),
+  addReaction: (ticketId: string, commentId: string, emoji: string) =>
+    request<{ ok: true }>('POST', `/api/tickets/${ticketId}/comments/${commentId}/reactions`, { emoji }),
+  removeReaction: (ticketId: string, commentId: string, emoji: string) =>
+    request<void>('DELETE', `/api/tickets/${ticketId}/comments/${commentId}/reactions/${encodeURIComponent(emoji)}`),
   addWatcher: (id: string, userId: string) =>
     request<{ ok: true }>('POST', `/api/tickets/${id}/watchers`, { userId }),
   removeWatcher: (id: string, userId: string) =>
     request<void>('DELETE', `/api/tickets/${id}/watchers/${userId}`),
+
+  // Relationships, search, my-work, bulk
+  getRelations: (id: string) => request<{ relations: TicketRelations }>('GET', `/api/tickets/${id}/relations`),
+  addDependency: (id: string, dependsOnId: string) =>
+    request<{ ok: true }>('POST', `/api/tickets/${id}/dependencies`, { dependsOnId }),
+  removeDependency: (id: string, dependsOnId: string) =>
+    request<void>('DELETE', `/api/tickets/${id}/dependencies/${dependsOnId}`),
+  searchTickets: (q: string) =>
+    request<{ items: TicketHit[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
+  myWork: () => request<{ assigned: TicketHit[]; watching: TicketHit[] }>('GET', '/api/me/work'),
+  batchUpdateTickets: (ids: string[], patch: BatchPatch) =>
+    request<{ updated: number }>('POST', '/api/tickets/batch', { ids, patch }),
+  importTickets: (projectId: string, tickets: ImportTicketRow[]) =>
+    request<{ created: number }>('POST', '/api/tickets/import', { projectId, tickets }),
 
   // Labels (Phase 2F)
   listLabels: (orgId: string) => request<{ labels: Label[] }>('GET', `/api/labels?orgId=${encodeURIComponent(orgId)}`),

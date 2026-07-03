@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Link, NavLink, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight, PanelLeftClose, Users, Star, FolderKanban, Rocket } from 'lucide-react'
+import { ChevronRight, PanelLeftClose, Users, Star, FolderKanban, Rocket, UserCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api, type Organization, type Project } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -49,7 +49,20 @@ export function OrgTree({ onNavigate, onCollapse }: { onNavigate?: () => void; o
           </button>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
+      <div className="scrollbar-slim flex-1 overflow-y-auto px-2 pb-4">
+        <NavLink
+          to="/my-work"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            cn(
+              'mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm',
+              isActive ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+            )
+          }
+        >
+          <UserCircle2 className="h-4 w-4" />
+          {t('tree.myWork')}
+        </NavLink>
         {orgs.isPending ? (
           <div className="space-y-1 px-1">
             {Array.from({ length: 3 }).map((_, i) => (

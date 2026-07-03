@@ -17,6 +17,7 @@ import {
   type UpdateTicketInput,
 } from '../services/tickets.service.js'
 import { parseMentions, filterOrgMembers } from '../services/notifications.service.js'
+import { blockedByCounts, getRelations, addDependency, removeDependency } from '../services/relations.service.js'
 
 const priorityEnum = z.enum(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 const typeEnum = z.enum(['FEATURE', 'BUG', 'CHORE', 'SPIKE'])
@@ -59,8 +60,43 @@ const updateTicketSchema = z
     sprintId: z.string().uuid().nullable(),
     assignedToId: z.string().uuid().nullable(),
     labelIds: z.array(z.string().uuid()),
+    parentId: z.string().uuid().nullable(),
   })
   .partial()
+
+const batchSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
+  patch: z
+    .object({
+      status: statusEnum,
+      assignedToId: z.string().uuid().nullable(),
+      sprintId: z.string().uuid().nullable(),
+      addLabelIds: z.array(z.string().uuid()),
+      archived: z.boolean(),
+    })
+    .partial(),
+})
+const dependencySchema = z.object({ dependsOnId: z.string().uuid() })
+
+// 3.4 W4 — CSV import: pre-validated rows from the client (headers already
+// alias-mapped there). Capped to keep a bad file from hammering the counter.
+const importSchema = z.object({
+  projectId: z.string().uuid(),
+  tickets: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        description: z.string().max(10_000).optional(),
+        status: statusEnum.optional(),
+        priority: priorityEnum.optional(),
+        type: typeEnum.optional(),
+        storyPoints: z.number().int().positive().optional(),
+        acceptanceCriteria: z.string().max(10_000).optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+})
 
 const listQuerySchema = z.object({
   projectId: z.string().uuid(),
@@ -148,7 +184,11 @@ const routes: FastifyPluginAsync = async (app) => {
       ...(q.cursor ? { cursor: { id: decodeCursor(q.cursor) }, skip: 1 } : {}),
     })
     const { items, nextCursor } = paginate(rows, q.limit)
-    return { items: items.map(serializeTicket), nextCursor }
+    const blocked = await blockedByCounts(items.map((t) => t.id))
+    return {
+      items: items.map((t) => ({ ...serializeTicket(t), blockedBy: blocked.get(t.id) ?? 0 })),
+      nextCursor,
+    }
   })
 
   // ── Read one ────────────────────────────────────────────
@@ -205,9 +245,38 @@ const routes: FastifyPluginAsync = async (app) => {
     const comments = await prisma.comment.findMany({
       where: { ticketId: t.id },
       orderBy: { createdAt: 'asc' },
-      include: { author: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+      include: {
+        author: { select: { id: true, name: true, email: true, avatarUrl: true } },
+        reactions: { select: { userId: true, emoji: true } },
+      },
     })
     return { comments }
+  })
+
+  // ── Comment reactions (3.2 C3) — fixed emoji set, one per user+emoji ──
+  const reactionEmoji = z.enum(['👍', '🎉', '👀', '❤️'])
+  const commentParams = idParams.extend({ commentId: z.string().uuid() })
+
+  r.post('/:ticketId/comments/:commentId/reactions', { schema: { params: commentParams, body: z.object({ emoji: reactionEmoji }), tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'MEMBER')
+    const { commentId } = request.params
+    const comment = await prisma.comment.findUnique({ where: { id: commentId }, select: { ticketId: true } })
+    if (!comment || comment.ticketId !== t.id) throw new ApiError(404, 'Comment not found')
+    await prisma.commentReaction.upsert({
+      where: { commentId_userId_emoji: { commentId, userId: request.userId!, emoji: request.body.emoji } },
+      create: { commentId, userId: request.userId!, emoji: request.body.emoji },
+      update: {},
+    })
+    return reply.code(201).send({ ok: true })
+  })
+
+  r.delete('/:ticketId/comments/:commentId/reactions/:emoji', { schema: { params: commentParams.extend({ emoji: z.string() }), tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'MEMBER')
+    const { commentId, emoji } = request.params
+    const comment = await prisma.comment.findUnique({ where: { id: commentId }, select: { ticketId: true } })
+    if (!comment || comment.ticketId !== t.id) throw new ApiError(404, 'Comment not found')
+    await prisma.commentReaction.deleteMany({ where: { commentId, userId: request.userId!, emoji } })
+    return reply.code(204).send()
   })
 
   // ── Watchers (CC) ───────────────────────────────────────
@@ -252,6 +321,94 @@ const routes: FastifyPluginAsync = async (app) => {
       include: { actor: { select: { id: true, name: true, email: true, avatarUrl: true } } },
     })
     return { activity }
+  })
+
+  // ── Relationships (parent / subtasks / blocked-by / blocks) ─
+  r.get('/:ticketId/relations', { schema: { params: idParams, tags: ['tickets'] } }, async (request) => {
+    await loadTicketAuthorized(request, 'MEMBER')
+    return { relations: await getRelations(request.params.ticketId) }
+  })
+
+  r.post('/:ticketId/dependencies', { schema: { params: idParams, body: dependencySchema, tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'MEMBER')
+    // The dependency target must live in the same project.
+    const dep = await prisma.ticket.findUnique({ where: { id: request.body.dependsOnId }, select: { projectId: true } })
+    if (!dep || dep.projectId !== t.projectId)
+      throw new ApiError(400, 'Dependency must be in the same project', 'CROSS_SCOPE')
+    await addDependency(t.id, request.body.dependsOnId)
+    await publishEvent('ticket.updated', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
+    return reply.code(201).send({ ok: true })
+  })
+
+  r.delete('/:ticketId/dependencies/:dependsOnId', { schema: { params: idParams.extend({ dependsOnId: z.string().uuid() }), tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'MEMBER')
+    await removeDependency(t.id, request.params.dependsOnId)
+    await publishEvent('ticket.updated', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
+    return reply.code(204).send()
+  })
+
+  // ── CSV import (3.4 W4) ─────────────────────────────────
+  r.post('/import', { schema: { body: importSchema, tags: ['tickets'] } }, async (request, reply) => {
+    const { projectId, tickets } = request.body
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { orgId: true } })
+    if (!project) throw new ApiError(404, 'Project not found')
+    await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
+
+    let created = 0
+    for (const row of tickets) {
+      const { events } = await createTicket(project.orgId, request.userId!, { projectId, ...row })
+      for (const e of events) await publishEvent(e.type, e.payload)
+      created++
+    }
+    return reply.code(201).send({ created })
+  })
+
+  // ── Bulk update (board / list multi-select) ─────────────
+  r.post('/batch', { schema: { body: batchSchema, tags: ['tickets'] } }, async (request) => {
+    const { ids, patch } = request.body
+    const tickets = await prisma.ticket.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, projectId: true, project: { select: { orgId: true } } },
+    })
+    if (tickets.length !== new Set(ids).size) throw new ApiError(404, 'One or more tickets not found')
+    const orgIds = new Set(tickets.map((t) => t.project.orgId))
+    if (orgIds.size !== 1) throw new ApiError(400, 'Tickets must belong to a single organization', 'CROSS_SCOPE')
+    const orgId = [...orgIds][0]
+    await assertOrgRole(request.userId!, orgId, 'MEMBER')
+
+    const fieldPatch: UpdateTicketInput = {}
+    if (patch.status !== undefined) fieldPatch.status = patch.status
+    if (patch.assignedToId !== undefined) fieldPatch.assignedToId = patch.assignedToId
+    if (patch.sprintId !== undefined) fieldPatch.sprintId = patch.sprintId
+    const hasFieldPatch = Object.keys(fieldPatch).length > 0
+
+    if (patch.addLabelIds?.length) {
+      const n = await prisma.label.count({ where: { id: { in: patch.addLabelIds }, orgId } })
+      if (n !== new Set(patch.addLabelIds).size)
+        throw new ApiError(400, 'One or more labels do not belong to this organization', 'CROSS_SCOPE')
+    }
+
+    for (const t of tickets) {
+      if (hasFieldPatch) {
+        const { events } = await updateTicket(t.id, orgId, request.userId!, fieldPatch)
+        for (const e of events) await publishEvent(e.type, e.payload)
+      }
+      if (patch.addLabelIds?.length) {
+        await prisma.ticketLabel.createMany({
+          data: patch.addLabelIds.map((labelId) => ({ ticketId: t.id, labelId })),
+          skipDuplicates: true,
+        })
+      }
+      if (patch.archived !== undefined) {
+        await prisma.ticket.update({ where: { id: t.id }, data: { archivedAt: patch.archived ? new Date() : null } })
+        await publishEvent(patch.archived ? 'ticket.deleted' : 'ticket.updated', {
+          projectId: t.projectId,
+          ticketId: t.id,
+          actorId: request.userId!,
+        })
+      }
+    }
+    return { updated: tickets.length }
   })
 }
 

@@ -11,6 +11,14 @@ const TYPE_BY_EVENT: Record<string, NotificationType> = {
   'ticket.created': 'TICKET_ASSIGNED',
   'ticket.updated': 'TICKET_STATUS_CHANGED',
   'ticket.commented': 'TICKET_COMMENTED',
+  'ticket.unblocked': 'TICKET_UNBLOCKED',
+  'ticket.subtasks_done': 'SUBTASKS_DONE',
+}
+
+// 3.4 W2/W3 — nudge events carry their own message instead of the generic body.
+const BODY_BY_EVENT: Record<string, (ref: string, title: string) => string> = {
+  'ticket.unblocked': (ref, title) => `${ref} — ${title} is unblocked: all blockers are done`,
+  'ticket.subtasks_done': (ref, title) => `${ref} — ${title}: all subtasks are complete`,
 }
 
 // Mentions are stored in a fixed token format `@[<uuid>]`. We resolve them
@@ -75,7 +83,7 @@ async function handleTicketEvent(type: string, payload: TicketEventPayload) {
         type: notifType,
         channel: 'IN_APP',
         subject: ref,
-        body: `${ref} — ${ticket.title}`,
+        body: (BODY_BY_EVENT[type] ?? ((r: string, t: string) => `${r} — ${t}`))(ref, ticket.title),
       },
     })
     await publishEvent('notification.new', {
