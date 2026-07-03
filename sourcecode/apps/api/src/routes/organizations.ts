@@ -5,6 +5,7 @@ import { prisma } from '../db/client.js'
 import { requireAuth, requireOrgRole } from '../middleware/auth.middleware.js'
 import { guardLastOwner, ROLE_ORDER } from '../services/authz.js'
 import { orgListStats } from '../services/stats.service.js'
+import { DEFAULT_TEMPLATES } from './templates.js'
 import { recentActivity } from '../services/activity.service.js'
 import { ApiError } from '../lib/errors.js'
 import { slugify } from '../lib/slug.js'
@@ -56,7 +57,7 @@ async function uniqueOrgSlug(base: string): Promise<string> {
 const routes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', requireAuth)
 
-  // Create org — the creator becomes OWNER
+  // Create org — the creator becomes OWNER; seeded with the starter templates (3.4 W1)
   app.post('/', async (request, reply) => {
     const body = createOrgSchema.parse(request.body)
     const slug = await uniqueOrgSlug(body.slug ?? slugify(body.name))
@@ -65,6 +66,7 @@ const routes: FastifyPluginAsync = async (app) => {
         name: body.name,
         slug,
         members: { create: { userId: request.userId!, role: 'OWNER' } },
+        templates: { create: DEFAULT_TEMPLATES },
       },
     })
     return reply.code(201).send({ org })

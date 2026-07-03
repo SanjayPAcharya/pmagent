@@ -130,6 +130,28 @@
     "accepting": "Accepting invitation…",
     "goToDashboard": "Go to dashboard"
   },
+  "csv": {
+    "export": "Export CSV",
+    "import": "Import CSV",
+    "nothingToImport": "No usable rows found — the file needs a Title or Summary column.",
+    "previewTitle": "{{count}} tickets ready to import",
+    "skipped": "({{count}} rows skipped — missing title)",
+    "andMore": "…and {{count}} more",
+    "confirmImport": "Import {{count}} tickets",
+    "imported": "{{count}} tickets imported"
+  },
+  "templates": {
+    "title": "Ticket templates",
+    "empty": "No templates yet.",
+    "restoreDefaults": "Add starter templates",
+    "seeded": "Starter templates added",
+    "created": "Template created",
+    "deleted": "Template deleted",
+    "newTemplate": "New template",
+    "namePlaceholder": "Template name",
+    "descriptionPlaceholder": "Description (markdown)…",
+    "acPlaceholder": "Acceptance criteria — one \"- [ ]\" line per item…"
+  },
   "bulk": {
     "selected": "{{count}} selected",
     "selectAll": "Select all",
@@ -211,7 +233,15 @@
     "firstStep1": "Name it — what needs doing?",
     "firstStep2": "Add a goal & acceptance criteria in the drawer.",
     "firstStep3": "Drag it across the board as it progresses.",
-    "firstTicketPlaceholder": "e.g. Add CSV export to reports"
+    "firstTicketPlaceholder": "e.g. Add CSV export to reports",
+    "fromTemplate": "New from template",
+    "noTemplates": "No templates in this organization.",
+    "templateCreated": "{{key}} created from template",
+    "automation": "Automation",
+    "autoUnblockNudge": "Notify when a ticket becomes unblocked",
+    "autoTodoOnAssign": "Assigning moves Backlog → To Do",
+    "autoSubtasksDone": "Notify when all subtasks are done",
+    "automationSaved": "Automation updated"
   },
   "drawer": {
     "noDescription": "No description",

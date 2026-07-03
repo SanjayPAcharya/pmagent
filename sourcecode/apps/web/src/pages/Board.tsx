@@ -26,6 +26,7 @@ import { BoardSkeleton } from '@/components/board/BoardSkeleton'
 import { TicketDrawer } from '@/components/TicketDrawer'
 import ViewToggle from '@/components/ViewToggle'
 import { BulkBar } from '@/components/BulkBar'
+import { ProjectTools } from '@/components/ProjectTools'
 import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fireConfetti } from '@/lib/confetti'
@@ -360,6 +361,11 @@ export default function Board() {
         </div>
         <div className="flex items-center gap-4">
           <ViewToggle slug={slug} projectSlug={projectSlug} active="board" />
+          {orgId && project && (
+            <div className="flex items-center gap-0.5">
+              <ProjectTools orgId={orgId} project={project} slug={slug} projectSlug={projectSlug} />
+            </div>
+          )}
           <button
             onClick={() => setFocusMine((v) => !v)}
             aria-pressed={focusMine}

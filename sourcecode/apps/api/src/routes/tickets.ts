@@ -78,6 +78,26 @@ const batchSchema = z.object({
 })
 const dependencySchema = z.object({ dependsOnId: z.string().uuid() })
 
+// 3.4 W4 — CSV import: pre-validated rows from the client (headers already
+// alias-mapped there). Capped to keep a bad file from hammering the counter.
+const importSchema = z.object({
+  projectId: z.string().uuid(),
+  tickets: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        description: z.string().max(10_000).optional(),
+        status: statusEnum.optional(),
+        priority: priorityEnum.optional(),
+        type: typeEnum.optional(),
+        storyPoints: z.number().int().positive().optional(),
+        acceptanceCriteria: z.string().max(10_000).optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+})
+
 const listQuerySchema = z.object({
   projectId: z.string().uuid(),
   q: z.string().max(200).optional(),
@@ -325,6 +345,22 @@ const routes: FastifyPluginAsync = async (app) => {
     await removeDependency(t.id, request.params.dependsOnId)
     await publishEvent('ticket.updated', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
     return reply.code(204).send()
+  })
+
+  // ── CSV import (3.4 W4) ─────────────────────────────────
+  r.post('/import', { schema: { body: importSchema, tags: ['tickets'] } }, async (request, reply) => {
+    const { projectId, tickets } = request.body
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { orgId: true } })
+    if (!project) throw new ApiError(404, 'Project not found')
+    await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
+
+    let created = 0
+    for (const row of tickets) {
+      const { events } = await createTicket(project.orgId, request.userId!, { projectId, ...row })
+      for (const e of events) await publishEvent(e.type, e.payload)
+      created++
+    }
+    return reply.code(201).send({ created })
   })
 
   // ── Bulk update (board / list multi-select) ─────────────

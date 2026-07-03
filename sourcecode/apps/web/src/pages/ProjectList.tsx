@@ -12,6 +12,7 @@ import { Skeleton } from '../components/ui/skeleton'
 import { TicketDrawer } from '../components/TicketDrawer'
 import ViewToggle from '../components/ViewToggle'
 import { BulkBar } from '../components/BulkBar'
+import { CsvTools } from '../components/CsvTools'
 
 const TYPES: TicketType[] = ['FEATURE', 'BUG', 'CHORE', 'SPIKE']
 // Columns whose header toggles a server-side sort (field ↔ -field).
@@ -172,6 +173,14 @@ export default function ProjectList() {
           <button onClick={clearFilters} className="text-sm text-muted-foreground hover:text-foreground">
             {t('board.clearFilters')}
           </button>
+        )}
+        {projectId && project && (
+          <CsvTools
+            projectId={projectId}
+            projectKey={project.key}
+            items={tickets.data?.items ?? []}
+            sprints={sprints.data?.sprints ?? []}
+          />
         )}
       </div>
 

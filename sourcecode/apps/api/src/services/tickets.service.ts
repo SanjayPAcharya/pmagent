@@ -2,6 +2,25 @@ import type { Prisma, PrismaClient, TicketActivityType } from '@prisma/client'
 import { prisma } from '../db/client.js'
 import { ApiError } from '../lib/errors.js'
 import type { DomainEvent } from '../events/event-bus.js'
+import { blockedByCounts } from './relations.service.js'
+
+// 3.4 W3 — per-project automation toggles, stored on Project.automation (JSON).
+// unblockNudge defaults ON; the opt-in ones default OFF.
+export interface AutomationSettings {
+  unblockNudge: boolean
+  autoTodoOnAssign: boolean
+  subtasksDoneNudge: boolean
+}
+export function automationSettings(raw: unknown): AutomationSettings {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    unblockNudge: o.unblockNudge !== false,
+    autoTodoOnAssign: o.autoTodoOnAssign === true,
+    subtasksDoneNudge: o.subtasksDoneNudge === true,
+  }
+}
+
+const CLOSED_STATUSES = ['DONE', 'CANCELLED']
 
 // Tx-or-client: service helpers run inside a transaction during create/update,
 // but the validation helpers also work standalone.
@@ -209,6 +228,14 @@ export async function updateTicket(
 
     const has = <K extends keyof UpdateTicketInput>(k: K) => Object.prototype.hasOwnProperty.call(input, k)
 
+    // W3 — autoTodoOnAssign: assigning a BACKLOG ticket moves it to TODO
+    // (only when the caller didn't set a status themselves).
+    const project = await tx.project.findUnique({ where: { id: before.projectId }, select: { automation: true } })
+    const auto = automationSettings(project?.automation)
+    if (auto.autoTodoOnAssign && input.assignedToId && input.assignedToId !== before.assignedToId && !has('status') && before.status === 'BACKLOG') {
+      input = { ...input, status: 'TODO' }
+    }
+
     if (input.assignedToId) await assertOrgMember(tx, orgId, input.assignedToId, 'Assignee')
     if (input.sprintId) await assertSprintInProject(tx, before.projectId, input.sprintId)
     if (has('labelIds')) await assertLabelsInOrg(tx, orgId, input.labelIds ?? [])
@@ -247,7 +274,7 @@ export async function updateTicket(
       })
     }
 
-    return tx.ticket.update({
+    const row = await tx.ticket.update({
       where: { id: ticketId },
       data: {
         title: input.title,
@@ -272,10 +299,39 @@ export async function updateTicket(
       },
       include: ticketInclude,
     })
+    return { row, before, auto }
   })
 
-  return {
-    ticket: serializeTicket(result),
-    events: [{ type: 'ticket.updated', payload: { projectId: result.projectId, ticketId: result.id, actorId } }],
+  const { row, before, auto } = result
+  const events: DomainEvent[] = [
+    { type: 'ticket.updated', payload: { projectId: row.projectId, ticketId: row.id, actorId } },
+  ]
+
+  // W2/W3 nudges — fire only when this update closed the ticket.
+  if (CLOSED_STATUSES.includes(row.status) && !CLOSED_STATUSES.includes(before.status)) {
+    if (auto.unblockNudge) {
+      // Dependents whose last open blocker was this ticket are now unblocked.
+      const deps = await prisma.ticketDependency.findMany({
+        where: { dependsOnId: ticketId },
+        select: { ticketId: true, ticket: { select: { projectId: true, archivedAt: true } } },
+      })
+      const open = deps.filter((d) => d.ticket.archivedAt === null)
+      const counts = await blockedByCounts(open.map((d) => d.ticketId))
+      for (const d of open) {
+        if ((counts.get(d.ticketId) ?? 0) === 0) {
+          events.push({ type: 'ticket.unblocked', payload: { projectId: d.ticket.projectId, ticketId: d.ticketId, actorId } })
+        }
+      }
+    }
+    if (auto.subtasksDoneNudge && before.parentId) {
+      const openSiblings = await prisma.ticket.count({
+        where: { parentId: before.parentId, archivedAt: null, status: { notIn: ['DONE', 'CANCELLED'] } },
+      })
+      if (openSiblings === 0) {
+        events.push({ type: 'ticket.subtasks_done', payload: { projectId: row.projectId, ticketId: before.parentId, actorId } })
+      }
+    }
   }
+
+  return { ticket: serializeTicket(row), events }
 }

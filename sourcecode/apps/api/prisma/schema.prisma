@@ -48,8 +48,32 @@ model Organization {
   projects  Project[]
   invites   OrgInvite[]
   labels    Label[]
+  templates TicketTemplate[]
 
   @@index([slug])
+}
+
+// 3.4 W1 — reusable ticket presets (org-scoped). labelIds are loose references,
+// validated against the org's labels when the template is applied.
+model TicketTemplate {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId              String      @db.Uuid
+  name               String
+  type               TicketType  @default(FEATURE)
+  priority           Priority    @default(MEDIUM)
+  title              String?
+  description        String?
+  acceptanceCriteria String?
+  goal               String?
+  constraints        String?
+  labelIds           String[]    @default([])
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, name])
+  @@index([orgId])
 }
 
 model OrgMember {
@@ -94,6 +118,8 @@ model Project {
   ticketCounter Int          @default(0) // monotonic per-project allocator for ticket.number
   description   String?
   defaultBranch String       @default("main")
+  // 3.4 W3 — fixed automation toggles: { unblockNudge, autoTodoOnAssign, subtasksDoneNudge }.
+  automation    Json?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -353,6 +379,8 @@ enum NotificationType {
   WATCHER_ADDED
   SPRINT_STARTED
   SPRINT_COMPLETED
+  TICKET_UNBLOCKED
+  SUBTASKS_DONE
 }
 
 enum NotificationChannel {
