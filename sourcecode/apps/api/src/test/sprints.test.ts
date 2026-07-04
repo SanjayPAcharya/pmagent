@@ -69,6 +69,46 @@ describe('sprints', () => {
     expect(done.json().sprint.velocity).toBe(8)
   })
 
+  it('reports: velocity per completed sprint, cycle/lead medians, workload', async () => {
+    const owner = await tokenFor('s-rep-owner')
+    const { projectId } = await setup(owner)
+    const sprintId = (await app.inject({ method: 'POST', url: '/api/sprints', headers: bearer(owner), payload: { projectId, name: 'Rep Sprint' } })).json().sprint.id
+
+    // Two done tickets (one passes through IN_PROGRESS → real cycle time), one open.
+    const t1 = (await createTicket(owner, { projectId, title: 'Done via progress', storyPoints: 5 })).json().ticket.id
+    const t2 = (await createTicket(owner, { projectId, title: 'Done directly', storyPoints: 3 })).json().ticket.id
+    const t3 = (await createTicket(owner, { projectId, title: 'Still open' })).json().ticket.id
+    await app.inject({ method: 'POST', url: `/api/sprints/${sprintId}/tickets`, headers: bearer(owner), payload: { ticketIds: [t1, t2] } })
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${t1}/status`, headers: bearer(owner), payload: { status: 'IN_PROGRESS' } })
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${t1}/status`, headers: bearer(owner), payload: { status: 'DONE' } })
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${t2}/status`, headers: bearer(owner), payload: { status: 'DONE' } })
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${t3}/status`, headers: bearer(owner), payload: { status: 'IN_PROGRESS' } })
+    await app.inject({ method: 'POST', url: `/api/sprints/${sprintId}/start`, headers: bearer(owner) })
+    await app.inject({ method: 'POST', url: `/api/sprints/${sprintId}/complete`, headers: bearer(owner) })
+
+    const res = await app.inject({ method: 'GET', url: `/api/projects/${projectId}/reports`, headers: bearer(owner) })
+    expect(res.statusCode).toBe(200)
+    const { velocity, cycle, workload } = res.json().reports
+
+    expect(velocity).toHaveLength(1)
+    expect(velocity[0]).toMatchObject({ name: 'Rep Sprint', velocity: 8 })
+
+    expect(cycle.closedCount).toBe(2)
+    expect(cycle.leadMedianDays).not.toBeNull()
+    expect(cycle.cycleMedianDays).not.toBeNull()
+    expect(cycle.weekly.length).toBeGreaterThan(0)
+    expect(cycle.weekly.reduce((n: number, w: { count: number }) => n + w.count, 0)).toBe(2)
+
+    // Workload: only the open ticket remains, unassigned bucket.
+    expect(workload).toHaveLength(1)
+    expect(workload[0]).toMatchObject({ userId: null, openCount: 1, inProgressCount: 1 })
+
+    // Read access is MEMBER-scoped.
+    const outsider = await tokenFor('s-rep-outsider')
+    const denied = await app.inject({ method: 'GET', url: `/api/projects/${projectId}/reports`, headers: bearer(outsider) })
+    expect(denied.statusCode).toBe(403)
+  })
+
   it('rejects adding a ticket from another project (cross-scope) with 400', async () => {
     const owner = await tokenFor('s-owner3')
     const { projectId } = await setup(owner)

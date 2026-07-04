@@ -5,6 +5,7 @@ import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { projectListStats } from '../services/stats.service.js'
+import { projectReports } from '../services/reports.service.js'
 import { recentActivity } from '../services/activity.service.js'
 import { ApiError } from '../lib/errors.js'
 import { slugify, deriveKey } from '../lib/slug.js'
@@ -101,6 +102,12 @@ const routes: FastifyPluginAsync = async (app) => {
   app.get('/:projectId/activity', async (request) => {
     const project = await loadProjectAuthorized(request, 'MEMBER')
     return { activity: await recentActivity({ ticket: { projectId: project.id } }) }
+  })
+
+  // 3.3 — read-only reporting aggregates (velocity, cycle/lead time, workload)
+  app.get('/:projectId/reports', async (request) => {
+    const project = await loadProjectAuthorized(request, 'MEMBER')
+    return { reports: await projectReports(project.id) }
   })
 
   app.patch('/:projectId', async (request) => {
