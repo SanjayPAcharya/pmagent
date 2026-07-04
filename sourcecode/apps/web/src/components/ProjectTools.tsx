@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { FilePlus2, Zap } from 'lucide-react'
 import { api, type AutomationSettings, type Project, type TicketTemplate } from '@/lib/api'
+import { resolveAutomation } from '@/lib/automationSettings'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -55,13 +56,7 @@ export function ProjectTools({ orgId, project, slug, projectSlug }: Props) {
     }
   }
 
-  // Defaults mirror the server: unblockNudge on, the rest off.
-  const auto = project.automation ?? {}
-  const setting = {
-    unblockNudge: auto.unblockNudge !== false,
-    autoTodoOnAssign: auto.autoTodoOnAssign === true,
-    subtasksDoneNudge: auto.subtasksDoneNudge === true,
-  }
+  const setting = resolveAutomation(project.automation)
   const toggle = async (key: keyof AutomationSettings) => {
     try {
       await api.updateProject(project.id, { automation: { [key]: !setting[key] } })

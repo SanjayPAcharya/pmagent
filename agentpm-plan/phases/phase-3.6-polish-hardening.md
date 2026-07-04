@@ -1,6 +1,6 @@
 # Phase 3.6 — Polish, hardening & carried-over hygiene
 
-> **Status: 📋 PLANNED** (opened 2026-07-03). A deliberate consolidation pass: finish the 3.5 hygiene items that were paused, then walk back through everything shipped in the 3.x arc (org/project redesign, 3.1 PM depth, 3.2 collaboration, 3.4 workflow, 3.5 settings) and close the loose ends before starting Phase 4. **No new feature surface** beyond the carried-over 3.5 work — this phase makes what exists feel finished.
+> **Status: 🔨 IN PROGRESS** (opened 2026-07-03; Part B underway 2026-07-04). A deliberate consolidation pass: finish the 3.5 hygiene items that were paused, then walk back through everything shipped in the 3.x arc (org/project redesign, 3.1 PM depth, 3.2 collaboration, 3.4 workflow, 3.5 settings) and close the loose ends before starting Phase 4. **No new feature surface** beyond the carried-over 3.5 work — this phase makes what exists feel finished.
 
 ## Why 3.6 exists
 The 3.x track shipped fast and broad. A focused polish phase (a) prevents small rough edges from compounding, (b) adds the test coverage the frontend never got, and (c) lands the remaining pre-launch hygiene. This is the last stop before the notification-channels / agent work.
@@ -46,8 +46,8 @@ Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a frien
 - Consistent sentence case + voice per the CDS copy rules across the new pages.
 
 ### Testing
-- **The web app has no test runner** (`"test": "echo no-tests"`). Stand up Vitest + a couple of unit tests for the pure logic added this arc: `lib/csv.ts` round-trip (`mapRows`), `automationSettings`, frecency, favorites.
-- **API gaps:** no tests for `DELETE /api/orgs/:slug` and `DELETE /api/projects/:projectId`, nor for the new `role` field on `GET /api/orgs/:slug`. Add them.
+- ✅ **Web test runner** *(2026-07-04)* — Vitest + jsdom in `apps/web`, `vitest run` wired into `pnpm turbo test` (unit tests live in `src/**/*.test.{ts,tsx}`; Playwright keeps `e2e/`). 17 tests: `lib/csv.ts` round-trip, `mapRows` (sample CSV, Jira aliases, skip/cap/enum edge cases), automation defaults (logic extracted to pure `lib/automationSettings.ts`, mirroring the server), favorites store. Frecency deferred — cover it when that logic next changes.
+- ✅ **API gaps** *(2026-07-04)* — tests added for `DELETE /api/orgs/:slug` (OWNER-only), `DELETE /api/projects/:projectId` (ADMIN-only, MEMBER 403) and the caller `role` on `GET /api/orgs/:slug`. Suite 54/54.
 
 ### Performance / correctness nits
 - Confirm the org/project list `stats` queries stay cheap as data grows (they're grouped, but re-check the N+1 boundary).
