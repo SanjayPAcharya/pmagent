@@ -42,8 +42,8 @@ Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a frien
 - a11y sweep: labels/roles on the new dropdowns, checkboxes, and the color picker.
 
 ### i18n & copy
-- Sweep `locales/en.json` for **orphan keys** (removed with the Members accent card) and **missing keys** referenced by the new components; verify no raw `t('…')` keys render (the list-view filter bug earlier).
-- Consistent sentence case + voice per the CDS copy rules across the new pages.
+- ✅ **Orphan/missing key sweep** *(2026-07-04)* — scripted diff of `en.json` vs. `t('…')` usage. Fixed the one real missing key: `board.clearFilters` rendered raw on the list view (browser-verified fixed). Removed 6 true orphans (`common.any`, `landing.tagline`, `projects.backToOrgs`, `projects.title`, `drawer.description`, `sprints.removed`). Dynamic-key groups (`onboard.*`, `theme.*`, `sprints.unit.*`) confirmed in use via template keys — kept.
+- ✅ **Copy casing** *(2026-07-04)* — settings back-links normalized to sentence case ("← Projects", "← Board").
 
 ### Testing
 - ✅ **Web test runner** *(2026-07-04)* — Vitest + jsdom in `apps/web`, `vitest run` wired into `pnpm turbo test` (unit tests live in `src/**/*.test.{ts,tsx}`; Playwright keeps `e2e/`). 17 tests: `lib/csv.ts` round-trip, `mapRows` (sample CSV, Jira aliases, skip/cap/enum edge cases), automation defaults (logic extracted to pure `lib/automationSettings.ts`, mirroring the server), favorites store. Frecency deferred — cover it when that logic next changes.

@@ -13,7 +13,6 @@
     "loading": "Loading…",
     "signOut": "Sign out",
     "back": "Back",
-    "any": "Any",
     "undo": "Undo"
   },
   "nav": {
@@ -38,7 +37,6 @@
     "home": "Home"
   },
   "landing": {
-    "tagline": "AI-agent-first project management",
     "headline": "Project management, built for AI agents.",
     "subtitle": "PMAgent gives your team and your AI agents one shared board — plan, assign, and ship without the busywork.",
     "cardHint": "Choose how you'd like to continue.",
@@ -63,8 +61,6 @@
     "countOpen": "{{count}} open"
   },
   "projects": {
-    "backToOrgs": "← organizations",
-    "title": "{{org}} · projects",
     "membersLink": "Members & invites →",
     "newProjectPlaceholder": "New project name",
     "keyPlaceholder": "KEY",
@@ -86,8 +82,8 @@
   "settings": {
     "orgTitle": "Organization settings",
     "projectTitle": "Project settings",
-    "backToOrg": "← projects",
-    "backToProject": "← board",
+    "backToOrg": "← Projects",
+    "backToProject": "← Board",
     "general": "General",
     "orgName": "Organization name",
     "projectName": "Project name",
@@ -260,6 +256,7 @@
     "createFailed": "Create failed: {{message}}",
     "moveFailed": "Move failed: {{message}}",
     "search": "Search title or #number…",
+    "clearFilters": "Clear filters",
     "priorityAny": "Priority: any",
     "typeAny": "Type: any",
     "assigneeAny": "Assignee: any",
@@ -313,7 +310,6 @@
     "watchers": "Watchers / CC",
     "labels": "Labels",
     "newLabelPlaceholder": "New label name…",
-    "description": "Description",
     "comments": "Comments",
     "activity": "Activity",
     "story": "Story",
@@ -370,7 +366,6 @@
     "capacitySummary": "{{committed}} pts committed · last velocity {{velocity}}",
     "capacityNoVelocity": "{{committed}} pts committed",
     "overcommitted": "Over last velocity — consider trimming scope.",
-    "removed": "Removed",
     "added": "Added to sprint"
   },
   "notifications": {
