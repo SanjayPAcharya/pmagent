@@ -310,9 +310,22 @@ export function CommandPalette() {
               </CommandGroup>
             )}
 
-            {searchDebounced.length >= 2 && (globalHits.data?.items.length ?? 0) > 0 && (
+            {searchDebounced.length >= 2 &&
+              ((globalHits.data?.items.length ?? 0) > 0 || (globalHits.data?.projects.length ?? 0) > 0) && (
               <CommandGroup heading={t('palette.everywhere')}>
-                {globalHits.data!.items
+                {(globalHits.data?.projects ?? []).map((p) => (
+                  <CommandItem
+                    key={p.id}
+                    value={`global project ${p.key} ${p.name}`}
+                    onSelect={() => go(`/orgs/${p.orgSlug}/projects/${p.slug}`)}
+                  >
+                    <FolderKanban className="h-4 w-4" />
+                    <span className="font-mono text-xs text-muted-foreground">{p.key}</span>
+                    <span className="truncate">{p.name}</span>
+                    <span className="ml-auto truncate text-xs text-muted-foreground">{p.orgSlug}</span>
+                  </CommandItem>
+                ))}
+                {(globalHits.data?.items ?? [])
                   .filter((hit) => !tickets.data?.items.some((tk) => tk.id === hit.id))
                   .slice(0, 8)
                   .map((hit) => (

@@ -177,6 +177,14 @@ export interface Ticket {
 }
 /** Ticket from a cross-project surface (search / my-work) — carries link slugs. */
 export type TicketHit = Ticket & { orgSlug: string; projectSlug: string }
+/** Project matched by the global search (by name, membership-scoped). */
+export interface ProjectHit {
+  id: string
+  name: string
+  slug: string
+  key: string
+  orgSlug: string
+}
 export interface TicketRef {
   id: string
   number: number
@@ -369,7 +377,7 @@ export const api = {
   removeDependency: (id: string, dependsOnId: string) =>
     request<void>('DELETE', `/api/tickets/${id}/dependencies/${dependsOnId}`),
   searchTickets: (q: string) =>
-    request<{ items: TicketHit[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
+    request<{ items: TicketHit[]; projects: ProjectHit[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
   myWork: () => request<{ assigned: TicketHit[]; watching: TicketHit[] }>('GET', '/api/me/work'),
   batchUpdateTickets: (ids: string[], patch: BatchPatch) =>
     request<{ updated: number }>('POST', '/api/tickets/batch', { ids, patch }),

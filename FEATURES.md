@@ -95,7 +95,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Navigation
 - **Workspace sidebar** — collapsible org → project tree; star ⭐ projects to pin them on top; collapses to a slide-out menu on mobile.
 - **Breadcrumbs** always show Home › Org › Project.
-- **⌘K palette** — global search, recent items (smart-ranked), quick-create with `!priority @assignee #sprint`, actions on the open ticket, theme toggle.
+- **⌘K palette** — global search that looks in ticket titles **and descriptions** and finds **projects by name** across all your organizations; recent items (smart-ranked), quick-create with `!priority @assignee #sprint`, actions on the open ticket, theme toggle.
 
 ## Board
 - Columns: Backlog · To Do · In Progress · In Review · Blocked · Done, with drag & drop and within-column reordering.
