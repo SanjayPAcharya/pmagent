@@ -417,6 +417,17 @@
   "readiness": {
     "label": "Agent-readiness: {{filled}}/{{total}} spec fields filled"
   },
+  "account": {
+    "title": "Account",
+    "profile": "Profile",
+    "name": "Display name",
+    "avatarUrl": "Avatar URL",
+    "avatarHint": "Paste a link to an image; leave empty to use your initials.",
+    "email": "Email",
+    "emailHint": "Sign-in email is managed by your identity provider.",
+    "appearance": "Appearance",
+    "saved": "Profile saved"
+  },
   "theme": {
     "light": "light",
     "dark": "dark",

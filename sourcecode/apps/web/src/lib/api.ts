@@ -290,6 +290,7 @@ export interface UpdateTicketInput {
 
 export const api = {
   me: () => request<{ user: User }>('GET', '/api/me'),
+  updateMe: (body: { name?: string; avatarUrl?: string | null }) => request<{ user: User }>('PATCH', '/api/me', body),
   listOrgs: () => request<{ organizations: Organization[] }>('GET', '/api/orgs'),
   getOrg: (slug: string) => request<{ org: OrgDetail }>('GET', `/api/orgs/${slug}`),
   createOrg: (name: string) => request<{ org: Organization }>('POST', '/api/orgs', { name }),

@@ -24,6 +24,7 @@ export function OrgTree({ onNavigate, onCollapse }: { onNavigate?: () => void; o
   const { slug, projectSlug } = useParams()
   const { t } = useTranslation()
   const orgs = useQuery({ queryKey: ['orgs'], queryFn: api.listOrgs })
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
   const [expandedOrgs, setExpandedOrgs] = useLocalStorageState<string[]>('agentpm-tree-orgs', [])
 
   // Auto-expand the org you're currently inside (still collapsible afterward).
@@ -60,7 +61,11 @@ export function OrgTree({ onNavigate, onCollapse }: { onNavigate?: () => void; o
             )
           }
         >
-          <UserCircle2 className="h-4 w-4" />
+          {me.data?.user.avatarUrl ? (
+            <img src={me.data.user.avatarUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+          ) : (
+            <UserCircle2 className="h-4 w-4" />
+          )}
           {t('tree.myWork')}
         </NavLink>
         {orgs.isPending ? (

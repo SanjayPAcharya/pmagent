@@ -88,8 +88,9 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - Overview page shows projects/members/open-ticket counts and a **recent activity feed**.
 
 ## Settings
-- **Organization settings** (from the "Settings" link on an org's page): rename the org, pick its **workspace accent color** (the whole app follows it), see your plan, and — for Owners — a danger zone to delete the org (type its name to confirm).
-- **Project settings** (from a project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to delete the project (type-to-confirm). Everything is role-gated — members see it read-only.
+- **Organization settings** (gear in the sidebar, or the "Settings" link on an org's page): rename the org, pick its **workspace accent color** (the whole app follows it), see your plan, and — for Owners — a danger zone to delete the org (type its name to confirm).
+- **Project settings** (gear in the sidebar, or the project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to delete the project (type-to-confirm). Everything is role-gated — members see it read-only.
+- **Your account** (click your email/avatar in the header): set your display name and a profile picture (paste an image link — leave it empty to use your initials), and pick your theme. Your sign-in email is shown read-only; it's managed where you log in.
 
 ## Navigation
 - **Workspace sidebar** — collapsible org → project tree; star ⭐ projects to pin them on top; collapses to a slide-out menu on mobile.
@@ -135,7 +136,8 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 | Notify when all subtasks are done | Tells the parent ticket's people when the last subtask closes | Off |
 
 ## Personalization
-- **Theme:** light / dark / follow system — sign-in pages match.
+- **Profile:** display name + avatar on the Account page; your avatar shows in the header and sidebar.
+- **Theme:** light / dark / follow system — switch from the header toggle or the Account page; sign-in pages match.
 - **Shortcuts:** `⌘K` palette · `?` help · `t` theme · `f` focus mine · `Esc` close panel.
 - Fully usable on mobile.
 

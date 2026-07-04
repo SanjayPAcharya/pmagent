@@ -7,7 +7,8 @@ import { blockedByCounts } from '../services/relations.service.js'
 
 const updateMeSchema = z.object({
   name: z.string().min(1).max(120).optional(),
-  avatarUrl: z.string().url().optional(),
+  // null clears the avatar back to initials
+  avatarUrl: z.string().url().max(500).nullable().optional(),
 })
 
 const meRoutes: FastifyPluginAsync = async (app) => {
