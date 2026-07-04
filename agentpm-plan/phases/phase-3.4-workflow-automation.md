@@ -13,10 +13,12 @@ Repetitive ticket work (retyping bug templates, manually unblocking, re-creating
 When the last incomplete dependency of a ticket goes DONE/CANCELLED (check in the status-change path using `blockedByCounts`), notify the assignee ("AGP-12 is unblocked"). Reuses the notification pipeline.
 
 ### W3. ✅ Fixed automation rules (unblockNudge / autoTodoOnAssign / subtasksDoneNudge)
-Three toggles per project (a JSON column on `Project`, no rules engine):
-- moved to IN_REVIEW → notify watchers
-- moved to DONE → close linked subtasks' "blocked" state (recount)
-- assigned → auto-move BACKLOG → TODO
+Three toggles per project (a JSON column on `Project`, no rules engine). **Shipped trio** (reconciled 2026-07-04 — this list is what's live):
+- `unblockNudge` (default ON) — last open blocker closes → notify the blocked ticket's audience (this is W2's pipeline)
+- `autoTodoOnAssign` — assigned → auto-move BACKLOG → TODO
+- `subtasksDoneNudge` — all subtasks of a parent DONE → nudge the parent's audience
+
+*Plan drift note:* the draft also listed "moved to IN_REVIEW → notify watchers" — dropped as redundant: watchers already receive `ticket.updated` status-change notifications for every transition, IN_REVIEW included.
 
 ### W4. ✅ CSV import / export
 Export: current list-view filter → CSV. Import: CSV → tickets (title, description, priority, labels), preview-then-commit. Jira-compatible column aliases. Adoption lever for the testing team.

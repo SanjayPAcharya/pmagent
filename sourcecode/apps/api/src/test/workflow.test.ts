@@ -132,6 +132,38 @@ describe('W3 — automation toggles', () => {
     expect(got.json().ticket.status).toBe('TODO')
   })
 
+  it('subtasksDoneNudge notifies the parent audience when the last subtask closes', async () => {
+    const owner = await tokenFor('sub-owner')
+    const mate = await tokenFor('sub-mate')
+    const { slug, projectId } = await makeOrgProject(owner, 'Subtask Org')
+    const mateMe = await app.inject({ method: 'GET', url: '/api/me', headers: bearer(mate) })
+    await app.inject({ method: 'POST', url: `/api/orgs/${slug}/members`, headers: bearer(owner), payload: { email: 'sub-mate@x.com', role: 'MEMBER' } })
+    const mateId = mateMe.json().user.id as string
+
+    await app.inject({
+      method: 'PATCH', url: `/api/projects/${projectId}`, headers: bearer(owner),
+      payload: { automation: { subtasksDoneNudge: true } },
+    })
+
+    // Parent assigned to mate (mate = the audience); two subtasks closed by owner.
+    const parent = await createTicket(owner, { projectId, title: 'The epic-ish parent', assignedToId: mateId })
+    const s1 = await createTicket(owner, { projectId, title: 'Subtask 1', parentId: parent.id })
+    const s2 = await createTicket(owner, { projectId, title: 'Subtask 2', parentId: parent.id })
+
+    // First subtask closing must NOT fire (one sibling still open).
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${s1.id}/status`, headers: bearer(owner), payload: { status: 'DONE' } })
+    await new Promise((r) => setTimeout(r, 300))
+    let rows = await prisma.notification.findMany({ where: { type: 'SUBTASKS_DONE', ticketId: parent.id } })
+    expect(rows.length).toBe(0)
+
+    // Last subtask closing fires once, to mate (owner is the actor → excluded).
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${s2.id}/status`, headers: bearer(owner), payload: { status: 'DONE' } })
+    await new Promise((r) => setTimeout(r, 300))
+    rows = await prisma.notification.findMany({ where: { type: 'SUBTASKS_DONE', ticketId: parent.id } })
+    expect(rows.length).toBe(1)
+    expect(rows[0].userId).toBe(mateId)
+  })
+
   it('unblockNudge can be switched off per project', async () => {
     const owner = await tokenFor('auto-owner2')
     const { projectId } = await makeOrgProject(owner, 'Auto Org 2')

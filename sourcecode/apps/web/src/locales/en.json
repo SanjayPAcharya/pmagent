@@ -20,6 +20,7 @@
     "board": "Board",
     "sprints": "Sprints",
     "members": "Members",
+    "settings": "Settings",
     "openMenu": "Open navigation"
   },
   "tree": {
@@ -186,7 +187,7 @@
   },
   "templates": {
     "title": "Ticket templates",
-    "empty": "No templates yet.",
+    "empty": "No templates yet. Templates pre-fill new tickets with a structure (description, acceptance criteria) — start from ours and tweak, or create your own.",
     "restoreDefaults": "Add starter templates",
     "seeded": "Starter templates added",
     "created": "Template created",

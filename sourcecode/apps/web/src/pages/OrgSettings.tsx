@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DangerZone } from '@/components/DangerZone'
 
 const ACCENT_PRESETS = ['#6d28d9', '#2563eb', '#0891b2', '#059669', '#d97706', '#dc2626', '#db2777']
@@ -50,14 +51,28 @@ export default function OrgSettings() {
     }
   }
 
+  const header = (
+    <div>
+      <Link to={`/orgs/${slug}`} className="text-sm text-muted-foreground hover:underline">
+        {t('settings.backToOrg')}
+      </Link>
+      <h2 className="text-xl font-semibold text-foreground">{t('settings.orgTitle')}</h2>
+    </div>
+  )
+
+  if (org.isPending) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        {header}
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <Link to={`/orgs/${slug}`} className="text-sm text-muted-foreground hover:underline">
-          {t('settings.backToOrg')}
-        </Link>
-        <h2 className="text-xl font-semibold text-foreground">{t('settings.orgTitle')}</h2>
-      </div>
+      {header}
 
       {/* General */}
       <Card>

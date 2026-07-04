@@ -23,15 +23,15 @@ Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a frien
 ## Part B — Polish loose ends (audit of shipped 3.x work)
 
 ### Consistency & discoverability
-- **Settings entry points are inconsistent** — org Settings is a text link on the projects header; project Settings lives in the card ⋯ menu; neither is in the workspace tree. Pick one consistent pattern (e.g. a gear in the tree per org/project) and keep the others as secondary.
-- **Templates card is empty for pre-existing orgs** until you click "Add starter templates." Consider auto-seeding on first project create, or a clearer first-run hint.
-- **Empty/loading states are uneven** — settings pages, MyWork sections, and some cards show nothing (not a skeleton) while loading; several pages have polished empty states, others are bare. Normalize.
+- ✅ **Settings entry points** *(2026-07-04)* — gear + "Settings" leaf added to the workspace tree at both levels (org: under Members; project: under Board/Sprints). The header link and ⋯ menu stay as secondary entries. Browser-verified.
+- ✅ **Templates first-run hint** *(2026-07-04)* — empty-state copy now explains what templates do before offering "Add starter templates"; card also gained a loading skeleton. (Auto-seeding on project create not needed — org create already seeds.)
+- ✅ **Empty/loading states** *(2026-07-04)* — `OrgSettings` and `ProjectSettings` render skeleton cards while their queries load (previously a blank form flash). MyWork/Dashboard/OrgProjects/tree already had skeletons — audited, no change needed.
 
 ### Edge cases & data
 - ✅ **CSV import labels + assignee** *(2026-07-04)* — `mapRows` now maps a Labels column (`;`-separated, matching the export's join) and an Assignee column (aliases: assignee / assigned to / owner). The import endpoint resolves label names case-insensitively within the org and the assignee by member email or exact display name — unknowns are silently dropped so a half-matching file still imports. Sample CSV exercises both columns. Covered by web unit tests + a workflow API test.
 - **Delete flows** — after deleting an org/project, confirm the sidebar tree, breadcrumbs, and any cached accent (`useOrgAccent`) all clear; no stale nav.
-- **W3 automation vs. the plan** — implemented trio is `unblockNudge / autoTodoOnAssign / subtasksDoneNudge`; the 3.4 plan text also listed "IN_REVIEW → notify watchers." Reconcile the doc with what shipped (watchers already get `ticket.updated`), or add the toggle.
-- **subtasksDoneNudge** was wired but only unblock-nudge was browser-verified — verify the subtasks-done path end to end.
+- ✅ **W3 automation vs. the plan** *(2026-07-04)* — 3.4 doc reconciled: the shipped trio is documented as-is, and the draft's "IN_REVIEW → notify watchers" is noted as dropped (watchers already get `ticket.updated` on every transition).
+- ✅ **subtasksDoneNudge verified** *(2026-07-04)* — new pipeline test in `workflow.test.ts`: toggle on → closing the first of two subtasks does NOT fire; closing the last fires exactly one `SUBTASKS_DONE` notification to the parent's audience (actor excluded).
 
 ### Notifications
 - ✅ **Per-type icons + labels in the bell** *(2026-07-04)* — `TYPE_META` map in `NotificationBell` (lucide icon + i18n label per `NotificationType`, incl. `TICKET_UNBLOCKED` → Unlock and `SUBTASKS_DONE` → ListChecks; unknown/future types fall back to the bell icon). Each feed row now shows the icon and a "Label · time" footer. Browser-verified on the dev stack.

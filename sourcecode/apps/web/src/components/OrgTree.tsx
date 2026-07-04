@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Link, NavLink, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight, PanelLeftClose, Users, Star, FolderKanban, Rocket, UserCircle2 } from 'lucide-react'
+import { ChevronRight, PanelLeftClose, Users, Star, FolderKanban, Rocket, Settings, UserCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api, type Organization, type Project } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -196,6 +196,10 @@ function ProjectsSubtree({
         <Users className="h-3.5 w-3.5 shrink-0" />
         {t('nav.members')}
       </NavLink>
+      <NavLink to={`/orgs/${org.slug}/settings`} onClick={onNavigate} className={leafClass}>
+        <Settings className="h-3.5 w-3.5 shrink-0" />
+        {t('nav.settings')}
+      </NavLink>
     </div>
   )
 }
@@ -257,6 +261,10 @@ function ProjectNode({
           <NavLink to={`/orgs/${orgSlug}/projects/${project.slug}/sprints`} onClick={onNavigate} className={leafClass}>
             <Rocket className="h-3.5 w-3.5 shrink-0" />
             {t('nav.sprints')}
+          </NavLink>
+          <NavLink to={`/orgs/${orgSlug}/projects/${project.slug}/settings`} onClick={onNavigate} className={leafClass}>
+            <Settings className="h-3.5 w-3.5 shrink-0" />
+            {t('nav.settings')}
           </NavLink>
         </div>
       )}

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DangerZone } from '@/components/DangerZone'
 
 export default function ProjectSettings() {
@@ -53,14 +54,27 @@ export default function ProjectSettings() {
   const dirty =
     project && (name.trim() !== project.name || description !== (project.description ?? '') || branch !== (project.defaultBranch ?? 'main'))
 
+  const header = (
+    <div>
+      <Link to={base} className="text-sm text-muted-foreground hover:underline">
+        {t('settings.backToProject')}
+      </Link>
+      <h2 className="text-xl font-semibold text-foreground">{t('settings.projectTitle')}</h2>
+    </div>
+  )
+
+  if (org.isPending || projects.isPending) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        {header}
+        <Skeleton className="h-72 rounded-xl" />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <Link to={base} className="text-sm text-muted-foreground hover:underline">
-          {t('settings.backToProject')}
-        </Link>
-        <h2 className="text-xl font-semibold text-foreground">{t('settings.projectTitle')}</h2>
-      </div>
+      {header}
 
       <Card>
         <CardHeader className="pb-2">
