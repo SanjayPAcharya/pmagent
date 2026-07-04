@@ -417,6 +417,19 @@
   "readiness": {
     "label": "Agent-readiness: {{filled}}/{{total}} spec fields filled"
   },
+  "labels": {
+    "title": "Labels",
+    "empty": "No labels yet — create one below, or from any ticket's Labels section.",
+    "usage": "{{count}} tickets",
+    "usage_one": "{{count}} ticket",
+    "color": "Label color",
+    "saved": "Label saved",
+    "deleted": "Label deleted",
+    "created": "Label created",
+    "confirmDelete": "Remove from all tickets?",
+    "newPlaceholder": "New label name…",
+    "add": "Add"
+  },
   "account": {
     "title": "Account",
     "profile": "Profile",

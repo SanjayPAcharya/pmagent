@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DangerZone } from '@/components/DangerZone'
+import { LabelsCard } from '@/components/LabelsCard'
 
 const ACCENT_PRESETS = ['#6d28d9', '#2563eb', '#0891b2', '#059669', '#d97706', '#dc2626', '#db2777']
 
@@ -129,6 +130,9 @@ export default function OrgSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* Labels — org-wide rename/recolor/delete with usage counts */}
+      {data && <LabelsCard orgId={data.id} isAdmin={isAdmin} />}
 
       {/* Danger zone — OWNER only */}
       {isOwner && data && (

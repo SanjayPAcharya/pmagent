@@ -146,6 +146,8 @@ export interface Label {
   id: string
   name: string
   color: string
+  /** Tickets carrying this label — present on the list endpoint only. */
+  usageCount?: number
 }
 export interface Ticket {
   id: string
@@ -378,6 +380,8 @@ export const api = {
   listLabels: (orgId: string) => request<{ labels: Label[] }>('GET', `/api/labels?orgId=${encodeURIComponent(orgId)}`),
   createLabel: (orgId: string, name: string, color: string) =>
     request<{ label: Label }>('POST', '/api/labels', { orgId, name, color }),
+  updateLabel: (id: string, body: { name?: string; color?: string }) =>
+    request<{ label: Label }>('PATCH', `/api/labels/${id}`, body),
   deleteLabel: (id: string) => request<void>('DELETE', `/api/labels/${id}`),
 
   // Sprints (Phase 2E)

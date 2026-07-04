@@ -88,7 +88,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - Overview page shows projects/members/open-ticket counts and a **recent activity feed**.
 
 ## Settings
-- **Organization settings** (gear in the sidebar, or the "Settings" link on an org's page): rename the org, pick its **workspace accent color** (the whole app follows it), see your plan, and — for Owners — a danger zone to delete the org (type its name to confirm).
+- **Organization settings** (gear in the sidebar, or the "Settings" link on an org's page): rename the org, pick its **workspace accent color** (the whole app follows it), **manage labels** (rename, recolor, delete — each shows how many tickets use it, and renames update everywhere instantly), see your plan, and — for Owners — a danger zone to delete the org (type its name to confirm).
 - **Project settings** (gear in the sidebar, or the project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to delete the project (type-to-confirm). Everything is role-gated — members see it read-only.
 - **Your account** (click your email/avatar in the header): set your display name and a profile picture (paste an image link — leave it empty to use your initials), and pick your theme. Your sign-in email is shown read-only; it's managed where you log in.
 
