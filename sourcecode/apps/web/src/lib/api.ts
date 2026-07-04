@@ -265,6 +265,41 @@ export interface Notification {
   createdAt: string
 }
 
+// 3.3 — per-project reporting aggregates (read-only)
+export interface VelocityPoint {
+  id: string
+  name: string
+  velocity: number | null
+  endDate: string | null
+}
+export interface CycleWeek {
+  weekStart: string
+  count: number
+  leadMedianDays: number | null
+  cycleMedianDays: number | null
+}
+export interface CycleReport {
+  windowDays: number
+  closedCount: number
+  leadMedianDays: number | null
+  leadP85Days: number | null
+  cycleMedianDays: number | null
+  cycleP85Days: number | null
+  weekly: CycleWeek[]
+}
+export interface WorkloadRow {
+  userId: string | null
+  name: string
+  avatarUrl: string | null
+  openCount: number
+  inProgressCount: number
+}
+export interface ProjectReports {
+  velocity: VelocityPoint[]
+  cycle: CycleReport
+  workload: WorkloadRow[]
+}
+
 export interface CreateTicketInput {
   projectId: string
   title: string
@@ -306,6 +341,7 @@ export const api = {
   createOrg: (name: string) => request<{ org: Organization }>('POST', '/api/orgs', { name }),
   deleteOrg: (slug: string) => request<void>('DELETE', `/api/orgs/${slug}`),
   deleteProject: (projectId: string) => request<void>('DELETE', `/api/projects/${projectId}`),
+  getProjectReports: (projectId: string) => request<{ reports: ProjectReports }>('GET', `/api/projects/${projectId}/reports`),
   updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
     request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
   orgActivity: (slug: string) => request<{ activity: ActivityItem[] }>('GET', `/api/orgs/${slug}/activity`),

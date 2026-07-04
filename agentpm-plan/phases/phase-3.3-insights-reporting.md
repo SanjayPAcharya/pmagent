@@ -1,6 +1,6 @@
 # Phase 3.3 — Insights & Reporting
 
-> **Status: 🔨 IN PROGRESS** (2026-07-04). Backend R1/R2/R4 shipped as `services/reports.service.ts` + `GET /api/projects/:projectId/reports` (velocity per completed sprint · lead/cycle medians + p85 over a 90-day window with a weekly trend · open-per-member workload incl. an unassigned bucket). R3 (cumulative flow) deferred. Next: the Reports tab (R5).
+> **Status: ✅ DONE (R1/R2/R4/R5 — R3 deferred)** (2026-07-04). Backend: `services/reports.service.ts` + `GET /api/projects/:projectId/reports` (velocity per completed sprint · lead/cycle medians + p85 over a 90-day window with a weekly trend · open-per-member workload incl. an unassigned bucket). Frontend: `/orgs/:slug/projects/:projectSlug/reports` (`ProjectReports.tsx`) with hand-rolled SVG charts per the burndown precedent — velocity bars, weekly cycle/lead trend polylines, proportional workload bars — plus stat tiles and per-card empty states. Nav: tree leaf (chart icon) + board-header link beside Sprints. R3 (cumulative flow) deferred — revisit alongside the Phase-4 digest.
 
 ## Why 3.3 exists
 The burndown (2.6) proved the pattern: reconstruct metrics from activity, no snapshot tables. A project "Reports" tab generalizes it and gives leads a reason to open PMAgent every Monday.

@@ -125,6 +125,12 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Bulk actions
 - Multi-select via hover checkboxes (board) or the checkbox column (list) → floating bar: change status/assignee/sprint, add label, archive (with confirm).
 
+## Reports
+- Every project has a **Reports** tab (in the sidebar, or the link next to Sprints on the board) with three read-only views:
+  - **Velocity** — story points completed per finished sprint, as a bar chart. Complete sprints and the trend builds itself.
+  - **Cycle & lead time** — how long tickets take: *cycle* is start-of-work to done, *lead* is created to done. Shown as typical (median) and slow-end (p85) numbers over the last 90 days, plus a weekly trend line.
+  - **Workload** — open tickets per person (including unassigned), so you can spot overload at a glance.
+
 ## Sprints
 - Goal + dates, start/complete lifecycle, capacity view, **burndown chart**, recorded velocity.
 

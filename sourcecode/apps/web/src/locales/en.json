@@ -19,6 +19,7 @@
     "board": "Board",
     "sprints": "Sprints",
     "members": "Members",
+    "reports": "Reports",
     "settings": "Settings",
     "openMenu": "Open navigation"
   },
@@ -416,6 +417,28 @@
   },
   "readiness": {
     "label": "Agent-readiness: {{filled}}/{{total}} spec fields filled"
+  },
+  "reports": {
+    "title": "Reports",
+    "velocity": "Velocity",
+    "velocityEmpty": "Complete a sprint to see its velocity here.",
+    "cycleTitle": "Cycle & lead time — last {{days}} days",
+    "cycleEmpty": "Close some tickets and the timing stats appear here.",
+    "cycleMedian": "Cycle · median",
+    "cycleP85": "Cycle · p85",
+    "leadMedian": "Lead · median",
+    "leadP85": "Lead · p85",
+    "days": "{{count}}d",
+    "closedCount": "Based on {{count}} tickets closed in the window.",
+    "closedCount_one": "Based on {{count}} ticket closed in the window.",
+    "cycleTrend": "Weekly cycle-time trend",
+    "cycleLine": "Cycle (start → done), weekly median",
+    "leadLine": "Lead (created → done), weekly median",
+    "workload": "Workload",
+    "workloadEmpty": "No open tickets — nothing on anyone's plate.",
+    "unassigned": "Unassigned",
+    "openCount": "{{count}} open",
+    "inProgressCount": "{{count}} in progress"
   },
   "labels": {
     "title": "Labels",

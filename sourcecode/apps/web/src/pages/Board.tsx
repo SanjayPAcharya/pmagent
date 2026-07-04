@@ -385,6 +385,12 @@ export default function Board() {
           >
             {t('board.sprints')}
           </Link>
+          <Link
+            to={`/orgs/${slug}/projects/${projectSlug}/reports`}
+            className="hidden text-sm text-muted-foreground hover:text-foreground hover:underline sm:inline"
+          >
+            {t('reports.title')}
+          </Link>
           {viewers.length > 0 && (
             <div className="flex -space-x-2">
               {viewers.slice(0, 5).map((uid) => {

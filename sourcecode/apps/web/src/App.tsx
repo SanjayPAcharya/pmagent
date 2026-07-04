@@ -13,6 +13,7 @@ import OrgSettings from './pages/OrgSettings'
 import InviteAccept from './pages/InviteAccept'
 import MyWork from './pages/MyWork'
 import AccountSettings from './pages/AccountSettings'
+import ProjectReports from './pages/ProjectReports'
 
 // Public routes render regardless of auth; gated routes sit behind RequireAuth.
 // keycloak is initialized in main.tsx before the app mounts.
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/orgs/:slug/projects/:projectSlug/list" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/list/ticket/:number" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/sprints" element={<Sprints />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/reports" element={<ProjectReports />} />
             <Route path="/orgs/:slug/projects/:projectSlug/settings" element={<ProjectSettings />} />
           </Route>
         </Route>
