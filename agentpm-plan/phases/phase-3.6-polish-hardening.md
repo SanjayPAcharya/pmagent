@@ -37,7 +37,7 @@ Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a frien
 - New types (`TICKET_UNBLOCKED`, `SUBTASKS_DONE`) render via their body text (fine) but have **no per-type icon/label** in the bell. Add icons + i18n labels for a consistent feed.
 
 ### Mobile & accessibility
-- **Comment reactions:** the "+" add-reaction button is hover-only (`group-hover`), so on touch you can't react to a comment that has no reactions yet. Make it tap-reachable.
+- ✅ **Comment reactions tap-reachable** *(2026-07-04)* — the "+🙂" button is now always visible at 50% opacity (full on hover/focus/comment-hover) instead of `opacity-0` until `group-hover`, so touch users can react to a comment with no reactions yet.
 - Audit the new surfaces (BulkBar, DangerZone, CsvTools, settings, ticket-drawer wide mode) on a phone: tap targets, the drawer's two-column mode, the floating bulk bar over the mobile nav.
 - a11y sweep: labels/roles on the new dropdowns, checkboxes, and the color picker.
 

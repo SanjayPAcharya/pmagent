@@ -298,7 +298,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
           <DropdownMenuTrigger asChild>
             <button
               aria-label={t('drawer.addReaction')}
-              className="rounded-full border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-accent group-hover/comment:opacity-100 focus-visible:opacity-100"
+              className="rounded-full border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground opacity-50 transition-opacity hover:bg-accent hover:opacity-100 group-hover/comment:opacity-100 focus-visible:opacity-100"
             >
               +🙂
             </button>
