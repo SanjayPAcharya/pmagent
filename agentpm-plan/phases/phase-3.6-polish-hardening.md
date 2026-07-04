@@ -34,7 +34,7 @@ Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a frien
 - **subtasksDoneNudge** was wired but only unblock-nudge was browser-verified — verify the subtasks-done path end to end.
 
 ### Notifications
-- New types (`TICKET_UNBLOCKED`, `SUBTASKS_DONE`) render via their body text (fine) but have **no per-type icon/label** in the bell. Add icons + i18n labels for a consistent feed.
+- ✅ **Per-type icons + labels in the bell** *(2026-07-04)* — `TYPE_META` map in `NotificationBell` (lucide icon + i18n label per `NotificationType`, incl. `TICKET_UNBLOCKED` → Unlock and `SUBTASKS_DONE` → ListChecks; unknown/future types fall back to the bell icon). Each feed row now shows the icon and a "Label · time" footer. Browser-verified on the dev stack.
 
 ### Mobile & accessibility
 - ✅ **Comment reactions tap-reachable** *(2026-07-04)* — the "+🙂" button is now always visible at 50% opacity (full on hover/focus/comment-hover) instead of `opacity-0` until `group-hover`, so touch users can react to a comment with no reactions yet.

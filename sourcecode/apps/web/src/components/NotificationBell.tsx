@@ -1,7 +1,19 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Bell } from 'lucide-react'
+import {
+  AtSign,
+  Bell,
+  Eye,
+  Flag,
+  ListChecks,
+  MessageSquare,
+  Play,
+  RefreshCw,
+  Unlock,
+  UserPlus,
+  type LucideIcon,
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import { RelativeTime } from '@/components/RelativeTime'
 import { Button } from '@/components/ui/button'
@@ -13,6 +25,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+
+// Per-type icon + i18n label key; unknown/future types fall back to the bell.
+const TYPE_META: Record<string, { icon: LucideIcon; label: string }> = {
+  TICKET_ASSIGNED: { icon: UserPlus, label: 'notifications.types.assigned' },
+  TICKET_STATUS_CHANGED: { icon: RefreshCw, label: 'notifications.types.statusChanged' },
+  TICKET_COMMENTED: { icon: MessageSquare, label: 'notifications.types.commented' },
+  MENTION: { icon: AtSign, label: 'notifications.types.mention' },
+  WATCHER_ADDED: { icon: Eye, label: 'notifications.types.watcherAdded' },
+  SPRINT_STARTED: { icon: Play, label: 'notifications.types.sprintStarted' },
+  SPRINT_COMPLETED: { icon: Flag, label: 'notifications.types.sprintCompleted' },
+  TICKET_UNBLOCKED: { icon: Unlock, label: 'notifications.types.unblocked' },
+  SUBTASKS_DONE: { icon: ListChecks, label: 'notifications.types.subtasksDone' },
+}
 
 // Unread badge is seeded by /unread-count and kept live by Board's WS handler,
 // which invalidates ['notifications'] / ['unreadCount'] on `notification.new`.
@@ -96,18 +121,27 @@ export function NotificationBell({ slug, projectSlug }: { slug: string; projectS
         {items.length === 0 && (
           <p className="px-2 py-6 text-center text-sm text-muted-foreground">{t('notifications.empty')}</p>
         )}
-        {groups.map((g) => (
-          <DropdownMenuItem key={g.key} className={g.unread === 0 ? 'opacity-60' : 'font-medium'} onClick={() => openGroup(g)}>
-            <div className="flex w-full flex-col">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm">{g.count > 1 ? t('notifications.grouped', { count: g.count }) : g.latest.body}</span>
-                {g.unread > 0 && <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />}
+        {groups.map((g) => {
+          const meta = TYPE_META[g.latest.type] ?? { icon: Bell, label: 'notifications.title' }
+          const Icon = meta.icon
+          return (
+            <DropdownMenuItem key={g.key} className={g.unread === 0 ? 'opacity-60' : 'font-medium'} onClick={() => openGroup(g)}>
+              <div className="flex w-full items-start gap-2">
+                <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm">{g.count > 1 ? t('notifications.grouped', { count: g.count }) : g.latest.body}</span>
+                    {g.unread > 0 && <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />}
+                  </div>
+                  {g.count > 1 && <span className="truncate text-xs text-muted-foreground">{g.latest.body}</span>}
+                  <span className="text-[10px] text-muted-foreground">
+                    {t(meta.label)} · <RelativeTime date={g.latest.createdAt} />
+                  </span>
+                </div>
               </div>
-              {g.count > 1 && <span className="truncate text-xs text-muted-foreground">{g.latest.body}</span>}
-              <RelativeTime date={g.latest.createdAt} className="text-[10px] text-muted-foreground" />
-            </div>
-          </DropdownMenuItem>
-        ))}
+            </DropdownMenuItem>
+          )
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   )

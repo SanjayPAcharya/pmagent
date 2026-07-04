@@ -377,7 +377,18 @@
     "markAllRead": "Mark all read",
     "empty": "You’re all caught up.",
     "catchUp": "{{count}} unread since you last looked",
-    "grouped": "{{count}} updates"
+    "grouped": "{{count}} updates",
+    "types": {
+      "assigned": "Assigned",
+      "statusChanged": "Status change",
+      "commented": "Comment",
+      "mention": "Mention",
+      "watcherAdded": "Now watching",
+      "sprintStarted": "Sprint started",
+      "sprintCompleted": "Sprint completed",
+      "unblocked": "Unblocked",
+      "subtasksDone": "Subtasks done"
+    }
   },
   "palette": {
     "placeholder": "Search, or type to create — !high @user #sprint",
