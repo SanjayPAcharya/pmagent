@@ -92,6 +92,10 @@ const importSchema = z.object({
         type: typeEnum.optional(),
         storyPoints: z.number().int().positive().optional(),
         acceptanceCriteria: z.string().max(10_000).optional(),
+        // Resolved here, not on the client: label names matched case-insensitively
+        // within the org (unknowns dropped), assignee matched by member email/name.
+        labels: z.array(z.string().min(1).max(50)).max(20).optional(),
+        assignee: z.string().max(200).optional(),
       }),
     )
     .min(1)
@@ -354,9 +358,36 @@ const routes: FastifyPluginAsync = async (app) => {
     if (!project) throw new ApiError(404, 'Project not found')
     await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
 
+    // Resolve label names / assignee identifiers once for the whole file.
+    // Unknown values are silently dropped — a half-matching import should
+    // still land the tickets.
+    const needsLookups = tickets.some((t) => t.labels?.length || t.assignee)
+    const labelByName = new Map<string, string>()
+    const memberByKey = new Map<string, string>()
+    if (needsLookups) {
+      const [orgLabels, orgMembers] = await Promise.all([
+        prisma.label.findMany({ where: { orgId: project.orgId }, select: { id: true, name: true } }),
+        prisma.orgMember.findMany({
+          where: { orgId: project.orgId },
+          select: { userId: true, user: { select: { email: true, name: true } } },
+        }),
+      ])
+      for (const l of orgLabels) labelByName.set(l.name.toLowerCase(), l.id)
+      // Email wins over a same-string name; names only match exactly (case-insensitive).
+      for (const m of orgMembers) if (m.user.name) memberByKey.set(m.user.name.toLowerCase(), m.userId)
+      for (const m of orgMembers) memberByKey.set(m.user.email.toLowerCase(), m.userId)
+    }
+
     let created = 0
-    for (const row of tickets) {
-      const { events } = await createTicket(project.orgId, request.userId!, { projectId, ...row })
+    for (const { labels, assignee, ...row } of tickets) {
+      const labelIds = [...new Set(labels?.map((n) => labelByName.get(n.trim().toLowerCase())).filter((id): id is string => !!id))]
+      const assignedToId = assignee ? memberByKey.get(assignee.trim().toLowerCase()) : undefined
+      const { events } = await createTicket(project.orgId, request.userId!, {
+        projectId,
+        ...row,
+        labelIds: labelIds.length ? labelIds : undefined,
+        assignedToId,
+      })
       for (const e of events) await publishEvent(e.type, e.payload)
       created++
     }

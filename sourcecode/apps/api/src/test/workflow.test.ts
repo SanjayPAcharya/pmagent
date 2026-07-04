@@ -181,4 +181,52 @@ describe('W4 — CSV import endpoint', () => {
     })
     expect(denied.statusCode).toBe(403)
   })
+
+  it('resolves labels by name and assignee by email/name; unknowns are dropped', async () => {
+    const owner = await tokenFor('csv-owner2')
+    const { orgId, slug, projectId } = await makeOrgProject(owner, 'CSV Org 2')
+    await app.inject({
+      method: 'POST', url: '/api/labels', headers: bearer(owner),
+      payload: { orgId, name: 'Backend', color: '#336699' },
+    })
+
+    const member = await tokenFor('csv-member2')
+    await app.inject({ method: 'GET', url: '/api/me', headers: bearer(member) })
+    await app.inject({
+      method: 'POST', url: `/api/orgs/${slug}/members`, headers: bearer(owner),
+      payload: { email: 'csv-member2@x.com', role: 'MEMBER' },
+    })
+
+    const res = await app.inject({
+      method: 'POST', url: '/api/tickets/import', headers: bearer(owner),
+      payload: {
+        projectId,
+        tickets: [
+          // Case-insensitive label match + assignee by email; unknown label ignored.
+          { title: 'By email', labels: ['backend', 'no-such-label'], assignee: 'csv-member2@x.com' },
+          // Assignee by display name (tokenFor sets name = sub).
+          { title: 'By name', assignee: 'CSV-Member2' },
+          // Unknown assignee → imported unassigned, not an error.
+          { title: 'Unknown assignee', assignee: 'ghost@x.com' },
+        ],
+      },
+    })
+    expect(res.statusCode).toBe(201)
+    expect(res.json().created).toBe(3)
+
+    const list = await app.inject({ method: 'GET', url: `/api/tickets?projectId=${projectId}`, headers: bearer(owner) })
+    const items = list.json().items as Array<{
+      title: string
+      labels: Array<{ name: string }>
+      assignedTo: { email: string } | null
+    }>
+    const byEmail = items.find((tk) => tk.title === 'By email')!
+    expect(byEmail.labels.map((l) => l.name)).toEqual(['Backend'])
+    expect(byEmail.assignedTo?.email).toBe('csv-member2@x.com')
+    const byName = items.find((tk) => tk.title === 'By name')!
+    expect(byName.assignedTo?.email).toBe('csv-member2@x.com')
+    const unknown = items.find((tk) => tk.title === 'Unknown assignee')!
+    expect(unknown.assignedTo).toBeNull()
+    expect(unknown.labels).toEqual([])
+  })
 })

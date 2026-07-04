@@ -28,11 +28,15 @@ describe('mapRows', () => {
       priority: 'HIGH',
       type: 'FEATURE',
       storyPoints: 3,
+      labels: ['frontend', 'auth'],
+      assignee: 'dev@example.com',
     })
     // Jira-ish aliases: "Task" → CHORE, "Backlog"/"Urgent" pass through the maps.
-    expect(rows[1]).toMatchObject({ title: 'Fix crash on save', status: 'BACKLOG', priority: 'URGENT', type: 'BUG' })
+    expect(rows[1]).toMatchObject({ title: 'Fix crash on save', status: 'BACKLOG', priority: 'URGENT', type: 'BUG', labels: ['bug'] })
     expect(rows[2]).toMatchObject({ title: 'Update onboarding docs', status: 'IN_PROGRESS', priority: 'LOW', type: 'CHORE' })
     expect(rows[2].description).toBeUndefined()
+    expect(rows[2].labels).toBeUndefined()
+    expect(rows[2].assignee).toBeUndefined()
   })
 
   it('accepts Jira header aliases (Summary / Issue Type / Points)', () => {
@@ -68,6 +72,15 @@ describe('mapRows', () => {
       type: undefined,
       storyPoints: undefined,
     })
+  })
+
+  it('splits Labels on ";" and accepts Assignee aliases', () => {
+    const { rows } = mapRows([
+      ['Title', 'Label', 'Assigned To'],
+      ['With extras', ' backend ;; auth ', 'Jane Doe'],
+    ])
+    expect(rows[0].labels).toEqual(['backend', 'auth'])
+    expect(rows[0].assignee).toBe('Jane Doe')
   })
 
   it('truncates titles to 200 chars and caps at 500 rows', () => {

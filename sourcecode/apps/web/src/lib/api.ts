@@ -196,6 +196,10 @@ export interface ImportTicketRow {
   type?: TicketType
   storyPoints?: number
   acceptanceCriteria?: string
+  // Resolved server-side: label names matched within the org (unknowns ignored),
+  // assignee matched by member email or exact name.
+  labels?: string[]
+  assignee?: string
 }
 export interface BatchPatch {
   status?: TicketStatus

@@ -28,7 +28,7 @@ Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a frien
 - **Empty/loading states are uneven** — settings pages, MyWork sections, and some cards show nothing (not a skeleton) while loading; several pages have polished empty states, others are bare. Normalize.
 
 ### Edge cases & data
-- **CSV import ignores labels and assignee** — export writes an Assignee/Labels column, but import drops them. Either round-trip them (match by name/email within the org) or document the one-way limitation in the sample header.
+- ✅ **CSV import labels + assignee** *(2026-07-04)* — `mapRows` now maps a Labels column (`;`-separated, matching the export's join) and an Assignee column (aliases: assignee / assigned to / owner). The import endpoint resolves label names case-insensitively within the org and the assignee by member email or exact display name — unknowns are silently dropped so a half-matching file still imports. Sample CSV exercises both columns. Covered by web unit tests + a workflow API test.
 - **Delete flows** — after deleting an org/project, confirm the sidebar tree, breadcrumbs, and any cached accent (`useOrgAccent`) all clear; no stale nav.
 - **W3 automation vs. the plan** — implemented trio is `unblockNudge / autoTodoOnAssign / subtasksDoneNudge`; the 3.4 plan text also listed "IN_REVIEW → notify watchers." Reconcile the doc with what shipped (watchers already get `ticket.updated`), or add the toggle.
 - **subtasksDoneNudge** was wired but only unblock-nudge was browser-verified — verify the subtasks-done path end to end.

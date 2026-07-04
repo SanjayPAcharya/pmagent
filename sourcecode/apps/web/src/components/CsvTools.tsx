@@ -18,6 +18,8 @@ const HEADER_ALIASES: Record<keyof ImportTicketRow, string[]> = {
   type: ['type', 'issue type', 'issuetype'],
   storyPoints: ['story points', 'storypoints', 'points', 'estimate'],
   acceptanceCriteria: ['acceptance criteria', 'ac'],
+  labels: ['labels', 'label'],
+  assignee: ['assignee', 'assigned to', 'assignedto', 'owner'],
 }
 const STATUS_MAP: Record<string, TicketStatus> = {
   backlog: 'BACKLOG', 'to do': 'TODO', todo: 'TODO', open: 'TODO',
@@ -37,7 +39,7 @@ const PRIORITY_SET = new Set(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 // purpose: quoted commas, a multi-line acceptance-criteria cell, mixed
 // Jira-style values ("To Do", "Story"), and optional cells left empty.
 export const SAMPLE_CSV_ROWS: string[][] = [
-  ['Title', 'Description', 'Status', 'Priority', 'Type', 'Story Points', 'Acceptance Criteria'],
+  ['Title', 'Description', 'Status', 'Priority', 'Type', 'Story Points', 'Acceptance Criteria', 'Labels', 'Assignee'],
   [
     'Set up the login page',
     'Users can sign in with email, or Google',
@@ -46,9 +48,11 @@ export const SAMPLE_CSV_ROWS: string[][] = [
     'Feature',
     '3',
     '- [ ] Form validates the email\n- [ ] Errors are shown inline',
+    'frontend; auth',
+    'dev@example.com',
   ],
-  ['Fix crash on save', 'The app crashes when saving an empty form', 'Backlog', 'Urgent', 'Bug', '2', ''],
-  ['Update onboarding docs', '', 'In Progress', 'Low', 'Task', '1', ''],
+  ['Fix crash on save', 'The app crashes when saving an empty form', 'Backlog', 'Urgent', 'Bug', '2', '', 'bug', ''],
+  ['Update onboarding docs', '', 'In Progress', 'Low', 'Task', '1', '', '', ''],
 ]
 
 export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: number } {
@@ -58,7 +62,7 @@ export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: n
   const idx = {
     title: col('title'), description: col('description'), status: col('status'),
     priority: col('priority'), type: col('type'), storyPoints: col('storyPoints'),
-    acceptanceCriteria: col('acceptanceCriteria'),
+    acceptanceCriteria: col('acceptanceCriteria'), labels: col('labels'), assignee: col('assignee'),
   }
   const rows: ImportTicketRow[] = []
   let skipped = 0
@@ -67,6 +71,12 @@ export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: n
     if (!title) { skipped++; continue }
     const points = idx.storyPoints >= 0 ? Number(r[idx.storyPoints]) : NaN
     const prio = idx.priority >= 0 ? r[idx.priority]?.trim().toUpperCase() : ''
+    // Labels come "; "-joined (matching our export); assignee is a name or email.
+    const labels =
+      idx.labels >= 0
+        ? (r[idx.labels] ?? '').split(';').map((l) => l.trim()).filter(Boolean)
+        : []
+    const assignee = idx.assignee >= 0 ? r[idx.assignee]?.trim() : ''
     rows.push({
       title: title.slice(0, 200),
       description: idx.description >= 0 && r[idx.description]?.trim() ? r[idx.description] : undefined,
@@ -75,6 +85,8 @@ export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: n
       priority: PRIORITY_SET.has(prio) ? (prio as Priority) : undefined,
       type: idx.type >= 0 ? TYPE_MAP[r[idx.type]?.trim().toLowerCase() ?? ''] : undefined,
       storyPoints: Number.isInteger(points) && points > 0 ? points : undefined,
+      labels: labels.length ? labels.slice(0, 20) : undefined,
+      assignee: assignee || undefined,
     })
   }
   return { rows: rows.slice(0, 500), skipped }
