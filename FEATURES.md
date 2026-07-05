@@ -144,6 +144,13 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Sprints
 - Goal + dates, start/complete lifecycle, capacity view, **burndown chart**, recorded velocity.
 
+## Timeline (Gantt)
+- A horizontal **timeline** of every scheduled ticket: each shows as a bar from its start to its due date (a single date shows as a one-day marker), colored by status.
+- **Milestones** appear as diamonds with a dashed line across the chart; a **today** line marks the current date; **dependency arrows** connect a ticket to the ones it's waiting on.
+- Switch the zoom between **Day / Week / Month**, jump to **Today**, and filter by assignee, sprint, label, status, or workstream — the filters narrow both the chart and the tray.
+- Tickets without any dates sit in a collapsible **Unscheduled** tray at the bottom. Click any bar, row, or chip to open the ticket.
+- Updates live as the team schedules work. (Dragging bars to reschedule arrives next.)
+
 ## Automation (per project, ⚡ menu)
 | Switch | What it does | Default |
 |---|---|---|

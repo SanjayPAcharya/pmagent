@@ -20,6 +20,7 @@ export interface GanttItem {
   startDate: Date | null
   dueDate: Date | null
   storyPoints: number | null
+  labelIds: string[]
 }
 export interface GanttEdge {
   ticketId: string
@@ -51,6 +52,7 @@ export async function projectGantt(projectId: string): Promise<GanttPayload> {
       dueDate: true,
       storyPoints: true,
       project: { select: { key: true } },
+      labels: { select: { labelId: true } },
     },
   })
   const truncated = rows.length > MAX_ITEMS
@@ -65,7 +67,11 @@ export async function projectGantt(projectId: string): Promise<GanttPayload> {
     prisma.milestone.findMany({ where: { projectId }, orderBy: { date: 'asc' } }),
   ])
 
-  const items: GanttItem[] = sliced.map(({ project, ...r }) => ({ ...r, key: `${project.key}-${r.number}` }))
+  const items: GanttItem[] = sliced.map(({ project, labels, ...r }) => ({
+    ...r,
+    key: `${project.key}-${r.number}`,
+    labelIds: labels.map((l) => l.labelId),
+  }))
   // Only keep edges whose other end is also on-screen, so the UI can draw them.
   const edges = deps.filter((d) => ids.has(d.dependsOnId))
 

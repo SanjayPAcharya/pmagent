@@ -17,6 +17,7 @@ import {
   SunMoon,
   Clock,
   Search,
+  GanttChartSquare,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
@@ -288,6 +289,12 @@ export function CommandPalette() {
             )}
 
             <CommandGroup heading={t('palette.general')}>
+              {projectId && projectSlug && (
+                <CommandItem value="go to timeline gantt" onSelect={() => go(`/orgs/${slug}/projects/${projectSlug}/gantt`)}>
+                  <GanttChartSquare className="h-4 w-4" />
+                  {t('gantt.title')}
+                </CommandItem>
+              )}
               <CommandItem value="toggle theme" onSelect={() => { cycleTheme(); reset(false) }}>
                 <SunMoon className="h-4 w-4" />
                 {t('palette.toggleTheme')}

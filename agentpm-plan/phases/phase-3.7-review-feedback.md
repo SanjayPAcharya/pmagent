@@ -254,7 +254,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R7 — Read-only Gantt page (L)
+### - [x] R7 — Read-only Gantt page (L) *(done 2026-07-05)*
+> Browser-verified with seeded-then-restored demo data: spans + status colors, today line, milestone diamond + dashed line, dependency elbow arrow, Day (weekend shading, every-day ticks) + Week (Monday ticks) scales, Today scroll, status filter narrowing rows + tray, drawer open from rail. Dark mode fine. Seed data fully reverted; gantt localStorage prefs cleared.
 
 **Goal:** a scannable timeline before any interaction.
 

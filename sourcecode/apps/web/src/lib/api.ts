@@ -326,6 +326,7 @@ export interface GanttItem {
   startDate: string | null
   dueDate: string | null
   storyPoints: number | null
+  labelIds: string[]
 }
 export interface GanttEdge {
   ticketId: string

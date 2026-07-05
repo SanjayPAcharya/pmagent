@@ -5,6 +5,7 @@ import Layout from './pages/Layout'
 import Dashboard from './pages/Dashboard'
 import OrgProjects from './pages/OrgProjects'
 import ProjectOverview from './pages/ProjectOverview'
+import ProjectGantt from './pages/ProjectGantt'
 import Board from './pages/Board'
 import ProjectList from './pages/ProjectList'
 import Sprints from './pages/Sprints'
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/orgs/:slug/projects/:projectSlug/list" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/list/ticket/:number" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/sprints" element={<Sprints />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/gantt" element={<ProjectGantt />} />
             <Route path="/orgs/:slug/projects/:projectSlug/reports" element={<ProjectReports />} />
             <Route path="/orgs/:slug/projects/:projectSlug/settings" element={<ProjectSettings />} />
           </Route>
