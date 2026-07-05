@@ -15,6 +15,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { api, type Sprint, type Ticket } from '@/lib/api'
+import { useProjectSync } from '@/lib/websocket'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -221,6 +222,8 @@ export default function Sprints() {
     queryFn: () => api.listTickets(projectId!, { sort: 'number' }),
     enabled: Boolean(projectId),
   })
+  // 3.7 R3 — live sync: refetch sprints + tickets on any project change.
+  useProjectSync(projectId, [['sprints', projectId], ['tickets', projectId]])
   const backlog = (allTickets.data?.items ?? []).filter((tk) => !tk.sprintId)
 
   const sensors = useSensors(

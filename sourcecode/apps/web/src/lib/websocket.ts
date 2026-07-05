@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import type { WSMessage, WSEventType } from '@agentpm/shared-types'
 import { keycloak } from './auth'
+import { api } from './api'
 
 const WS_URL = import.meta.env.VITE_WS_URL as string | undefined
 
@@ -102,4 +104,31 @@ export function useProjectWebSocket(projectId: string | undefined, handlers: WSH
   }, [])
 
   return { send }
+}
+
+// 3.7 R3 — the data-changing events any project view cares about. Ephemeral
+// relays (presence/drag) and notifications are deliberately excluded.
+const SYNC_EVENTS: WSEventType[] = ['ticket.created', 'ticket.updated', 'ticket.deleted', 'sprint.updated', 'milestone.updated']
+
+/**
+ * Keep a project view live with one line: on any data event (or a reconnect),
+ * invalidate each of the given query-key prefixes so react-query refetches.
+ * Self-echo is dropped by `useProjectWebSocket` (needs the current user id).
+ * Board keeps its own richer handler (presence, ghost drags) — this is for the
+ * plainer views (Sprints, List) that just need to stay fresh.
+ */
+export function useProjectSync(projectId: string | undefined, prefixes: QueryKey[]) {
+  const qc = useQueryClient()
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
+
+  // Rebuilt each render, but `useProjectWebSocket` reads handlers/options from a
+  // ref (updated every render) and only reconnects on projectId change — so a
+  // fresh closure here never churns the socket.
+  const invalidate = () => {
+    for (const prefix of prefixes) qc.invalidateQueries({ queryKey: prefix })
+  }
+  const handlers: WSHandlers = {}
+  for (const type of SYNC_EVENTS) handlers[type] = invalidate
+
+  return useProjectWebSocket(projectId, handlers, { currentUserId: me.data?.user.id, onReconnect: invalidate })
 }

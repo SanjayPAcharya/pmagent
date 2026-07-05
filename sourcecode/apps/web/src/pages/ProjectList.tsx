@@ -13,6 +13,7 @@ import { TicketDrawer } from '../components/TicketDrawer'
 import ViewToggle from '../components/ViewToggle'
 import { BulkBar } from '../components/BulkBar'
 import { CsvTools } from '../components/CsvTools'
+import { useProjectSync } from '../lib/websocket'
 
 const TYPES: TicketType[] = ['FEATURE', 'BUG', 'CHORE', 'SPIKE']
 // Columns whose header toggles a server-side sort (field ↔ -field).
@@ -48,6 +49,8 @@ export default function ProjectList() {
     queryFn: () => api.listLabels(orgId!),
     enabled: Boolean(orgId),
   })
+  // 3.7 R3 — live sync: refetch tickets on any project change.
+  useProjectSync(projectId, [['tickets', projectId]])
 
   // ── Filters (mirrors Board's A4 bar, plus status + label) ──
   const [q, setQ] = useState('')

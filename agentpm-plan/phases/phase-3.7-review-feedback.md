@@ -139,7 +139,7 @@ This file + README index row + `PROGRESS.md` Now/Next.
 
 ---
 
-### - [ ] R3 — `useProjectSync` hook + live sync for Sprints/List (S)
+### - [~] R3 — `useProjectSync` hook + live sync for Sprints/List (S) *(code done 2026-07-05; two-window browser check pending)*
 
 **Goal:** every project view updates live, not just Board (review ask 5).
 
