@@ -16,6 +16,7 @@ export type WSEventType =
   | 'ticket.updated'
   | 'ticket.deleted'
   | 'sprint.updated'
+  | 'milestone.updated' // 3.7 R2: create/update/delete of a project milestone (clients invalidate)
   | 'notification.new'
   | 'presence.state'
   | 'ticket.presence' // E1: which viewers are on which ticket (ephemeral relay)

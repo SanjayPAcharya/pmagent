@@ -7,6 +7,7 @@ import { assertOrgRole } from '../services/authz.js'
 import { projectListStats } from '../services/stats.service.js'
 import { projectReports } from '../services/reports.service.js'
 import { recentActivity } from '../services/activity.service.js'
+import { publishEvent } from '../events/event-bus.js'
 import { ApiError } from '../lib/errors.js'
 import { slugify, deriveKey } from '../lib/slug.js'
 
@@ -30,6 +31,21 @@ const updateProjectSchema = z.object({
     })
     .optional(),
 })
+
+// 3.7 R2 — milestones (project-level target dates on the timeline).
+const createMilestoneSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  date: z.string().datetime(),
+})
+const updateMilestoneSchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(2000).nullable(),
+    date: z.string().datetime(),
+    done: z.boolean(),
+  })
+  .partial()
 
 async function uniqueProjectSlug(orgId: string, base: string): Promise<string> {
   let slug = base
@@ -132,6 +148,57 @@ const routes: FastifyPluginAsync = async (app) => {
     await loadProjectAuthorized(request, 'ADMIN')
     const { projectId } = request.params as { projectId: string }
     await prisma.project.delete({ where: { id: projectId } })
+    return reply.code(204).send()
+  })
+
+  // ── Milestones (3.7 R2) ─────────────────────────────────
+  // Load a milestone and assert it belongs to the authorized project.
+  async function loadMilestone(projectId: string, milestoneId: string) {
+    const milestone = await prisma.milestone.findUnique({ where: { id: milestoneId } })
+    if (!milestone || milestone.projectId !== projectId) throw new ApiError(404, 'Milestone not found')
+    return milestone
+  }
+
+  app.get('/:projectId/milestones', async (request) => {
+    const project = await loadProjectAuthorized(request, 'MEMBER')
+    const milestones = await prisma.milestone.findMany({ where: { projectId: project.id }, orderBy: { date: 'asc' } })
+    return { milestones }
+  })
+
+  app.post('/:projectId/milestones', async (request, reply) => {
+    const project = await loadProjectAuthorized(request, 'MEMBER')
+    const body = createMilestoneSchema.parse(request.body)
+    const milestone = await prisma.milestone.create({
+      data: { projectId: project.id, name: body.name, description: body.description, date: new Date(body.date) },
+    })
+    await publishEvent('milestone.updated', { projectId: project.id, actorId: request.userId! })
+    return reply.code(201).send({ milestone })
+  })
+
+  app.patch('/:projectId/milestones/:milestoneId', async (request) => {
+    const project = await loadProjectAuthorized(request, 'MEMBER')
+    const { milestoneId } = request.params as { milestoneId: string }
+    await loadMilestone(project.id, milestoneId)
+    const body = updateMilestoneSchema.parse(request.body)
+    const milestone = await prisma.milestone.update({
+      where: { id: milestoneId },
+      data: {
+        name: body.name,
+        description: body.description,
+        date: body.date ? new Date(body.date) : undefined,
+        done: body.done,
+      },
+    })
+    await publishEvent('milestone.updated', { projectId: project.id, actorId: request.userId! })
+    return { milestone }
+  })
+
+  app.delete('/:projectId/milestones/:milestoneId', async (request, reply) => {
+    const project = await loadProjectAuthorized(request, 'ADMIN')
+    const { milestoneId } = request.params as { milestoneId: string }
+    await loadMilestone(project.id, milestoneId)
+    await prisma.milestone.delete({ where: { id: milestoneId } })
+    await publishEvent('milestone.updated', { projectId: project.id, actorId: request.userId! })
     return reply.code(204).send()
   })
 }

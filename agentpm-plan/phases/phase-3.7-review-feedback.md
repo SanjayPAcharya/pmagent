@@ -118,7 +118,7 @@ This file + README index row + `PROGRESS.md` Now/Next.
 
 ---
 
-### - [ ] R2 — Milestone CRUD + WS event (S)
+### - [x] R2 — Milestone CRUD + WS event (S) *(done 2026-07-05)*
 
 **Goal:** milestones manageable via API and broadcast to connected clients.
 

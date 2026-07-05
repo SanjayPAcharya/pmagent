@@ -253,6 +253,15 @@ export interface Burndown {
   unit: 'points' | 'tickets'
   points: { date: string; ideal: number; remaining: number | null }[]
 }
+// 3.7 R2 — project milestone (target date on the timeline).
+export interface Milestone {
+  id: string
+  projectId: string
+  name: string
+  description: string | null
+  date: string
+  done: boolean
+}
 export interface SprintCounts {
   total: number
   done: number
@@ -356,6 +365,16 @@ export const api = {
     request<{ activity: ActivityItem[] }>('GET', `/api/projects/${projectId}/activity`),
   updateProject: (projectId: string, body: { name?: string; description?: string; defaultBranch?: string; automation?: AutomationSettings }) =>
     request<{ project: Project }>('PATCH', `/api/projects/${projectId}`, body),
+
+  // Milestones (3.7 R2)
+  listMilestones: (projectId: string) =>
+    request<{ milestones: Milestone[] }>('GET', `/api/projects/${projectId}/milestones`),
+  createMilestone: (projectId: string, body: { name: string; description?: string; date: string }) =>
+    request<{ milestone: Milestone }>('POST', `/api/projects/${projectId}/milestones`, body),
+  updateMilestone: (projectId: string, id: string, body: { name?: string; description?: string | null; date?: string; done?: boolean }) =>
+    request<{ milestone: Milestone }>('PATCH', `/api/projects/${projectId}/milestones/${id}`, body),
+  deleteMilestone: (projectId: string, id: string) =>
+    request<void>('DELETE', `/api/projects/${projectId}/milestones/${id}`),
 
   // Templates (3.4 W1)
   listTemplates: (orgId: string) =>
