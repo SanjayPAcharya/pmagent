@@ -139,7 +139,8 @@ This file + README index row + `PROGRESS.md` Now/Next.
 
 ---
 
-### - [~] R3 — `useProjectSync` hook + live sync for Sprints/List (S) *(code done 2026-07-05; two-window browser check pending)*
+### - [x] R3 — `useProjectSync` hook + live sync for Sprints/List (S) *(done 2026-07-05)*
+> Live-sync verified via Redis event injection (Keycloak SSO shares one session per browser profile, so a foreign `actorId` was published to `agentpm:events` to simulate another viewer): List tab refetched `tickets` on a foreign-actor event and **dropped** a self-actor event; Sprints tab refetched both `sprints` + `tickets`. No data writes; no console errors.
 
 **Goal:** every project view updates live, not just Board (review ask 5).
 
