@@ -103,6 +103,18 @@ describe('sprints', () => {
     expect(workload).toHaveLength(1)
     expect(workload[0]).toMatchObject({ userId: null, openCount: 1, inProgressCount: 1 })
 
+    // R14 — overall completed vs pending (t1,t2 DONE; t3 open) and empty readiness.
+    expect(res.json().reports.overall).toEqual({ done: 2, open: 1 })
+    expect(res.json().reports.readiness).toEqual([])
+
+    // With an open milestone + a due-dated open ticket, readiness reflects the window.
+    await app.inject({ method: 'POST', url: `/api/projects/${projectId}/milestones`, headers: bearer(owner), payload: { name: 'GA', date: '2026-12-31T00:00:00.000Z' } })
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${t3}`, headers: bearer(owner), payload: { dueDate: '2026-12-01T00:00:00.000Z' } })
+    const withMs = await app.inject({ method: 'GET', url: `/api/projects/${projectId}/reports`, headers: bearer(owner) })
+    const readiness = withMs.json().reports.readiness
+    expect(readiness).toHaveLength(1)
+    expect(readiness[0]).toMatchObject({ name: 'GA', done: 0, total: 1 })
+
     // Read access is MEMBER-scoped.
     const outsider = await tokenFor('s-rep-outsider')
     const denied = await app.inject({ method: 'GET', url: `/api/projects/${projectId}/reports`, headers: bearer(outsider) })

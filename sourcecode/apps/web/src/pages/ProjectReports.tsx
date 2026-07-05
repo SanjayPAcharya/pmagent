@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { api, type CycleReport, type VelocityPoint, type WorkloadRow } from '@/lib/api'
+import { api, type CycleReport, type ReadinessMilestone, type VelocityPoint, type WorkloadRow } from '@/lib/api'
 import { initialsOf } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -140,6 +140,78 @@ function WorkloadList({ rows }: { rows: WorkloadRow[] }) {
   )
 }
 
+// R14 — completed-vs-pending donut (hand-rolled SVG, two arcs via dasharray).
+function ReadinessDonut({ done, open }: { done: number; open: number }) {
+  const { t } = useTranslation()
+  const total = done + open
+  const pct = total ? Math.round((done / total) * 100) : 0
+  const size = 104
+  const stroke = 12
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  const doneLen = c * (total ? done / total : 0)
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t('reports.readinessOverall', { pct })}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+        {total > 0 && (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${doneLen} ${c - doneLen}`}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        )}
+        <text x={size / 2} y={size / 2 + 6} textAnchor="middle" fill="hsl(var(--foreground))" className="text-lg font-semibold">{pct}%</text>
+      </svg>
+      <span className="text-xs text-muted-foreground">{t('reports.readinessDoneOpen', { done, open })}</span>
+    </div>
+  )
+}
+
+function ReleaseReadiness({ readiness, overall, backHref }: { readiness: ReadinessMilestone[]; overall: { done: number; open: number }; backHref: string }) {
+  const { t } = useTranslation()
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  return (
+    <div className="flex flex-col gap-6 sm:flex-row">
+      <ReadinessDonut done={overall.done} open={overall.open} />
+      <div className="min-w-0 flex-1 space-y-3">
+        {readiness.length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">
+            {t('reports.readinessEmpty')}{' '}
+            <Link to={backHref} className="text-foreground hover:underline">{t('nav.overview')}</Link>
+          </p>
+        ) : (
+          readiness.map((m) => {
+            const pct = m.total ? Math.round((m.done / m.total) * 100) : 0
+            const openCount = m.total - m.done
+            return (
+              <div key={m.id}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-sm font-medium text-foreground">{m.name}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{fmt(m.date)}</span>
+                </div>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {t('reports.readinessProgress', { done: m.done, total: m.total })}
+                  {openCount > 0 && ` · ${t('reports.readinessOpen', { count: openCount })}`}
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function ProjectReports() {
   const { slug = '', projectSlug = '' } = useParams()
   const { t } = useTranslation()
@@ -224,6 +296,15 @@ export default function ProjectReports() {
               ) : (
                 <WorkloadList rows={data.workload} />
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{t('reports.readiness')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ReleaseReadiness readiness={data.readiness} overall={data.overall} backHref={`/orgs/${slug}/projects/${projectSlug}`} />
             </CardContent>
           </Card>
         </>

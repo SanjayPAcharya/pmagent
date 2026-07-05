@@ -43,10 +43,19 @@ export interface WorkloadRow {
   adhocCount: number
 }
 
+export interface ReadinessMilestone {
+  id: string
+  name: string
+  date: string
+  done: number
+  total: number
+}
 export interface ProjectReports {
   velocity: VelocityPoint[]
   cycle: CycleReport
   workload: WorkloadRow[]
+  readiness: ReadinessMilestone[] // 3.7 R14 — open milestones with due-date readiness
+  overall: { done: number; open: number } // completed vs pending (non-archived, non-cancelled)
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10
@@ -252,11 +261,28 @@ export async function milestoneReadiness(projectId: string): Promise<Map<string,
   return out
 }
 
+/** 3.7 R14 — open milestones with their due-date readiness (reuses milestoneReadiness). */
+async function readinessReport(projectId: string): Promise<ReadinessMilestone[]> {
+  const [map, milestones] = await Promise.all([
+    milestoneReadiness(projectId),
+    prisma.milestone.findMany({ where: { projectId, done: false }, orderBy: { date: 'asc' }, select: { id: true, name: true, date: true } }),
+  ])
+  return milestones.map((m) => ({ id: m.id, name: m.name, date: m.date.toISOString(), ...(map.get(m.id) ?? { done: 0, total: 0 }) }))
+}
+
 export async function projectReports(projectId: string): Promise<ProjectReports> {
-  const [velocity, cycle, workload] = await Promise.all([
+  const [velocity, cycle, workload, readiness, statusGroups] = await Promise.all([
     velocityReport(projectId),
     cycleReport(projectId),
     workloadReport(projectId),
+    readinessReport(projectId),
+    prisma.ticket.groupBy({ by: ['status'], where: { projectId, archivedAt: null }, _count: { _all: true } }),
   ])
-  return { velocity, cycle, workload }
+  let done = 0
+  let open = 0
+  for (const g of statusGroups) {
+    if (g.status === 'DONE') done += g._count._all
+    else if (g.status !== 'CANCELLED') open += g._count._all
+  }
+  return { velocity, cycle, workload, readiness, overall: { done, open } }
 }

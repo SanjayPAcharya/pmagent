@@ -1,6 +1,6 @@
 # Phase 3.7 — Review-driven planning surfaces (dashboard, Gantt, quick-create, workstreams)
 
-> **Status: 🔨 IN PROGRESS** (opened 2026-07-04). Source: the first **real-user review** of the deployed product (`Review.docx`, 2026-07-04) — verdict positive ("intent on the right track, UI clean, POC demonstrates the core well") with 8 usability/workflow asks. This phase turns that feedback into features. AI-related asks are **deferred to after Phase 5** by owner decision — 3.7 ships only the affordances (Beta-tagged, disabled).
+> **Status: ✅ DONE** (opened 2026-07-04, completed 2026-07-05 — all steps R0–R14 shipped, suites green, each browser-verified). Source: the first **real-user review** of the deployed product (`Review.docx`, 2026-07-04) — verdict positive ("intent on the right track, UI clean, POC demonstrates the core well") with 8 usability/workflow asks. This phase turns that feedback into features. AI-related asks are **deferred to after Phase 5** by owner decision — 3.7 ships only the affordances (Beta-tagged, disabled).
 >
 > **This doc is written to be self-contained**: each step names the exact files, data shapes, rules, tests, and done-criteria, so anyone (or any model) can pick up the next unticked step without extra context.
 
@@ -372,7 +372,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R14 — Release readiness on Reports (S)
+### - [x] R14 — Release readiness on Reports (S) *(done 2026-07-05)*
+> Browser-verified (seeded milestone deleted after): Reports gains a **Release readiness** card — a hand-rolled completion **donut** (25% · "1 done · 3 open") plus per open-milestone rows (name, date, progress bar, "N still open before this date"). Reuses `milestoneReadiness` (R4) via the `/reports` payload (`readiness` + `overall`). API reports test extended. **Phase 3.7 COMPLETE.**
 
 **Goal:** the reviewer's "release readiness" with zero new schema.
 

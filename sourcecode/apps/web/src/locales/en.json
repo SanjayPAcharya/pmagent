@@ -522,7 +522,13 @@
     "unassigned": "Unassigned",
     "openCount": "{{count}} open",
     "inProgressCount": "{{count}} in progress",
-    "workstreamSplit": "{{sprint}} sprint · {{adhoc}} ad-hoc"
+    "workstreamSplit": "{{sprint}} sprint · {{adhoc}} ad-hoc",
+    "readiness": "Release readiness",
+    "readinessEmpty": "Add milestones on the Overview page to track release readiness →",
+    "readinessProgress": "{{done}}/{{total}} done",
+    "readinessOpen": "{{count}} still open before this date",
+    "readinessDoneOpen": "{{done}} done · {{open}} open",
+    "readinessOverall": "Project completion {{pct}}%"
   },
   "labels": {
     "title": "Labels",

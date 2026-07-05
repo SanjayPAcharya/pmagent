@@ -143,10 +143,11 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - Multi-select via hover checkboxes (board) or the checkbox column (list) → floating bar: change status/assignee/sprint, add label, archive (with confirm).
 
 ## Reports
-- Every project has a **Reports** tab (in the sidebar, or the link next to Sprints on the board) with three read-only views:
-  - **Velocity** — story points completed per finished sprint, as a bar chart. Complete sprints and the trend builds itself.
+- Every project has a **Reports** tab (in the sidebar, or the link next to Sprints on the board) with read-only views:
+  - **Velocity** — story points completed per finished sprint, as a bar chart. Complete sprints and the trend builds itself. (Velocity stays sprint-based; ad-hoc work isn't counted here.)
   - **Cycle & lead time** — how long tickets take: *cycle* is start-of-work to done, *lead* is created to done. Shown as typical (median) and slow-end (p85) numbers over the last 90 days, plus a weekly trend line.
-  - **Workload** — open tickets per person (including unassigned), so you can spot overload at a glance.
+  - **Workload** — open tickets per person (including unassigned), with a small **sprint vs ad-hoc** split, so you can spot overload at a glance.
+  - **Release readiness** — a completion donut for the whole project plus, for each upcoming milestone, how many of the tickets due before it are done (and how many are still open). Add milestones on the Overview page to populate it.
 
 ## Sprints
 - Goal + dates, start/complete lifecycle, capacity view, **burndown chart**, recorded velocity.

@@ -311,10 +311,19 @@ export interface WorkloadRow {
   sprintCount: number
   adhocCount: number
 }
+export interface ReadinessMilestone {
+  id: string
+  name: string
+  date: string
+  done: number
+  total: number
+}
 export interface ProjectReports {
   velocity: VelocityPoint[]
   cycle: CycleReport
   workload: WorkloadRow[]
+  readiness: ReadinessMilestone[]
+  overall: { done: number; open: number }
 }
 
 // 3.7 R6 — Gantt payload (raw dates; all date math lives in lib/gantt.ts).
