@@ -274,7 +274,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R8 — Gantt interactivity: drag move / resize / schedule + undo (L)
+### - [x] R8 — Gantt interactivity: drag move / resize / schedule + undo (L) *(done 2026-07-05)*
+> Browser-verified with seeded-then-restored data: bar **move** persisted (+ optimistic re-sort) with an **Undo** toast; **Undo** reverted (RELA-2 10–18→moved→10–18); **tray drop** scheduled RELA-3 as a 3-day bar (Aug 7→9); **milestone drag** moved Launch 24→28 Jul. Resize/clamp + tray-default unit-tested. Data fully restored; gantt prefs cleared.
 
 **Goal:** the reviewer's "drag-and-drop scheduling".
 

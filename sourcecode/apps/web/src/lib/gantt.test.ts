@@ -9,6 +9,7 @@ import {
   computeRange,
   ticks,
   applyDrag,
+  traySchedule,
   PX_PER_DAY,
   type GanttScale,
 } from './gantt'
@@ -108,5 +109,11 @@ describe('gantt date math (3.7 R6)', () => {
     // Neither edge can cross the other (min 1-day bar).
     expect(applyDrag(bar, 'resize-start', 999)).toEqual({ startDay: 110, endDay: 110 })
     expect(applyDrag(bar, 'resize-end', -999)).toEqual({ startDay: 100, endDay: 100 })
+  })
+
+  it('schedules a dropped tray ticket as a 3-day bar', () => {
+    expect(traySchedule(200)).toEqual({ startDay: 200, endDay: 202 })
+    const b = traySchedule(200)
+    expect(b.endDay - b.startDay + 1).toBe(3)
   })
 })

@@ -124,12 +124,19 @@ export function ticks(rangeStartDay: number, rangeEndDay: number, scale: GanttSc
   return out
 }
 
+export type DragKind = 'move' | 'resize-start' | 'resize-end'
+
 /**
  * Apply a drag to a bar. 'move' shifts both edges; 'resize-start'/'resize-end'
  * move one edge but never past the other (a bar is at minimum 1 day).
  */
-export function applyDrag(bar: GanttBar, kind: 'move' | 'resize-start' | 'resize-end', deltaDays: number): GanttBar {
+export function applyDrag(bar: GanttBar, kind: DragKind, deltaDays: number): GanttBar {
   if (kind === 'move') return { startDay: bar.startDay + deltaDays, endDay: bar.endDay + deltaDays }
   if (kind === 'resize-start') return { startDay: Math.min(bar.startDay + deltaDays, bar.endDay), endDay: bar.endDay }
   return { startDay: bar.startDay, endDay: Math.max(bar.endDay + deltaDays, bar.startDay) }
+}
+
+/** Default bar when an unscheduled ticket is dropped on `day`: a 3-day span. */
+export function traySchedule(day: number): GanttBar {
+  return { startDay: day, endDay: day + 2 }
 }

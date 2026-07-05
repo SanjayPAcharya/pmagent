@@ -1,12 +1,24 @@
-import { type RefObject, useMemo } from 'react'
+import { type RefObject, type PointerEvent as ReactPointerEvent, type DragEvent as ReactDragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import type { GanttItem, GanttEdge, Milestone } from '@/lib/api'
 import { STATUS_COLOR } from '@/lib/board'
-import { barForTicket, ticks, toDayNum, xForDay, PX_PER_DAY, type GanttScale, type GanttBar } from '@/lib/gantt'
+import {
+  applyDrag,
+  barForTicket,
+  dayForX,
+  ticks,
+  toDayNum,
+  xForDay,
+  PX_PER_DAY,
+  type DragKind,
+  type GanttBar,
+  type GanttScale,
+} from '@/lib/gantt'
 import { cn } from '@/lib/utils'
 
-// 3.7 R7 — pure presentational Gantt. All date→pixel math comes from lib/gantt;
-// this renders one hand-rolled <svg> (BurndownSparkline precedent). Only
-// scheduled items (a bar) become rows; unscheduled ones live in the page's tray.
+// 3.7 R7/R8 — presentational Gantt (hand-rolled <svg>, BurndownSparkline
+// precedent) with pointer-driven drag (move / resize / milestone) layered on in
+// R8. Date↔pixel math all comes from lib/gantt; persistence + undo live in the
+// page via the callbacks. Only scheduled items (a bar) become rows.
 
 const ROW_H = 32
 const HEADER_H = 40
@@ -15,11 +27,16 @@ const RAIL_W = 240
 const TOP = HEADER_H + MILESTONE_LANE
 const BAR_H = 18
 const MS_PER_DAY = 86_400_000
+const HANDLE_W = 8 // resize hit target; only shown on bars wide enough for it
 
 const isWeekend = (day: number) => {
   const dow = new Date(day * MS_PER_DAY).getUTCDay()
   return dow === 0 || dow === 6
 }
+
+type Drag =
+  | { type: 'bar'; id: string; number: number; mode: DragKind; startBar: GanttBar; originDay: number; moved: boolean; preview: GanttBar }
+  | { type: 'milestone'; id: string; originDay: number; day: number }
 
 interface Props {
   items: GanttItem[]
@@ -29,14 +46,33 @@ interface Props {
   range: GanttBar
   today: number
   scrollRef?: RefObject<HTMLDivElement>
+  interactive?: boolean
   onOpenTicket: (number: number) => void
+  onReschedule?: (id: string, startDay: number, endDay: number) => void
+  onScheduleFromTray?: (id: string, startDay: number) => void
+  onRescheduleMilestone?: (id: string, day: number) => void
+  onDragActiveChange?: (active: boolean) => void
 }
 
-export function GanttChart({ items, edges, milestones, scale, range, today, scrollRef, onOpenTicket }: Props) {
+export function GanttChart({
+  items,
+  edges,
+  milestones,
+  scale,
+  range,
+  today,
+  scrollRef,
+  interactive = false,
+  onOpenTicket,
+  onReschedule,
+  onScheduleFromTray,
+  onRescheduleMilestone,
+  onDragActiveChange,
+}: Props) {
   const pxPerDay = PX_PER_DAY[scale]
   const xOf = (day: number) => xForDay(day, range.startDay, scale)
+  const svgRef = useRef<SVGSVGElement>(null)
 
-  // Scheduled rows: sort by start day, then number. Each keeps its bar + index.
   const rows = useMemo(() => {
     return items
       .map((item) => ({ item, bar: barForTicket(item)! }))
@@ -56,6 +92,86 @@ export function GanttChart({ items, edges, milestones, scale, range, today, scro
   const rowCenter = (idx: number) => TOP + idx * ROW_H + ROW_H / 2
   const todayVisible = today >= range.startDay && today <= range.endDay
 
+  // ── Drag (R8) ──────────────────────────────────────────────
+  const [drag, setDrag] = useState<Drag | null>(null)
+  const dragRef = useRef<Drag | null>(null)
+  dragRef.current = drag
+  const rangeRef = useRef(range)
+  rangeRef.current = range
+  const scaleRef = useRef(scale)
+  scaleRef.current = scale
+
+  const dayAtClientX = (clientX: number) => {
+    const rect = svgRef.current!.getBoundingClientRect()
+    return dayForX(clientX - rect.left, rangeRef.current.startDay, scaleRef.current)
+  }
+
+  useEffect(() => {
+    if (!interactive) return
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      if (d.type === 'bar') {
+        const delta = dayAtClientX(e.clientX) - d.originDay
+        setDrag({ ...d, moved: d.moved || delta !== 0, preview: applyDrag(d.startBar, d.mode, delta) })
+      } else {
+        setDrag({ ...d, day: dayAtClientX(e.clientX) })
+      }
+    }
+    const finish = (commit: boolean) => {
+      const d = dragRef.current
+      if (!d) return
+      if (commit && d.type === 'bar') {
+        if (d.mode === 'move' && !d.moved) onOpenTicket(d.number)
+        else if (d.preview.startDay !== d.startBar.startDay || d.preview.endDay !== d.startBar.endDay)
+          onReschedule?.(d.id, d.preview.startDay, d.preview.endDay)
+      } else if (commit && d.type === 'milestone' && d.day !== d.originDay) {
+        onRescheduleMilestone?.(d.id, d.day)
+      }
+      setDrag(null)
+      onDragActiveChange?.(false)
+    }
+    const onUp = () => finish(true)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') finish(false)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [interactive, onOpenTicket, onReschedule, onRescheduleMilestone, onDragActiveChange])
+
+  const startBarDrag = (item: GanttItem, bar: GanttBar, mode: DragKind) => (e: ReactPointerEvent) => {
+    if (!interactive) return
+    e.preventDefault()
+    const originDay = dayAtClientX(e.clientX)
+    setDrag({ type: 'bar', id: item.id, number: item.number, mode, startBar: bar, originDay, moved: false, preview: bar })
+    onDragActiveChange?.(true)
+  }
+  const startMilestoneDrag = (m: Milestone) => (e: ReactPointerEvent) => {
+    if (!interactive) return
+    e.preventDefault()
+    setDrag({ type: 'milestone', id: m.id, originDay: dayAtClientX(e.clientX), day: toDayNum(m.date) })
+    onDragActiveChange?.(true)
+  }
+
+  // Effective bar/day for a row/milestone, honoring an in-flight drag preview.
+  const barOf = (id: string, real: GanttBar) => (drag?.type === 'bar' && drag.id === id ? drag.preview : real)
+  const milestoneDay = (m: Milestone) => (drag?.type === 'milestone' && drag.id === m.id ? drag.day : toDayNum(m.date))
+
+  const onDrop = (e: ReactDragEvent) => {
+    if (!interactive) return
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/ganttticket')
+    if (!id) return
+    const rect = svgRef.current!.getBoundingClientRect()
+    onScheduleFromTray?.(id, dayForX(e.clientX - rect.left, range.startDay, scale))
+  }
+
   return (
     <div className="grid overflow-hidden rounded-lg border bg-card" style={{ gridTemplateColumns: `${RAIL_W}px 1fr` }}>
       {/* Left rail — sticky ticket list, aligned row-for-row with the svg. */}
@@ -74,9 +190,21 @@ export function GanttChart({ items, edges, milestones, scale, range, today, scro
         ))}
       </div>
 
-      {/* Right pane — horizontally scrollable timeline. */}
-      <div ref={scrollRef} className="scrollbar-slim overflow-x-auto">
-        <svg width={width} height={height} className="block" role="img" aria-label="Project timeline">
+      {/* Right pane — horizontally scrollable timeline (+ tray drop target). */}
+      <div
+        ref={scrollRef}
+        className="scrollbar-slim overflow-x-auto"
+        onDragOver={interactive ? (e) => e.preventDefault() : undefined}
+        onDrop={interactive ? onDrop : undefined}
+      >
+        <svg
+          ref={svgRef}
+          width={width}
+          height={height}
+          className={cn('block', drag && 'select-none')}
+          role="img"
+          aria-label="Project timeline"
+        >
           <defs>
             <marker id="gantt-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
               <path d="M0,0 L6,3 L0,6 Z" fill="hsl(var(--muted-foreground))" fillOpacity={0.5} />
@@ -106,28 +234,39 @@ export function GanttChart({ items, edges, milestones, scale, range, today, scro
 
           {/* Milestone lane */}
           {milestones.map((m) => {
-            const mx = xOf(toDayNum(m.date))
+            const mx = xOf(milestoneDay(m))
             const color = m.done ? 'hsl(var(--muted-foreground))' : '#f59e0b'
             const cy = HEADER_H + MILESTONE_LANE / 2
             return (
               <g key={m.id}>
                 <line x1={mx} y1={HEADER_H + MILESTONE_LANE} x2={mx} y2={height} stroke={color} strokeOpacity={0.4} strokeDasharray="3 3" />
-                <rect x={mx - 5} y={cy - 5} width={10} height={10} fill={color} transform={`rotate(45 ${mx} ${cy})`} />
-                <text x={mx + 9} y={cy + 3} fontSize={10} fill={color} className={cn(m.done && 'line-through')}>
+                <rect
+                  x={mx - 5}
+                  y={cy - 5}
+                  width={10}
+                  height={10}
+                  fill={color}
+                  transform={`rotate(45 ${mx} ${cy})`}
+                  className={cn(interactive && 'cursor-grab active:cursor-grabbing')}
+                  onPointerDown={startMilestoneDrag(m)}
+                />
+                <text x={mx + 9} y={cy + 3} fontSize={10} fill={color} className={cn('pointer-events-none', m.done && 'line-through')}>
                   {m.name}
                 </text>
               </g>
             )
           })}
 
-          {/* Dependency edges (drawn under bars would be hidden; keep above gridlines, below bars) */}
+          {/* Dependency edges */}
           {edges.map((e, i) => {
             const from = rowById.get(e.dependsOnId)
             const to = rowById.get(e.ticketId)
             if (!from || !to) return null
-            const fromX = xOf(from.bar.endDay) + pxPerDay
+            const fromBar = barOf(e.dependsOnId, from.bar)
+            const toBar = barOf(e.ticketId, to.bar)
+            const fromX = xOf(fromBar.endDay) + pxPerDay
             const fromY = rowCenter(from.idx)
-            const toX = xOf(to.bar.startDay)
+            const toX = xOf(toBar.startDay)
             const toY = rowCenter(to.idx)
             const midX = Math.max(fromX + 10, toX - 10)
             return (
@@ -144,14 +283,33 @@ export function GanttChart({ items, edges, milestones, scale, range, today, scro
 
           {/* Bars */}
           {rows.map((r, idx) => {
-            const x = xOf(r.bar.startDay)
-            const w = (r.bar.endDay - r.bar.startDay + 1) * pxPerDay
+            const bar = barOf(r.item.id, r.bar)
+            const x = xOf(bar.startDay)
+            const w = (bar.endDay - bar.startDay + 1) * pxPerDay
             const y = TOP + idx * ROW_H + (ROW_H - BAR_H) / 2
             const color = STATUS_COLOR[r.item.status]
+            const showHandles = interactive && w >= 24
             return (
-              <g key={r.item.id} className="cursor-pointer" onClick={() => onOpenTicket(r.item.number)}>
-                <rect x={x} y={y} width={w} height={BAR_H} rx={4} fill={color} fillOpacity={0.6} />
-                <rect x={x} y={y} width={3} height={BAR_H} rx={1.5} fill={color} />
+              <g key={r.item.id}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={BAR_H}
+                  rx={4}
+                  fill={color}
+                  fillOpacity={0.6}
+                  className={cn(interactive ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer')}
+                  onPointerDown={interactive ? startBarDrag(r.item, r.bar, 'move') : undefined}
+                  onClick={interactive ? undefined : () => onOpenTicket(r.item.number)}
+                />
+                <rect x={x} y={y} width={3} height={BAR_H} rx={1.5} fill={color} className="pointer-events-none" />
+                {showHandles && (
+                  <>
+                    <rect x={x} y={y} width={HANDLE_W} height={BAR_H} fill="transparent" className="cursor-ew-resize" onPointerDown={startBarDrag(r.item, r.bar, 'resize-start')} />
+                    <rect x={x + w - HANDLE_W} y={y} width={HANDLE_W} height={BAR_H} fill="transparent" className="cursor-ew-resize" onPointerDown={startBarDrag(r.item, r.bar, 'resize-end')} />
+                  </>
+                )}
                 {w > 120 && (
                   <text x={x + 8} y={y + BAR_H / 2 + 3.5} fontSize={11} fill="#fff" className="pointer-events-none">
                     {r.item.title}

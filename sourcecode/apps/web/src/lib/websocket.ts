@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import type { WSMessage, WSEventType } from '@agentpm/shared-types'
 import { keycloak } from './auth'
@@ -116,8 +116,12 @@ const SYNC_EVENTS: WSEventType[] = ['ticket.created', 'ticket.updated', 'ticket.
  * Self-echo is dropped by `useProjectWebSocket` (needs the current user id).
  * Board keeps its own richer handler (presence, ghost drags) — this is for the
  * plainer views (Sprints, List) that just need to stay fresh.
+ *
+ * `pausedRef` (optional): while `pausedRef.current` is true, incoming events are
+ * ignored — the Gantt uses this so a teammate's WS echo can't yank a bar
+ * mid-drag. A refetch after the drag reconciles.
  */
-export function useProjectSync(projectId: string | undefined, prefixes: QueryKey[]) {
+export function useProjectSync(projectId: string | undefined, prefixes: QueryKey[], pausedRef?: RefObject<boolean>) {
   const qc = useQueryClient()
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
 
@@ -125,6 +129,7 @@ export function useProjectSync(projectId: string | undefined, prefixes: QueryKey
   // ref (updated every render) and only reconnects on projectId change — so a
   // fresh closure here never churns the socket.
   const invalidate = () => {
+    if (pausedRef?.current) return
     for (const prefix of prefixes) qc.invalidateQueries({ queryKey: prefix })
   }
   const handlers: WSHandlers = {}

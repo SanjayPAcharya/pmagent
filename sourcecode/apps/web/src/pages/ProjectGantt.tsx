@@ -1,10 +1,11 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { api, type GanttItem } from '@/lib/api'
+import { toast } from 'sonner'
+import { api, type GanttItem, type GanttPayload } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
-import { barForTicket, computeRange, toDayNum, xForDay, type GanttScale } from '@/lib/gantt'
+import { barForTicket, computeRange, dayNumToISO, toDayNum, traySchedule, xForDay, type GanttScale } from '@/lib/gantt'
 import { useProjectSync } from '@/lib/websocket'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,7 +18,18 @@ export default function ProjectGantt() {
   const { slug = '', projectSlug = '' } = useParams()
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const dragPaused = useRef(false)
+
+  // Drag is pointer-precise; disable it below the sm breakpoint (touch/scroll).
+  const [interactive, setInteractive] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 640 : true))
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)')
+    const onChange = () => setInteractive(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   const org = useQuery({ queryKey: ['org', slug], queryFn: () => api.getOrg(slug) })
   const orgId = org.data?.org.id
@@ -30,7 +42,7 @@ export default function ProjectGantt() {
   const members = useQuery({ queryKey: ['members', slug], queryFn: () => api.listMembers(slug), enabled: Boolean(slug) })
   const sprints = useQuery({ queryKey: ['sprints', projectId], queryFn: () => api.listSprints(projectId!), enabled: Boolean(projectId) })
   const labels = useQuery({ queryKey: ['labels', orgId], queryFn: () => api.listLabels(orgId!), enabled: Boolean(orgId) })
-  useProjectSync(projectId, [['gantt', projectId]])
+  useProjectSync(projectId, [['gantt', projectId]], dragPaused)
 
   const [scale, setScale] = useLocalStorageState<GanttScale>('agentpm-gantt-scale', 'week')
   const [trayOpen, setTrayOpen] = useLocalStorageState('agentpm-gantt-tray', true)
@@ -68,6 +80,56 @@ export default function ProjectGantt() {
   const scrollToToday = () => {
     const el = scrollRef.current
     if (el) el.scrollLeft = xForDay(today, range.startDay, scale) - el.clientWidth / 3
+  }
+
+  // ── Persistence + undo (R8) — optimistic gantt-cache patch, rollback on error.
+  const ganttKey = ['gantt', projectId]
+  const patchItem = (id: string, patch: Partial<GanttItem>) => (old?: { gantt: GanttPayload }) =>
+    old ? { gantt: { ...old.gantt, items: old.gantt.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) } } : old
+  const patchMilestone = (id: string, date: string) => (old?: { gantt: GanttPayload }) =>
+    old ? { gantt: { ...old.gantt, milestones: old.gantt.milestones.map((m) => (m.id === id ? { ...m, date } : m)) } } : old
+
+  const writeTicketDates = (id: string, startDate: string | null, dueDate: string | null, withUndo = true) => {
+    const prev = qc.getQueryData<{ gantt: GanttPayload }>(ganttKey)?.gantt.items.find((i) => i.id === id)
+    const prevStart = prev?.startDate ?? null
+    const prevDue = prev?.dueDate ?? null
+    qc.setQueryData(ganttKey, patchItem(id, { startDate, dueDate }))
+    api
+      .updateTicket(id, { startDate, dueDate })
+      .then(() => {
+        if (withUndo)
+          toast(t('gantt.rescheduled'), {
+            action: { label: t('common.undo'), onClick: () => writeTicketDates(id, prevStart, prevDue, false) },
+          })
+      })
+      .catch((e: Error) => {
+        qc.setQueryData(ganttKey, patchItem(id, { startDate: prevStart, dueDate: prevDue })) // rollback
+        toast.error(e.message)
+      })
+  }
+
+  const onReschedule = (id: string, startDay: number, endDay: number) =>
+    writeTicketDates(id, dayNumToISO(startDay), dayNumToISO(endDay))
+  const onScheduleFromTray = (id: string, startDay: number) => {
+    const bar = traySchedule(startDay)
+    writeTicketDates(id, dayNumToISO(bar.startDay), dayNumToISO(bar.endDay))
+  }
+  const onRescheduleMilestone = (id: string, day: number, withUndo = true) => {
+    const prevDate = qc.getQueryData<{ gantt: GanttPayload }>(ganttKey)?.gantt.milestones.find((m) => m.id === id)?.date
+    const nextDate = dayNumToISO(day)
+    qc.setQueryData(ganttKey, patchMilestone(id, nextDate))
+    api
+      .updateMilestone(projectId!, id, { date: nextDate })
+      .then(() => {
+        if (withUndo && prevDate)
+          toast(t('gantt.milestoneMoved'), {
+            action: { label: t('common.undo'), onClick: () => onRescheduleMilestone(id, toDayNum(prevDate), false) },
+          })
+      })
+      .catch((e: Error) => {
+        if (prevDate) qc.setQueryData(ganttKey, patchMilestone(id, prevDate))
+        toast.error(e.message)
+      })
   }
 
   const scaleBtn = (s: GanttScale, labelKey: string) => (
@@ -144,7 +206,12 @@ export default function ProjectGantt() {
           range={range}
           today={today}
           scrollRef={scrollRef}
+          interactive={interactive}
           onOpenTicket={openTicket}
+          onReschedule={onReschedule}
+          onScheduleFromTray={onScheduleFromTray}
+          onRescheduleMilestone={onRescheduleMilestone}
+          onDragActiveChange={(active) => (dragPaused.current = active)}
         />
       )}
 
@@ -164,7 +231,12 @@ export default function ProjectGantt() {
                 <button
                   key={it.id}
                   onClick={() => openTicket(it.number)}
-                  className="inline-flex max-w-xs items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs hover:border-primary/40"
+                  draggable={interactive}
+                  onDragStart={(e) => e.dataTransfer.setData('text/ganttticket', it.id)}
+                  className={cn(
+                    'inline-flex max-w-xs items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs hover:border-primary/40',
+                    interactive && 'cursor-grab active:cursor-grabbing',
+                  )}
                 >
                   <span className="font-mono text-[11px] text-muted-foreground">{it.key}</span>
                   <span className="truncate text-foreground">{it.title}</span>

@@ -393,6 +393,8 @@ export interface UpdateTicketInput {
   type?: TicketType
   storyPoints?: number | null
   dueDate?: string | null
+  startDate?: string | null
+  workstream?: Workstream
   position?: number
   sprintId?: string | null
   assignedToId?: string | null
