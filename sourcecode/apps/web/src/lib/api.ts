@@ -381,6 +381,10 @@ export interface CreateTicketInput {
   assignedToId?: string
   sprintId?: string
   storyPoints?: number
+  parentId?: string
+  workstream?: Workstream
+  startDate?: string | null
+  dueDate?: string | null
 }
 export interface UpdateTicketInput {
   title?: string

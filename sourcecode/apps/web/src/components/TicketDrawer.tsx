@@ -701,7 +701,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
               </button>
               {sectionOpen('relations', false) && (
                 <div className="border-t px-3 pb-3 pt-0 [&>div]:mt-3">
-                  <RelationsSection ticketId={ticketId} projectId={ticket.projectId} />
+                  <RelationsSection ticketId={ticketId} projectId={ticket.projectId} parentWorkstream={ticket.workstream} />
                 </div>
               )}
             </div>

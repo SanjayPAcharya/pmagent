@@ -2,12 +2,20 @@ import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
-import type { Member, Ticket, TicketStatus } from '@/lib/api'
+import { Plus, FilePlus2 } from 'lucide-react'
+import type { Member, Sprint, Ticket, TicketStatus, TicketTemplate } from '@/lib/api'
 import { STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
+import { parseQuickCreate, type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 export interface GhostInfo {
@@ -20,8 +28,14 @@ interface Props {
   status: TicketStatus
   tickets: Ticket[]
   onOpen: (t: Ticket) => void
-  onQuickAdd: (status: TicketStatus, title: string) => void
+  onQuickAdd: (status: TicketStatus, parsed: ParsedQuickCreate) => void
   onStatusChange: (id: string, status: TicketStatus) => void
+  /** R9 quick-add token resolution + template hook. */
+  members?: Member[]
+  sprints?: Sprint[]
+  templates?: TicketTemplate[]
+  onCreateFromTemplate?: (status: TicketStatus, tpl: TicketTemplate) => void
+  onAddSubtask?: (t: Ticket) => void
   /** B4 focus mode: when set, cards not assigned to this user are dimmed. */
   focusUserId?: string | null
   /** E1: userId→members viewing each ticket (minus me). */
@@ -33,7 +47,23 @@ interface Props {
   onToggleSelect?: (id: string) => void
 }
 
-export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, focusUserId, viewers, ghosts, selectedIds, onToggleSelect }: Props) {
+export function Column({
+  status,
+  tickets,
+  onOpen,
+  onQuickAdd,
+  onStatusChange,
+  members = [],
+  sprints = [],
+  templates = [],
+  onCreateFromTemplate,
+  onAddSubtask,
+  focusUserId,
+  viewers,
+  ghosts,
+  selectedIds,
+  onToggleSelect,
+}: Props) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
@@ -42,9 +72,12 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, fo
   const wipLimit = WIP_LIMITS[status]
   const overWip = wipLimit != null && tickets.length > wipLimit
 
+  // Live token parse — drives both the create payload and the preview chips.
+  const parsed = parseQuickCreate(title, { members, sprints })
+  const hasChips = Boolean(parsed.priority || parsed.assigneeName || parsed.sprintName)
+
   const submit = () => {
-    const t = title.trim()
-    if (t) onQuickAdd(status, t)
+    if (parsed.title) onQuickAdd(status, parsed)
     setTitle('')
     setAdding(false)
   }
@@ -66,9 +99,29 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, fo
             {wipLimit != null ? `${tickets.length}/${wipLimit}` : tickets.length}
           </span>
         </div>
-        <button onClick={() => setAdding((v) => !v)} className="text-muted-foreground hover:text-foreground" title="Add ticket">
-          <Plus className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          {templates.length > 0 && onCreateFromTemplate && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="text-muted-foreground hover:text-foreground" title={t('board.fromTemplate')} aria-label={t('board.fromTemplate')}>
+                  <FilePlus2 className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>{t('board.fromTemplate')}</DropdownMenuLabel>
+                {templates.map((tpl) => (
+                  <DropdownMenuItem key={tpl.id} onClick={() => onCreateFromTemplate(status, tpl)}>
+                    <span className="mr-2 rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">{tpl.type}</span>
+                    <span className="truncate">{tpl.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <button onClick={() => setAdding((v) => !v)} className="text-muted-foreground hover:text-foreground" title={t('board.addTicket')}>
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div
@@ -79,21 +132,41 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, fo
         )}
       >
         {adding && (
-          <Input
-            autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={submit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit()
-              if (e.key === 'Escape') {
-                setTitle('')
-                setAdding(false)
-              }
-            }}
-            placeholder={t('board.addTicketTitle')}
-            className="bg-background"
-          />
+          <div className="space-y-1.5">
+            <Input
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={submit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submit()
+                if (e.key === 'Escape') {
+                  setTitle('')
+                  setAdding(false)
+                }
+              }}
+              placeholder={t('board.quickAddHint')}
+              className="bg-background"
+            />
+            {hasChips && (
+              <div className="flex flex-wrap items-center gap-1 px-0.5">
+                {parsed.priority && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{parsed.priority}</span>
+                )}
+                {parsed.assigneeName && (
+                  <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    <Avatar className="h-3.5 w-3.5">
+                      <AvatarFallback className="text-[7px]">{parsed.assigneeName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    {parsed.assigneeName}
+                  </span>
+                )}
+                {parsed.sprintName && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">#{parsed.sprintName}</span>
+                )}
+              </div>
+            )}
+          </div>
         )}
         <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tickets.map((t) => (
@@ -102,6 +175,7 @@ export function Column({ status, tickets, onOpen, onQuickAdd, onStatusChange, fo
               ticket={t}
               onOpen={onOpen}
               onStatusChange={onStatusChange}
+              onAddSubtask={onAddSubtask}
               dimmed={Boolean(focusUserId) && t.assignedToId !== focusUserId}
               viewers={viewers?.[t.id]}
               selected={selectedIds?.has(t.id)}

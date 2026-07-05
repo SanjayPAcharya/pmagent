@@ -282,7 +282,11 @@
     "blockedBy": "Blocked by",
     "blocks": "Blocks",
     "searchTickets": "Search tickets…",
-    "noMatches": "No matching tickets."
+    "noMatches": "No matching tickets.",
+    "linkExisting": "Link existing",
+    "addSubtask": "Add subtask",
+    "newSubtaskPlaceholder": "New subtask title — Enter to create",
+    "subtaskCreated": "Subtask created"
   },
   "list": {
     "viewBoard": "Board",
@@ -309,6 +313,8 @@
     "loadError": "Failed to load tickets: {{message}}",
     "noTickets": "No tickets",
     "addTicketTitle": "Ticket title…",
+    "addTicket": "Add ticket",
+    "quickAddHint": "Title… !high @name #sprint",
     "ticketCreated": "Ticket created",
     "createFailed": "Create failed: {{message}}",
     "moveFailed": "Move failed: {{message}}",

@@ -292,7 +292,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R9 — Quick-add tokens + inline subtask create (M)
+### - [x] R9 — Quick-add tokens + inline subtask create (M) *(done 2026-07-05)*
+> Browser-verified (test tickets created then fully deleted, counter reset): column quick-add `Zephyr sync test !high @sanjay #Oracle` → live preview chips (HIGH / Sanjay Kumar / Oracle Sprint 1) → created RELA-6 in Backlog with priority+assignee+sprint all set; inline subtask input, Enter-Enter-Enter → RELA-7/8/9 linked as subtasks without leaving the drawer (input stays focused, "Subtask created" toast). Template hook code mirrors ProjectTools (org has no templates to click). Card "+subtask" affordance deep-links via `focusSubtask` state.
 
 **Goal:** create tickets where you are, with the fields you know (review asks 3 + 7).
 

@@ -39,8 +39,8 @@ Notice the **workspace sidebar** on the left now shows Organization → Project 
 
 Open the project (you'll land on the **Overview**) and click **Board** in the sidebar. Three ways to add tickets:
 
-1. **Quick add** — the input in the middle of the empty board (or the **+** on any column later). Type a title, press Enter.
-2. **New from template** — the 📄 button in the board header. Pick *Bug report* or *Feature* and the ticket arrives pre-filled with a proper structure.
+1. **Quick add** — the **+** on any column (or the input on the empty board). Type a title and press Enter. You can set fields inline with tokens as you type: `!high` (priority), `@name` (assignee), `#sprint` — a live preview shows what will be set.
+2. **New from template** — the 📄 button in the board header (or beside a column's quick-add). Pick *Bug report* or *Feature* and the ticket arrives pre-filled with a proper structure.
 3. **Import CSV** — already tracking work in a spreadsheet or Jira? Switch to the **List** view (toggle at the top) and click **Import CSV**.
 
 Click any card to open the **ticket panel**: set an assignee, due date, priority, labels — and write a description with acceptance criteria (type `- [ ]` lines to get tick-able checkboxes).
@@ -122,7 +122,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Tickets
 - Slide-in panel with a **pinned header** (number, title, status, priority, type) and an **expand-width** ⤢ button (two-column layout on big screens).
 - Grouped sections: **Details** (assignee/points/due/sprint) · **People & labels** (watchers, colored labels) · **Relationships**.
-- **Relationships:** parent/subtasks (with done-counter), blocked-by/blocks with automatic red **Blocked** badges.
+- **Relationships:** parent/subtasks (with done-counter), blocked-by/blocks with automatic red **Blocked** badges. **Add subtasks inline** — type a title and press Enter, repeat for fast batch entry (each new subtask inherits the parent's sprint/ad-hoc workstream). A **+ subtask** button on any board card jumps straight here.
 - **Spec** with Markdown + a **readiness ring** showing how complete the spec is (a ready ticket is one an AI agent could pick up); `- [ ]` acceptance-criteria checklists with progress.
 - **Templates:** org-wide presets; *Bug report* and *Feature* included, Admins manage them on the Members page ("Add starter templates" backfills older orgs).
 

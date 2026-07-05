@@ -17,8 +17,9 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
-import { api, type Member, type Priority, type Ticket, type TicketStatus, type TicketType } from '@/lib/api'
+import { api, type Member, type Priority, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
+import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { useProjectWebSocket } from '@/lib/websocket'
 import { Column } from '@/components/board/Column'
 import { TicketCardBody } from '@/components/board/TicketCard'
@@ -126,6 +127,7 @@ export default function Board() {
     })
   useEffect(() => setSelectedIds(new Set()), [projectId])
   const labels = useQuery({ queryKey: ['labels', orgId], queryFn: () => api.listLabels(orgId!), enabled: Boolean(orgId) })
+  const templates = useQuery({ queryKey: ['templates', orgId], queryFn: () => api.listTemplates(orgId!), enabled: Boolean(orgId) })
   // E1 — userIds viewing each ticket; B1 — other viewers' in-flight drags.
   const [ticketViewers, setTicketViewers] = useState<Record<string, string[]>>({})
   const [ghosts, setGhosts] = useState<Record<string, { actorId: string; status: TicketStatus }>>({})
@@ -254,16 +256,51 @@ export default function Board() {
     }
   }
 
-  async function quickAdd(status: TicketStatus, title: string) {
+  async function quickAdd(status: TicketStatus, parsed: ParsedQuickCreate) {
     if (!projectId) return
     try {
-      await api.createTicket({ projectId, title, status })
+      await api.createTicket({
+        projectId,
+        title: parsed.title,
+        status,
+        priority: parsed.priority,
+        assignedToId: parsed.assignedToId,
+        sprintId: parsed.sprintId,
+      })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       toast.success(t('board.ticketCreated'))
     } catch (err) {
       toast.error(t('board.createFailed', { message: (err as Error).message }))
     }
   }
+
+  // R9 — create a ticket in this column pre-filled from a template, then open it.
+  async function createFromTemplate(status: TicketStatus, tpl: TicketTemplate) {
+    if (!projectId) return
+    try {
+      const validLabelIds = tpl.labelIds.filter((id) => labels.data?.labels.some((l) => l.id === id))
+      const { ticket } = await api.createTicket({
+        projectId,
+        status,
+        title: tpl.title?.trim() || tpl.name,
+        type: tpl.type,
+        priority: tpl.priority,
+        description: tpl.description ?? undefined,
+        acceptanceCriteria: tpl.acceptanceCriteria ?? undefined,
+        goal: tpl.goal ?? undefined,
+        constraints: tpl.constraints ?? undefined,
+        labelIds: validLabelIds.length ? validLabelIds : undefined,
+      })
+      qc.invalidateQueries({ queryKey: ticketsPrefix })
+      navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)
+    } catch (err) {
+      toast.error(t('board.createFailed', { message: (err as Error).message }))
+    }
+  }
+
+  // R9 — open the drawer focused on the inline "new subtask" input.
+  const addSubtask = (tk: Ticket) =>
+    navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${tk.number}`, { state: { focusSubtask: true } })
 
   // H1 — guided first ticket: create in Backlog and open the drawer so the
   // author lands on the goal/AC fields (the agent-ready pattern).
@@ -527,6 +564,11 @@ export default function Board() {
                 onOpen={openTicket}
                 onQuickAdd={quickAdd}
                 onStatusChange={moveTicket}
+                members={members.data?.members ?? []}
+                sprints={sprints.data?.sprints ?? []}
+                templates={templates.data?.templates ?? []}
+                onCreateFromTemplate={createFromTemplate}
+                onAddSubtask={addSubtask}
                 focusUserId={focusMine ? myId : null}
                 viewers={viewersByTicket}
                 ghosts={ghostsByStatus[s] ?? []}
