@@ -21,6 +21,7 @@ import { blockedByCounts, getRelations, addDependency, removeDependency } from '
 
 const priorityEnum = z.enum(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 const typeEnum = z.enum(['FEATURE', 'BUG', 'CHORE', 'SPIKE'])
+const workstreamEnum = z.enum(['SPRINT', 'ADHOC'])
 const statusEnum = z.enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'DONE', 'CANCELLED'])
 const sortEnum = z.enum(['position', '-position', 'updatedAt', '-updatedAt', 'priority', '-priority', 'number', '-number'])
 
@@ -37,6 +38,8 @@ const createTicketSchema = z.object({
   type: typeEnum.optional(),
   storyPoints: z.number().int().positive().optional(),
   dueDate: z.string().datetime().optional(),
+  startDate: z.string().datetime().nullable().optional(),
+  workstream: workstreamEnum.optional(),
   assignedToId: z.string().uuid().optional(),
   assignedAgentType: z.enum(['CODE', 'SPEC']).optional(),
   labelIds: z.array(z.string().uuid()).optional(),
@@ -56,6 +59,8 @@ const updateTicketSchema = z
     type: typeEnum,
     storyPoints: z.number().int().positive().nullable(),
     dueDate: z.string().datetime().nullable(),
+    startDate: z.string().datetime().nullable(),
+    workstream: workstreamEnum,
     position: z.number(),
     sprintId: z.string().uuid().nullable(),
     assignedToId: z.string().uuid().nullable(),
@@ -71,6 +76,7 @@ const batchSchema = z.object({
       status: statusEnum,
       assignedToId: z.string().uuid().nullable(),
       sprintId: z.string().uuid().nullable(),
+      workstream: workstreamEnum,
       addLabelIds: z.array(z.string().uuid()),
       archived: z.boolean(),
     })
@@ -91,6 +97,8 @@ const importSchema = z.object({
         priority: priorityEnum.optional(),
         type: typeEnum.optional(),
         storyPoints: z.number().int().positive().optional(),
+        startDate: z.string().datetime().optional(),
+        workstream: workstreamEnum.optional(),
         acceptanceCriteria: z.string().max(10_000).optional(),
         // Resolved here, not on the client: label names matched case-insensitively
         // within the org (unknowns dropped), assignee matched by member email/name.
@@ -111,6 +119,7 @@ const listQuerySchema = z.object({
   assignedToId: z.string().uuid().optional(),
   labelId: z.string().uuid().optional(),
   sprintId: z.string().uuid().optional(),
+  workstream: workstreamEnum.optional(),
   includeArchived: z.coerce.boolean().optional(),
   sort: sortEnum.default('position'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
@@ -173,6 +182,7 @@ const routes: FastifyPluginAsync = async (app) => {
     if (q.type) where.type = q.type
     if (q.assignedToId) where.assignedToId = q.assignedToId
     if (q.sprintId) where.sprintId = q.sprintId
+    if (q.workstream) where.workstream = q.workstream
     if (q.labelId) where.labels = { some: { labelId: q.labelId } }
     if (q.q) {
       const or: Prisma.TicketWhereInput[] = [{ title: { contains: q.q, mode: 'insensitive' } }]
@@ -411,6 +421,7 @@ const routes: FastifyPluginAsync = async (app) => {
     if (patch.status !== undefined) fieldPatch.status = patch.status
     if (patch.assignedToId !== undefined) fieldPatch.assignedToId = patch.assignedToId
     if (patch.sprintId !== undefined) fieldPatch.sprintId = patch.sprintId
+    if (patch.workstream !== undefined) fieldPatch.workstream = patch.workstream
     const hasFieldPatch = Object.keys(fieldPatch).length > 0
 
     if (patch.addLabelIds?.length) {

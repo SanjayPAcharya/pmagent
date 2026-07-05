@@ -49,7 +49,7 @@ This file + README index row + `PROGRESS.md` Now/Next.
 
 ---
 
-### - [ ] R1 — Schema foundation: Milestone, startDate, workstream (M)
+### - [x] R1 — Schema foundation: Milestone, startDate, workstream (M) *(done 2026-07-05)*
 
 **Goal:** all Phase-3.7 data-model changes in ONE migration, plus the server-side rules every later step relies on.
 

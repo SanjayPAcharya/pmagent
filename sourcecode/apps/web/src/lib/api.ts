@@ -141,6 +141,7 @@ export interface Invite {
 export type TicketStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE' | 'CANCELLED'
 export type Priority = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'
 export type TicketType = 'FEATURE' | 'BUG' | 'CHORE' | 'SPIKE'
+export type Workstream = 'SPRINT' | 'ADHOC'
 
 export interface Label {
   id: string
@@ -165,6 +166,8 @@ export interface Ticket {
   type: TicketType
   storyPoints: number | null
   dueDate: string | null
+  startDate: string | null
+  workstream: Workstream
   position: number
   assignedToId: string | null
   assignedTo: User | null

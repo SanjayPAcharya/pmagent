@@ -126,6 +126,7 @@ model Project {
   organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   tickets       Ticket[]
   sprints       Sprint[]
+  milestones    Milestone[]
 
   @@unique([orgId, slug])
   @@unique([orgId, key])
@@ -149,6 +150,8 @@ model Ticket {
   type               TicketType   @default(FEATURE)
   storyPoints        Int?
   dueDate            DateTime?
+  startDate          DateTime?    // optional; null = unscheduled on the timeline
+  workstream         Workstream   @default(SPRINT) // ADHOC = operational work outside sprints
   archivedAt         DateTime?    // soft delete — list queries exclude archived
   position           Float        @default(0) // board ordering within a column
   assignedToId       String?      @db.Uuid
@@ -181,6 +184,7 @@ model Ticket {
   @@unique([projectId, number])
   @@index([projectId, status, position])
   @@index([projectId, archivedAt])
+  @@index([projectId, workstream])
   @@index([sprintId])
   @@index([assignedToId])
 }
@@ -294,6 +298,21 @@ model Sprint {
   @@index([projectId, status])
 }
 
+model Milestone {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String   @db.Uuid
+  name        String
+  description String?
+  date        DateTime // date-only semantics; always store UTC midnight
+  done        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, date])
+}
+
 // ─── Notifications (in-app for Phase 2; channels in Phase 5) ──
 
 model Notification {
@@ -354,6 +373,11 @@ enum TicketType {
   SPIKE
 }
 
+enum Workstream {
+  SPRINT
+  ADHOC
+}
+
 enum SprintStatus {
   PLANNING
   ACTIVE
@@ -369,6 +393,7 @@ enum TicketActivityType {
   WATCHER_REMOVED
   SPRINT_CHANGED
   PRIORITY_CHANGED
+  WORKSTREAM_CHANGED
 }
 
 enum NotificationType {
