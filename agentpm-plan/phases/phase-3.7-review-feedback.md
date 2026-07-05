@@ -163,7 +163,7 @@ Self-echo suppression already exists in the socket layer (events with `actorId =
 
 ---
 
-### - [ ] R4 — Overview aggregate endpoint (M)
+### - [x] R4 — Overview aggregate endpoint (M) *(done 2026-07-05)*
 
 **Goal:** one GET returns everything the dashboard needs in a single round trip.
 

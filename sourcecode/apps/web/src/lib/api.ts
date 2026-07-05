@@ -312,6 +312,34 @@ export interface ProjectReports {
   workload: WorkloadRow[]
 }
 
+// 3.7 R4 — project Overview dashboard aggregate.
+export interface OverviewBlocker {
+  id: string
+  number: number
+  key: string
+  title: string
+  openBlockerCount: number
+}
+export interface OverviewMilestone {
+  id: string
+  name: string
+  date: string
+  done: boolean
+  readiness: { done: number; total: number }
+}
+export interface ProjectOverview {
+  status: {
+    byStatus: Partial<Record<TicketStatus, number>>
+    open: number
+    done: number
+    byWorkstream: { SPRINT: number; ADHOC: number }
+  }
+  activeSprint: { id: string; name: string; endDate: string | null; total: number; done: number } | null
+  blockers: OverviewBlocker[]
+  milestones: OverviewMilestone[]
+  capacity: { rows: WorkloadRow[]; recentVelocityAvg: number | null }
+}
+
 export interface CreateTicketInput {
   projectId: string
   title: string
@@ -354,6 +382,7 @@ export const api = {
   deleteOrg: (slug: string) => request<void>('DELETE', `/api/orgs/${slug}`),
   deleteProject: (projectId: string) => request<void>('DELETE', `/api/projects/${projectId}`),
   getProjectReports: (projectId: string) => request<{ reports: ProjectReports }>('GET', `/api/projects/${projectId}/reports`),
+  getProjectOverview: (projectId: string) => request<{ overview: ProjectOverview }>('GET', `/api/projects/${projectId}/overview`),
   updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
     request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
   orgActivity: (slug: string) => request<{ activity: ActivityItem[] }>('GET', `/api/orgs/${slug}/activity`),

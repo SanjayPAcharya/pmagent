@@ -205,6 +205,49 @@ export async function workloadReport(projectId: string): Promise<WorkloadRow[]> 
     .sort((a, b) => b.openCount - a.openCount)
 }
 
+export interface MilestoneReadiness {
+  done: number
+  total: number
+}
+
+/**
+ * 3.7 R4/R14 — per open-milestone readiness. Tickets are bucketed by `dueDate`
+ * into the window (previousOpenMilestoneDate, thisMilestoneDate] (the first
+ * window opens at -∞); `total` counts non-archived, non-CANCELLED tickets in the
+ * window, `done` those that are DONE. Returned keyed by milestone id.
+ */
+export async function milestoneReadiness(projectId: string): Promise<Map<string, MilestoneReadiness>> {
+  const out = new Map<string, MilestoneReadiness>()
+  const milestones = await prisma.milestone.findMany({
+    where: { projectId, done: false },
+    orderBy: { date: 'asc' },
+    select: { id: true, date: true },
+  })
+  if (milestones.length === 0) return out
+
+  const tickets = await prisma.ticket.findMany({
+    where: { projectId, archivedAt: null, status: { not: 'CANCELLED' }, dueDate: { not: null } },
+    select: { status: true, dueDate: true },
+  })
+
+  let lower = -Infinity
+  for (const m of milestones) {
+    const upper = m.date.getTime()
+    let total = 0
+    let done = 0
+    for (const t of tickets) {
+      const due = t.dueDate!.getTime()
+      if (due > lower && due <= upper) {
+        total += 1
+        if (t.status === 'DONE') done += 1
+      }
+    }
+    out.set(m.id, { done, total })
+    lower = upper
+  }
+  return out
+}
+
 export async function projectReports(projectId: string): Promise<ProjectReports> {
   const [velocity, cycle, workload] = await Promise.all([
     velocityReport(projectId),
