@@ -194,7 +194,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R5 — `ProjectOverview.tsx` page + landing switch (L)
+### - [x] R5 — `ProjectOverview.tsx` page + landing switch (L) *(done 2026-07-05)*
+> Browser-verified: fresh nav lands on Overview; tree leaves (Overview/Board/List/Sprints/Reports/Settings) all route; Board moved to `/board`; legacy `…/ticket/2` still opens the board drawer; milestone inline-add + readiness ring + done-toggle work with live invalidation; Overview refetches on a foreign WS event. Dark mode + responsive grid sane.
 
 **Goal:** the reviewer's "landing page for project managers".
 

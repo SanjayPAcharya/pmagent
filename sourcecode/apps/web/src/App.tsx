@@ -4,6 +4,7 @@ import Landing from './pages/Landing'
 import Layout from './pages/Layout'
 import Dashboard from './pages/Dashboard'
 import OrgProjects from './pages/OrgProjects'
+import ProjectOverview from './pages/ProjectOverview'
 import Board from './pages/Board'
 import ProjectList from './pages/ProjectList'
 import Sprints from './pages/Sprints'
@@ -38,7 +39,10 @@ export default function App() {
             <Route path="/orgs/:slug" element={<OrgProjects />} />
             <Route path="/orgs/:slug/members" element={<Members />} />
             <Route path="/orgs/:slug/settings" element={<OrgSettings />} />
-            <Route path="/orgs/:slug/projects/:projectSlug" element={<Board />} />
+            <Route path="/orgs/:slug/projects/:projectSlug" element={<ProjectOverview />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/board" element={<Board />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/board/ticket/:number" element={<Board />} />
+            {/* Legacy deep link — kept so old /ticket/:number URLs still open the board drawer. */}
             <Route path="/orgs/:slug/projects/:projectSlug/ticket/:number" element={<Board />} />
             <Route path="/orgs/:slug/projects/:projectSlug/list" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/list/ticket/:number" element={<ProjectList />} />

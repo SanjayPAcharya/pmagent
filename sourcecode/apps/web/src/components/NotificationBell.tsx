@@ -84,7 +84,7 @@ export function NotificationBell({ slug, projectSlug }: { slug: string; projectS
   const openGroup = async (g: (typeof groups)[number]) => {
     await Promise.all(g.ids.map((id) => api.markNotificationRead(id).catch(() => undefined)))
     refresh()
-    if (g.num) navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${g.num}`)
+    if (g.num) navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${g.num}`)
   }
 
   return (

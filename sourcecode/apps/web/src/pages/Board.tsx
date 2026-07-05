@@ -275,7 +275,7 @@ export default function Board() {
       const { ticket } = await api.createTicket({ projectId, title, status: 'BACKLOG' })
       setFirstTitle('')
       qc.invalidateQueries({ queryKey: ticketsPrefix })
-      navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${ticket.number}`)
+      navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)
     } catch (err) {
       toast.error(t('board.createFailed', { message: (err as Error).message }))
     }
@@ -303,8 +303,8 @@ export default function Board() {
   }
   const clearGhost = (id: string) => send({ type: 'ticket.drag', ticketId: id, status: null })
 
-  const openTicket = (t: Ticket) => navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${t.number}`)
-  const closeDrawer = () => navigate(`/orgs/${slug}/projects/${projectSlug}`)
+  const openTicket = (t: Ticket) => navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${t.number}`)
+  const closeDrawer = () => navigate(`/orgs/${slug}/projects/${projectSlug}/board`)
   const drawerTicket = number ? tickets.data?.items.find((t) => t.number === Number(number)) : undefined
 
   // D2 frecency — record project + opened-ticket visits for the palette's Recent.
@@ -316,7 +316,7 @@ export default function Board() {
       recordVisit('ticket', {
         key: drawerTicket.id,
         label: drawerTicket.title,
-        href: `/orgs/${slug}/projects/${projectSlug}/ticket/${drawerTicket.number}`,
+        href: `/orgs/${slug}/projects/${projectSlug}/board/ticket/${drawerTicket.number}`,
         meta: drawerTicket.key,
       })
   }, [drawerTicket?.id])

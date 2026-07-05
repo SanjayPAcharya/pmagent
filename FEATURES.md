@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-04**.)
+> (Kept up to date as features ship — last updated **2026-07-05**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -31,13 +31,13 @@ Type a name in the box at the top of the home screen (your company or team name)
 
 Click your organization, type a project name (e.g. "Website"), press **Create**. The project gets a short **key** like `WEB` — every ticket in it will be numbered `WEB-1`, `WEB-2`, …
 
-Notice the **workspace sidebar** on the left now shows Organization → Project → Board / Sprints / Members. That tree is your fastest way around the app from here on.
+Notice the **workspace sidebar** on the left now shows Organization → Project → Overview / Board / List / Sprints / Reports / Settings. That tree is your fastest way around the app from here on.
 
 **Next → put some work on the board.**
 
 ## Step 4 · Create your first tickets
 
-Open the project — this is the **Board**. Three ways to add tickets:
+Open the project (you'll land on the **Overview**) and click **Board** in the sidebar. Three ways to add tickets:
 
 1. **Quick add** — the input in the middle of the empty board (or the **+** on any column later). Type a title, press Enter.
 2. **New from template** — the 📄 button in the board header. Pick *Bug report* or *Feature* and the ticket arrives pre-filled with a proper structure.
@@ -96,6 +96,16 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - **Workspace sidebar** — collapsible org → project tree; star ⭐ projects to pin them on top; collapses to a slide-out menu on mobile.
 - **Breadcrumbs** always show Home › Org › Project.
 - **⌘K palette** — global search that looks in ticket titles **and descriptions** and finds **projects by name** across all your organizations; recent items (smart-ranked), quick-create with `!priority @assignee #sprint`, actions on the open ticket, theme toggle.
+
+## Overview (project landing page)
+- Opening a project now lands on its **Overview** — a manager's-eye dashboard. The sidebar's **Board** and **List** leaves are one click away.
+- **Status** — open vs. done counts, a to-do/in-progress/done bar, and a sprint-vs-ad-hoc split.
+- **Active sprint** — progress bar, days left, and the burndown chart; a prompt to start one if none is active.
+- **Blockers** — the top blocked tickets (either marked Blocked or waiting on unfinished dependencies); click one to open it.
+- **Milestones** — your next target dates with a readiness ring (how many of the tickets due before each are done). Add one inline (name + date) and tick it off when reached.
+- **Capacity** — open tickets per teammate plus a recent-velocity estimate.
+- **Recent activity** across the project, and a **Project summary** card (Beta — the AI-written digest arrives with the agent release).
+- Every card updates live as teammates make changes — no refresh needed.
 
 ## Board
 - Columns: Backlog · To Do · In Progress · In Review · Blocked · Done, with drag & drop and within-column reordering.

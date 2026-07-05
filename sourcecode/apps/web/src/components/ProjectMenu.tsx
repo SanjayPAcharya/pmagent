@@ -29,7 +29,7 @@ export function ProjectMenu({ orgSlug, project }: { orgSlug: string; project: Pr
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => navigate(base)}>
+        <DropdownMenuItem onSelect={() => navigate(`${base}/board`)}>
           <FolderKanban className="mr-2 h-4 w-4" />
           {t('nav.board')}
         </DropdownMenuItem>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Link, NavLink, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, ChevronRight, PanelLeftClose, Users, Star, FolderKanban, Rocket, Settings, UserCircle2 } from 'lucide-react'
+import { BarChart3, ChevronRight, PanelLeftClose, Users, Star, LayoutDashboard, FolderKanban, List, Rocket, Settings, UserCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api, type Organization, type Project } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -260,8 +260,16 @@ function ProjectNode({
       {expanded && (
         <div className="ml-4 border-l border-border pl-1">
           <NavLink to={`/orgs/${orgSlug}/projects/${project.slug}`} end onClick={onNavigate} className={leafClass}>
+            <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+            {t('nav.overview')}
+          </NavLink>
+          <NavLink to={`/orgs/${orgSlug}/projects/${project.slug}/board`} onClick={onNavigate} className={leafClass}>
             <FolderKanban className="h-3.5 w-3.5 shrink-0" />
             {t('nav.board')}
+          </NavLink>
+          <NavLink to={`/orgs/${orgSlug}/projects/${project.slug}/list`} onClick={onNavigate} className={leafClass}>
+            <List className="h-3.5 w-3.5 shrink-0" />
+            {t('nav.list')}
           </NavLink>
           <NavLink to={`/orgs/${orgSlug}/projects/${project.slug}/sprints`} onClick={onNavigate} className={leafClass}>
             <Rocket className="h-3.5 w-3.5 shrink-0" />

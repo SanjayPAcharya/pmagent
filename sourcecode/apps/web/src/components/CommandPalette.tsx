@@ -134,7 +134,7 @@ export function CommandPalette() {
       })
       qc.invalidateQueries({ queryKey: ['tickets', projectId] })
       toast.success(t('board.ticketCreated'))
-      go(`/orgs/${slug}/projects/${projectSlug}/ticket/${ticket.number}`)
+      go(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)
     } catch (e) {
       toast.error((e as Error).message)
     }
@@ -300,7 +300,7 @@ export function CommandPalette() {
                   <CommandItem
                     key={tk.id}
                     value={`${tk.key} ${tk.title}`}
-                    onSelect={() => go(`/orgs/${slug}/projects/${projectSlug}/ticket/${tk.number}`)}
+                    onSelect={() => go(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${tk.number}`)}
                   >
                     <Hash className="h-4 w-4" />
                     <span className="font-mono text-xs text-muted-foreground">{tk.key}</span>
@@ -332,7 +332,7 @@ export function CommandPalette() {
                     <CommandItem
                       key={hit.id}
                       value={`global ${hit.key} ${hit.title}`}
-                      onSelect={() => go(`/orgs/${hit.orgSlug}/projects/${hit.projectSlug}/ticket/${hit.number}`)}
+                      onSelect={() => go(`/orgs/${hit.orgSlug}/projects/${hit.projectSlug}/board/ticket/${hit.number}`)}
                     >
                       <Search className="h-4 w-4" />
                       <span className="font-mono text-xs text-muted-foreground">{hit.key}</span>
