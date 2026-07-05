@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelationsSection } from '@/components/RelationsSection'
+import { BetaAIButton } from '@/components/BetaBadge'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
@@ -721,9 +722,12 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                     {t('readiness.label', { ...ticketReadiness(ticket) })}
                   </span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setEditingDesc((v) => !v)}>
-                  {editingDesc ? t('common.preview') : t('common.edit')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <BetaAIButton label={t('beta.autoFill')} />
+                  <Button variant="ghost" size="sm" onClick={() => setEditingDesc((v) => !v)}>
+                    {editingDesc ? t('common.preview') : t('common.edit')}
+                  </Button>
+                </div>
               </div>
               {editingDesc ? (
                 <div className="mt-1 space-y-2">

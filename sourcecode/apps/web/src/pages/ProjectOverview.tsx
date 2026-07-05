@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Ban, Sparkles, Plus, Check, Rocket, LayoutGrid } from 'lucide-react'
 import { api, type OverviewMilestone, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { BetaBadge } from '@/components/BetaBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -320,7 +320,7 @@ export default function ProjectOverview() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <Sparkles className="h-4 w-4 text-primary" />
                 {t('overview.aiSummaryTitle')}
-                <Badge variant="secondary">{t('common.beta')}</Badge>
+                <BetaBadge />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">

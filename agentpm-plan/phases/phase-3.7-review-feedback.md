@@ -312,7 +312,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R10 — Beta AI affordances (S)
+### - [x] R10 — Beta AI affordances (S) *(done 2026-07-05)*
+> `BetaBadge` + inert `BetaAIButton` (disabled, aria-disabled, title tooltip, no handlers/network — grep-checked clean). Placed: board column quick-add ("Draft with AI", browser-confirmed), drawer spec header ("Auto-fill from prompt"), Overview summary card (switched to `BetaBadge`). Theme-aware tokens; typecheck + build green.
 
 **Goal:** make the AI story visible without shipping AI (owner decision).
 

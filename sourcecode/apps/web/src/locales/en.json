@@ -17,6 +17,10 @@
     "beta": "Beta",
     "betaTooltip": "Arrives with the agent release"
   },
+  "beta": {
+    "draftWithAI": "Draft with AI",
+    "autoFill": "Auto-fill from prompt"
+  },
   "nav": {
     "overview": "Overview",
     "board": "Board",

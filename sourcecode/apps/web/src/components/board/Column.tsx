@@ -6,6 +6,7 @@ import { Plus, FilePlus2 } from 'lucide-react'
 import type { Member, Sprint, Ticket, TicketStatus, TicketTemplate } from '@/lib/api'
 import { STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
 import { parseQuickCreate, type ParsedQuickCreate } from '@/lib/parseQuickCreate'
+import { BetaAIButton } from '@/components/BetaBadge'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -166,6 +167,9 @@ export function Column({
                 )}
               </div>
             )}
+            <div className="flex px-0.5">
+              <BetaAIButton label={t('beta.draftWithAI')} />
+            </div>
           </div>
         )}
         <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
