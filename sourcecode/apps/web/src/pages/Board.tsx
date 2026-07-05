@@ -21,6 +21,7 @@ import { api, type Member, type Priority, type Ticket, type TicketStatus, type T
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
 import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { useProjectWebSocket } from '@/lib/websocket'
+import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { Column } from '@/components/board/Column'
 import { TicketCardBody } from '@/components/board/TicketCard'
 import { BoardSkeleton } from '@/components/board/BoardSkeleton'
@@ -95,6 +96,9 @@ export default function Board() {
     setSort('position')
   }
 
+  // 3.7 R11 — sprint vs ad-hoc lens (a filter, not a fork; server rules from R1).
+  const [wsTab, setWsTab] = useLocalStorageState<'all' | 'SPRINT' | 'ADHOC'>(`agentpm-board-ws-${projectId ?? ''}`, 'all')
+
   const params = useMemo(() => {
     const p: Record<string, string> = { sort }
     if (qDebounced) p.q = qDebounced
@@ -102,8 +106,9 @@ export default function Board() {
     if (type) p.type = type
     if (assignedToId) p.assignedToId = assignedToId
     if (sprintFilter) p.sprintId = sprintFilter
+    if (wsTab !== 'all') p.workstream = wsTab
     return p
-  }, [sort, qDebounced, priority, type, assignedToId, sprintFilter])
+  }, [sort, qDebounced, priority, type, assignedToId, sprintFilter, wsTab])
 
   const ticketsPrefix = useMemo(() => ['tickets', projectId], [projectId])
   const ticketsKey = useMemo(() => ['tickets', projectId, params], [projectId, params])
@@ -265,7 +270,9 @@ export default function Board() {
         status,
         priority: parsed.priority,
         assignedToId: parsed.assignedToId,
-        sprintId: parsed.sprintId,
+        // On the Ad-hoc tab, new work is ad-hoc and never joins a sprint.
+        workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
+        sprintId: wsTab === 'ADHOC' ? undefined : parsed.sprintId,
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       toast.success(t('board.ticketCreated'))
@@ -399,6 +406,21 @@ export default function Board() {
           <h2 className="text-xl font-semibold text-foreground">{project?.name ?? projectSlug}</h2>
         </div>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
+            {(['all', 'SPRINT', 'ADHOC'] as const).map((w) => (
+              <button
+                key={w}
+                onClick={() => setWsTab(w)}
+                aria-pressed={wsTab === w}
+                className={cn(
+                  'h-7 rounded px-2.5 text-xs transition-colors',
+                  wsTab === w ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t(w === 'all' ? 'board.tabAll' : w === 'SPRINT' ? 'board.tabSprint' : 'board.tabAdhoc')}
+              </button>
+            ))}
+          </div>
           <ViewToggle slug={slug} projectSlug={projectSlug} active="board" />
           {orgId && project && (
             <div className="flex items-center gap-0.5">

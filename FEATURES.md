@@ -114,6 +114,12 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - On phones: columns snap-scroll, **swipe** a card to advance/retreat its status.
 - **Live presence** — viewer avatars on cards, ghost outlines of teammates' in-flight drags.
 
+## Sprint vs ad-hoc work
+- Every ticket is either **Sprint work** (planned into sprints) or **Ad-hoc** (operational work that lives outside sprints). Set it in the ticket drawer's **Workstream** field.
+- The board and list have an **All / Sprint work / Ad-hoc** tab so you can focus on one lane; creating a ticket while on the Ad-hoc tab makes it ad-hoc automatically.
+- Switching a ticket to **Ad-hoc** removes it from its sprint (a hint warns you first); the **bulk** menu can change the workstream of several tickets at once.
+- CSV export/import carry a **Workstream** column (values like "Sprint", "Ad-hoc", "Ops"). Velocity stays sprint-based by design, and workload now shows a small **sprint vs ad-hoc** split per person.
+
 ## List view
 - **Board ⇄ List** toggle (remembered per browser).
 - Filterable, sortable table; row click opens the ticket panel.

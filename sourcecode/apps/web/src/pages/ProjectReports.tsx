@@ -129,9 +129,10 @@ function WorkloadList({ rows }: { rows: WorkloadRow[] }) {
           <div className="h-4 flex-1 overflow-hidden rounded bg-muted">
             <div className="h-full rounded bg-primary/70" style={{ width: `${(r.openCount / max) * 100}%` }} />
           </div>
-          <span className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+          <span className="w-44 shrink-0 text-right text-xs text-muted-foreground">
             {t('reports.openCount', { count: r.openCount })}
             {r.inProgressCount > 0 && ` · ${t('reports.inProgressCount', { count: r.inProgressCount })}`}
+            {r.adhocCount > 0 && ` · ${t('reports.workstreamSplit', { sprint: r.sprintCount, adhoc: r.adhocCount })}`}
           </span>
         </li>
       ))}

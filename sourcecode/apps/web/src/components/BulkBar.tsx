@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Archive, ChevronUp, CircleDot, Rocket, Tag, UserPlus, X } from 'lucide-react'
+import { Archive, ChevronUp, CircleDot, Layers, Rocket, Tag, UserPlus, X } from 'lucide-react'
 import { api, type BatchPatch, type Label, type Member, type Sprint, type TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -88,6 +88,14 @@ export function BulkBar({ selectedIds, projectId, members, sprints, labels, onCl
               {s.name}
             </DropdownMenuItem>
           ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{menuBtn(<Layers className="h-4 w-4" />, t('bulk.workstream'))}</DropdownMenuTrigger>
+        <DropdownMenuContent side="top">
+          <DropdownMenuItem onClick={() => apply({ workstream: 'SPRINT' }, t('bulk.updated'))}>{t('drawer.workstreamSprint')}</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => apply({ workstream: 'ADHOC' }, t('bulk.updated'))}>{t('drawer.workstreamAdhoc')}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

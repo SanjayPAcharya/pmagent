@@ -325,7 +325,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R11 — Workstream UX: tabs, list, CSV, bulk (M)
+### - [x] R11 — Workstream UX: tabs, list, CSV, bulk (M) *(done 2026-07-05)*
+> Browser-verified (no test data left): board **All / Sprint work / Ad-hoc** tabs — Ad-hoc emptied the board (all current tickets are Sprint); drawer **Workstream** select renders with the "switching to ad-hoc removes it from its sprint" hint on a sprinted ticket. CSV start-date/workstream mapping, ADHOC-import-sprintless, and the autoTodoOnAssign-keeps-ADHOC invariant are unit/integration tested. List column/filter, bulk menu, reports split wired + typecheck green.
 
 **Goal:** the reviewer's "ad-hoc board" as a first-class lens, not a fork (server rules already exist from R1).
 

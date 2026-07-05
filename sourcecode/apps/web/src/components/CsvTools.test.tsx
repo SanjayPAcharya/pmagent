@@ -28,12 +28,16 @@ describe('mapRows', () => {
       priority: 'HIGH',
       type: 'FEATURE',
       storyPoints: 3,
+      startDate: '2026-08-01T00:00:00.000Z',
+      workstream: 'SPRINT',
       labels: ['frontend', 'auth'],
       assignee: 'dev@example.com',
     })
     // Jira-ish aliases: "Task" → CHORE, "Backlog"/"Urgent" pass through the maps.
-    expect(rows[1]).toMatchObject({ title: 'Fix crash on save', status: 'BACKLOG', priority: 'URGENT', type: 'BUG', labels: ['bug'] })
+    expect(rows[1]).toMatchObject({ title: 'Fix crash on save', status: 'BACKLOG', priority: 'URGENT', type: 'BUG', labels: ['bug'], workstream: 'ADHOC' })
+    expect(rows[1].startDate).toBeUndefined()
     expect(rows[2]).toMatchObject({ title: 'Update onboarding docs', status: 'IN_PROGRESS', priority: 'LOW', type: 'CHORE' })
+    expect(rows[2].workstream).toBeUndefined()
     expect(rows[2].description).toBeUndefined()
     expect(rows[2].labels).toBeUndefined()
     expect(rows[2].assignee).toBeUndefined()
@@ -72,6 +76,20 @@ describe('mapRows', () => {
       type: undefined,
       storyPoints: undefined,
     })
+  })
+
+  it('maps Start date to UTC ISO and Workstream synonyms (3.7 R11)', () => {
+    const { rows } = mapRows([
+      ['Title', 'Start Date', 'Type of work'],
+      ['Sprinted', '2026-09-15', 'sprint'],
+      ['Operational', '', 'ops'],
+      ['Loose', 'not-a-date', 'whatever'],
+    ])
+    expect(rows[0]).toMatchObject({ startDate: '2026-09-15T00:00:00.000Z', workstream: 'SPRINT' })
+    expect(rows[1].workstream).toBe('ADHOC')
+    expect(rows[1].startDate).toBeUndefined()
+    expect(rows[2].workstream).toBeUndefined() // unknown → omit (server defaults SPRINT)
+    expect(rows[2].startDate).toBeUndefined()
   })
 
   it('splits Labels on ";" and accepts Assignee aliases', () => {

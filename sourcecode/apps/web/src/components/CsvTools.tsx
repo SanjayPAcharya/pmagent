@@ -18,8 +18,15 @@ const HEADER_ALIASES: Record<keyof ImportTicketRow, string[]> = {
   type: ['type', 'issue type', 'issuetype'],
   storyPoints: ['story points', 'storypoints', 'points', 'estimate'],
   acceptanceCriteria: ['acceptance criteria', 'ac'],
+  startDate: ['start', 'start date', 'startdate'],
+  workstream: ['workstream', 'work stream', 'type of work'],
   labels: ['labels', 'label'],
   assignee: ['assignee', 'assigned to', 'assignedto', 'owner'],
+}
+// sprint→SPRINT, ad-hoc variants + ops→ADHOC; anything else omitted (server defaults SPRINT).
+const WORKSTREAM_MAP: Record<string, 'SPRINT' | 'ADHOC'> = {
+  sprint: 'SPRINT', 'sprint work': 'SPRINT',
+  adhoc: 'ADHOC', 'ad-hoc': 'ADHOC', 'ad hoc': 'ADHOC', ops: 'ADHOC', operational: 'ADHOC',
 }
 const STATUS_MAP: Record<string, TicketStatus> = {
   backlog: 'BACKLOG', 'to do': 'TODO', todo: 'TODO', open: 'TODO',
@@ -39,7 +46,7 @@ const PRIORITY_SET = new Set(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 // purpose: quoted commas, a multi-line acceptance-criteria cell, mixed
 // Jira-style values ("To Do", "Story"), and optional cells left empty.
 export const SAMPLE_CSV_ROWS: string[][] = [
-  ['Title', 'Description', 'Status', 'Priority', 'Type', 'Story Points', 'Acceptance Criteria', 'Labels', 'Assignee'],
+  ['Title', 'Description', 'Status', 'Priority', 'Type', 'Story Points', 'Acceptance Criteria', 'Start', 'Workstream', 'Labels', 'Assignee'],
   [
     'Set up the login page',
     'Users can sign in with email, or Google',
@@ -48,11 +55,13 @@ export const SAMPLE_CSV_ROWS: string[][] = [
     'Feature',
     '3',
     '- [ ] Form validates the email\n- [ ] Errors are shown inline',
+    '2026-08-01',
+    'Sprint',
     'frontend; auth',
     'dev@example.com',
   ],
-  ['Fix crash on save', 'The app crashes when saving an empty form', 'Backlog', 'Urgent', 'Bug', '2', '', 'bug', ''],
-  ['Update onboarding docs', '', 'In Progress', 'Low', 'Task', '1', '', '', ''],
+  ['Fix crash on save', 'The app crashes when saving an empty form', 'Backlog', 'Urgent', 'Bug', '2', '', '', 'Ad-hoc', 'bug', ''],
+  ['Update onboarding docs', '', 'In Progress', 'Low', 'Task', '1', '', '', '', '', ''],
 ]
 
 export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: number } {
@@ -62,7 +71,8 @@ export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: n
   const idx = {
     title: col('title'), description: col('description'), status: col('status'),
     priority: col('priority'), type: col('type'), storyPoints: col('storyPoints'),
-    acceptanceCriteria: col('acceptanceCriteria'), labels: col('labels'), assignee: col('assignee'),
+    acceptanceCriteria: col('acceptanceCriteria'), startDate: col('startDate'),
+    workstream: col('workstream'), labels: col('labels'), assignee: col('assignee'),
   }
   const rows: ImportTicketRow[] = []
   let skipped = 0
@@ -77,6 +87,11 @@ export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: n
         ? (r[idx.labels] ?? '').split(';').map((l) => l.trim()).filter(Boolean)
         : []
     const assignee = idx.assignee >= 0 ? r[idx.assignee]?.trim() : ''
+    // Start date: accept a plain date, ship UTC-midnight ISO the import schema wants.
+    const startRaw = idx.startDate >= 0 ? r[idx.startDate]?.trim() : ''
+    const startMs = startRaw ? Date.parse(startRaw) : NaN
+    const startDate = Number.isNaN(startMs) ? undefined : new Date(startMs).toISOString()
+    const workstream = idx.workstream >= 0 ? WORKSTREAM_MAP[r[idx.workstream]?.trim().toLowerCase() ?? ''] : undefined
     rows.push({
       title: title.slice(0, 200),
       description: idx.description >= 0 && r[idx.description]?.trim() ? r[idx.description] : undefined,
@@ -85,6 +100,8 @@ export function mapRows(grid: string[][]): { rows: ImportTicketRow[]; skipped: n
       priority: PRIORITY_SET.has(prio) ? (prio as Priority) : undefined,
       type: idx.type >= 0 ? TYPE_MAP[r[idx.type]?.trim().toLowerCase() ?? ''] : undefined,
       storyPoints: Number.isInteger(points) && points > 0 ? points : undefined,
+      startDate,
+      workstream,
       labels: labels.length ? labels.slice(0, 20) : undefined,
       assignee: assignee || undefined,
     })
@@ -107,11 +124,12 @@ export function CsvTools({ projectId, projectKey, items, sprints }: Props) {
   const [busy, setBusy] = useState(false)
 
   const exportCsv = () => {
-    const header = ['Key', 'Title', 'Status', 'Priority', 'Type', 'Assignee', 'Sprint', 'Points', 'Due', 'Labels', 'Updated']
+    const header = ['Key', 'Title', 'Status', 'Priority', 'Type', 'Assignee', 'Sprint', 'Workstream', 'Points', 'Start', 'Due', 'Labels', 'Updated']
     const rows = items.map((tk) => [
       tk.key, tk.title, STATUS_LABEL[tk.status], tk.priority, tk.type,
       tk.assignedTo?.name ?? '', sprints.find((s) => s.id === tk.sprintId)?.name ?? '',
-      tk.storyPoints?.toString() ?? '', tk.dueDate?.slice(0, 10) ?? '',
+      tk.workstream === 'ADHOC' ? 'Ad-hoc' : 'Sprint',
+      tk.storyPoints?.toString() ?? '', tk.startDate?.slice(0, 10) ?? '', tk.dueDate?.slice(0, 10) ?? '',
       tk.labels.map((l) => l.name).join('; '), tk.updatedAt,
     ])
     downloadCsv(`${projectKey.toLowerCase()}-tickets.csv`, [header, ...rows])

@@ -243,3 +243,45 @@ describe('tickets — workstream & dates (3.7 R1)', () => {
     expect(items[0].workstream).toBe('ADHOC')
   })
 })
+
+describe('workstream — CSV import + automation invariant (3.7 R11)', () => {
+  it('CSV import honors an ADHOC row — lands sprint-less with its start date', async () => {
+    const owner = await tokenFor('ws-imp')
+    const { id: orgId } = await makeOrg(owner, 'WS Import')
+    const { id: projectId } = await makeProject(owner, orgId, 'App')
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/tickets/import',
+      headers: bearer(owner),
+      payload: { projectId, tickets: [{ title: 'Ops work', workstream: 'ADHOC', startDate: '2026-09-01T00:00:00.000Z' }] },
+    })
+    expect(res.statusCode).toBe(201)
+
+    const list = await app.inject({ method: 'GET', url: `/api/tickets?projectId=${projectId}&workstream=ADHOC`, headers: bearer(owner) })
+    const items = list.json().items as { title: string; workstream: string; sprintId: string | null; startDate: string | null }[]
+    expect(items).toHaveLength(1)
+    expect(items[0].workstream).toBe('ADHOC')
+    expect(items[0].sprintId).toBeNull()
+    expect(items[0].startDate).toBe('2026-09-01T00:00:00.000Z')
+  })
+
+  it('autoTodoOnAssign: assigning an ADHOC backlog ticket moves it to TODO but keeps it ad-hoc + sprint-less', async () => {
+    const owner = await tokenFor('ws-auto')
+    const { id: orgId, slug } = await makeOrg(owner, 'WS Auto')
+    const { id: projectId } = await makeProject(owner, orgId, 'App')
+    await app.inject({ method: 'PATCH', url: `/api/projects/${projectId}`, headers: bearer(owner), payload: { automation: { autoTodoOnAssign: true } } })
+
+    const dev = await tokenFor('ws-auto-dev')
+    const devId = await provision(dev)
+    await addMember(owner, slug, 'ws-auto-dev@x.com')
+
+    const created = await createTicket(owner, { projectId, title: 'Ops', status: 'BACKLOG', workstream: 'ADHOC' })
+    const id = created.json().ticket.id
+    const patched = await patchTicket(owner, id, { assignedToId: devId })
+    expect(patched.statusCode).toBe(200)
+    expect(patched.json().ticket.status).toBe('TODO')
+    expect(patched.json().ticket.sprintId).toBeNull()
+    expect(patched.json().ticket.workstream).toBe('ADHOC')
+  })
+})

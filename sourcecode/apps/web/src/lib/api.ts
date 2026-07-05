@@ -209,6 +209,8 @@ export interface ImportTicketRow {
   type?: TicketType
   storyPoints?: number
   acceptanceCriteria?: string
+  startDate?: string
+  workstream?: Workstream
   // Resolved server-side: label names matched within the org (unknowns ignored),
   // assignee matched by member email or exact name.
   labels?: string[]
@@ -218,6 +220,7 @@ export interface BatchPatch {
   status?: TicketStatus
   assignedToId?: string | null
   sprintId?: string | null
+  workstream?: Workstream
   addLabelIds?: string[]
   archived?: boolean
 }
@@ -305,6 +308,8 @@ export interface WorkloadRow {
   avatarUrl: string | null
   openCount: number
   inProgressCount: number
+  sprintCount: number
+  adhocCount: number
 }
 export interface ProjectReports {
   velocity: VelocityPoint[]

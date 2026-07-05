@@ -61,15 +61,16 @@ export default function ProjectList() {
   const [assignedToId, setAssignedToId] = useState('')
   const [sprintFilter, setSprintFilter] = useState('')
   const [labelFilter, setLabelFilter] = useState('')
+  const [workstreamFilter, setWorkstreamFilter] = useState('')
   const [sort, setSort] = useState('-updatedAt')
   useEffect(() => {
     const id = setTimeout(() => setQDebounced(q), 300)
     return () => clearTimeout(id)
   }, [q])
-  const hasFilters = Boolean(qDebounced || status || priority || type || assignedToId || sprintFilter || labelFilter)
+  const hasFilters = Boolean(qDebounced || status || priority || type || assignedToId || sprintFilter || labelFilter || workstreamFilter)
   const clearFilters = () => {
     setQ(''); setQDebounced(''); setStatus(''); setPriority(''); setType('')
-    setAssignedToId(''); setSprintFilter(''); setLabelFilter('')
+    setAssignedToId(''); setSprintFilter(''); setLabelFilter(''); setWorkstreamFilter('')
   }
 
   const params = useMemo(() => {
@@ -81,8 +82,9 @@ export default function ProjectList() {
     if (assignedToId) p.assignedToId = assignedToId
     if (sprintFilter) p.sprintId = sprintFilter
     if (labelFilter) p.labelId = labelFilter
+    if (workstreamFilter) p.workstream = workstreamFilter
     return p
-  }, [sort, qDebounced, status, priority, type, assignedToId, sprintFilter, labelFilter])
+  }, [sort, qDebounced, status, priority, type, assignedToId, sprintFilter, labelFilter, workstreamFilter])
 
   const ticketsKey = ['tickets', projectId, params] as const
   const tickets = useQuery({
@@ -172,6 +174,11 @@ export default function ProjectList() {
           <option value="">{t('list.allLabels')}</option>
           {labels.data?.labels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
+        <select value={workstreamFilter} onChange={(e) => setWorkstreamFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
+          <option value="">{t('gantt.allWorkstreams')}</option>
+          <option value="SPRINT">{t('drawer.workstreamSprint')}</option>
+          <option value="ADHOC">{t('drawer.workstreamAdhoc')}</option>
+        </select>
         {hasFilters && (
           <button onClick={clearFilters} className="text-sm text-muted-foreground hover:text-foreground">
             {t('board.clearFilters')}
@@ -211,6 +218,7 @@ export default function ProjectList() {
                 <th className={sortableTh} onClick={() => toggleSort('priority')}>{t('list.colPriority')}{sortIcon('priority')}</th>
                 <th className={th}>{t('list.colAssignee')}</th>
                 <th className={th}>{t('list.colSprint')}</th>
+                <th className={cn(th, 'hidden md:table-cell')}>{t('list.colWorkstream')}</th>
                 <th className={cn(th, 'text-right')}>{t('list.colPoints')}</th>
                 <th className={sortableTh} onClick={() => toggleSort('updated')}>{t('list.colUpdated')}{sortIcon('updated')}</th>
               </tr>
@@ -219,7 +227,7 @@ export default function ProjectList() {
               {!tickets.data
                 ? Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 9 }).map((_, j) => (
+                      {Array.from({ length: 10 }).map((_, j) => (
                         <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-full max-w-24" /></td>
                       ))}
                     </tr>
@@ -276,13 +284,18 @@ export default function ProjectList() {
                       <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
                         {sprints.data?.sprints.find((s) => s.id === tk.sprintId)?.name ?? '—'}
                       </td>
+                      <td className="hidden whitespace-nowrap px-3 py-2 md:table-cell">
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {tk.workstream === 'ADHOC' ? t('drawer.workstreamAdhoc') : t('drawer.workstreamSprint')}
+                        </span>
+                      </td>
                       <td className="whitespace-nowrap px-3 py-2 text-right text-xs text-muted-foreground">{tk.storyPoints ?? '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">{formatRelative(tk.updatedAt)}</td>
                     </tr>
                   ))}
               {tickets.data && tickets.data.items.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
                     {hasFilters ? t('list.emptyFiltered') : t('list.empty')}
                   </td>
                 </tr>

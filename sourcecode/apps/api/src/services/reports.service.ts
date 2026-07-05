@@ -39,6 +39,8 @@ export interface WorkloadRow {
   avatarUrl: string | null
   openCount: number
   inProgressCount: number
+  sprintCount: number // 3.7 R11 — open sprint-work vs ad-hoc split
+  adhocCount: number
 }
 
 export interface ProjectReports {
@@ -177,15 +179,17 @@ export async function cycleReport(projectId: string): Promise<CycleReport> {
 /** R4 — open tickets per member (grouped count; one bucket for unassigned). */
 export async function workloadReport(projectId: string): Promise<WorkloadRow[]> {
   const groups = await prisma.ticket.groupBy({
-    by: ['assignedToId', 'status'],
+    by: ['assignedToId', 'status', 'workstream'],
     where: { projectId, archivedAt: null, status: { notIn: [...CLOSED] } },
     _count: { _all: true },
   })
-  const byUser = new Map<string | null, { openCount: number; inProgressCount: number }>()
+  const byUser = new Map<string | null, { openCount: number; inProgressCount: number; sprintCount: number; adhocCount: number }>()
   for (const g of groups) {
-    const row = byUser.get(g.assignedToId) ?? { openCount: 0, inProgressCount: 0 }
+    const row = byUser.get(g.assignedToId) ?? { openCount: 0, inProgressCount: 0, sprintCount: 0, adhocCount: 0 }
     row.openCount += g._count._all
     if (g.status === 'IN_PROGRESS') row.inProgressCount += g._count._all
+    if (g.workstream === 'ADHOC') row.adhocCount += g._count._all
+    else row.sprintCount += g._count._all
     byUser.set(g.assignedToId, row)
   }
 
