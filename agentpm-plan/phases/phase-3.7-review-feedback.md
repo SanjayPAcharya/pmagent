@@ -225,7 +225,7 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R6 — Gantt data + pure date math (M)
+### - [x] R6 — Gantt data + pure date math (M) *(done 2026-07-05)*
 
 **Goal:** the risky math isolated and tested before any UI exists.
 

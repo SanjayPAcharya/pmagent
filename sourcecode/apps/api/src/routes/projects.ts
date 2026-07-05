@@ -7,6 +7,7 @@ import { assertOrgRole } from '../services/authz.js'
 import { projectListStats } from '../services/stats.service.js'
 import { projectReports } from '../services/reports.service.js'
 import { projectOverview } from '../services/overview.service.js'
+import { projectGantt } from '../services/gantt.service.js'
 import { recentActivity } from '../services/activity.service.js'
 import { publishEvent } from '../events/event-bus.js'
 import { ApiError } from '../lib/errors.js'
@@ -131,6 +132,12 @@ const routes: FastifyPluginAsync = async (app) => {
   app.get('/:projectId/overview', async (request) => {
     const project = await loadProjectAuthorized(request, 'MEMBER')
     return { overview: await projectOverview(project.id) }
+  })
+
+  // 3.7 R6 — Gantt data (dated tickets + dependency edges + milestones)
+  app.get('/:projectId/gantt', async (request) => {
+    const project = await loadProjectAuthorized(request, 'MEMBER')
+    return { gantt: await projectGantt(project.id) }
   })
 
   app.patch('/:projectId', async (request) => {

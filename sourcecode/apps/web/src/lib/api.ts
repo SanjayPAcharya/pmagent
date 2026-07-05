@@ -312,6 +312,32 @@ export interface ProjectReports {
   workload: WorkloadRow[]
 }
 
+// 3.7 R6 — Gantt payload (raw dates; all date math lives in lib/gantt.ts).
+export interface GanttItem {
+  id: string
+  number: number
+  key: string
+  title: string
+  status: TicketStatus
+  priority: Priority
+  assignedToId: string | null
+  sprintId: string | null
+  workstream: Workstream
+  startDate: string | null
+  dueDate: string | null
+  storyPoints: number | null
+}
+export interface GanttEdge {
+  ticketId: string
+  dependsOnId: string
+}
+export interface GanttPayload {
+  items: GanttItem[]
+  edges: GanttEdge[]
+  milestones: Milestone[]
+  truncated: boolean
+}
+
 // 3.7 R4 — project Overview dashboard aggregate.
 export interface OverviewBlocker {
   id: string
@@ -383,6 +409,7 @@ export const api = {
   deleteProject: (projectId: string) => request<void>('DELETE', `/api/projects/${projectId}`),
   getProjectReports: (projectId: string) => request<{ reports: ProjectReports }>('GET', `/api/projects/${projectId}/reports`),
   getProjectOverview: (projectId: string) => request<{ overview: ProjectOverview }>('GET', `/api/projects/${projectId}/overview`),
+  getProjectGantt: (projectId: string) => request<{ gantt: GanttPayload }>('GET', `/api/projects/${projectId}/gantt`),
   updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
     request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
   orgActivity: (slug: string) => request<{ activity: ActivityItem[] }>('GET', `/api/orgs/${slug}/activity`),
