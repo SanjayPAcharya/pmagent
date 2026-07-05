@@ -359,7 +359,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R13 — List column chooser (S)
+### - [x] R13 — List column chooser + resizable widths (S) *(done 2026-07-05)*
+> Browser-verified (prefs reset after): Columns dropdown toggled Sprint off / Start on and it persisted across reload; dragging the Title column's edge widened it and persisted. Sortable headers (Key/Priority/Updated) preserved. **Extra (owner request):** columns are width-resizable via drag handles, also persisted. CSV export still exports all columns.
 
 **Goal:** the useful half of "configurable columns".
 
