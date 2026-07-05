@@ -343,7 +343,8 @@ interface ProjectOverview {
 
 ---
 
-### - [ ] R12 — Sprint view: informative rows + inline actions + goal edit (M)
+### - [x] R12 — Sprint view: informative rows + inline actions + goal edit (M) *(done 2026-07-05)*
+> Browser-verified: expanded sprint rows show key+title (→ drawer), priority pill, inline **status select**, **assignee** avatar quick-assign, points chip, and the move-to-sprint select; per-sprint **assignee/status mini-filter** header; **goal edit** (typed a goal, persisted, then cleared back to empty). No net data change.
 
 **Goal:** manage a sprint without opening tickets (review ask 8).
 

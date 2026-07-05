@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Pencil, Check, X } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -14,14 +15,19 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { api, type Sprint, type Ticket } from '@/lib/api'
+import { api, type Sprint, type Ticket, type TicketStatus } from '@/lib/api'
+import { ALL_STATUSES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { useProjectSync } from '@/lib/websocket'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { BurndownSparkline } from '@/components/BurndownSparkline'
 import { cn } from '@/lib/utils'
+
+const selectCls = 'h-8 shrink-0 rounded-md border border-input bg-transparent px-2 text-xs'
 
 // F2 — a draggable ticket chip (backlog → sprint, or between sprints).
 function TicketChip({ ticket }: { ticket: Ticket }) {
@@ -46,18 +52,28 @@ function SprintRow({
   sprint,
   projectId,
   allSprints,
+  slug,
+  projectSlug,
   onChanged,
 }: {
   sprint: Sprint
   projectId: string
   allSprints: Sprint[]
+  slug: string
+  projectSlug: string
   onChanged: () => void
 }) {
   const qc = useQueryClient()
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
+  const [editingGoal, setEditingGoal] = useState(false)
+  const [goalDraft, setGoalDraft] = useState(sprint.goal ?? '')
+  const [fAssignee, setFAssignee] = useState('')
+  const [fStatus, setFStatus] = useState('')
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: sprint.id })
   const detail = useQuery({ queryKey: ['sprint', sprint.id], queryFn: () => api.getSprint(sprint.id) })
+  const members = useQuery({ queryKey: ['members', slug], queryFn: () => api.listMembers(slug), enabled: expanded })
   // Candidate tickets to add = project tickets not already in this sprint.
   const allTickets = useQuery({
     queryKey: ['tickets', projectId, { sort: 'number' }],
@@ -90,33 +106,71 @@ function SprintRow({
       toast.error((e as Error).message)
     }
   }
+  const saveGoal = async () => {
+    await act(() => api.updateSprint(sprint.id, { goal: goalDraft.trim() || null }), t('sprints.goalSaved'))
+    setEditingGoal(false)
+  }
+  const assign = (tk: Ticket, userId: string | null) =>
+    act(() => api.updateTicket(tk.id, { assignedToId: userId }), t('sprints.reassigned'))
+
+  // R12 — per-sprint mini filter (client-side over the expanded list).
+  const sprintTickets = (detail.data?.tickets ?? []).filter(
+    (tk) => (!fAssignee || tk.assignedToId === fAssignee) && (!fStatus || tk.status === fStatus),
+  )
 
   return (
     <Card ref={setDropRef} className={cn(isOver && 'ring-2 ring-primary/50')}>
-      <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          {sprint.name}
-          <Badge variant={sprint.status === 'ACTIVE' ? 'default' : 'secondary'}>{sprint.status}</Badge>
-          {sprint.velocity != null && <span className="text-xs text-muted-foreground">{t('sprints.velocity', { n: sprint.velocity })}</span>}
-        </CardTitle>
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? t('sprints.hideTickets') : t('sprints.ticketsCount', { n: counts?.total ?? 0 })}
-          </Button>
-          {sprint.status === 'PLANNING' && (
-            <Button size="sm" variant="outline" onClick={() => act(() => api.startSprint(sprint.id), t('sprints.started'))}>
-              {t('sprints.start')}
+      <CardHeader className="space-y-1 pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            {sprint.name}
+            <Badge variant={sprint.status === 'ACTIVE' ? 'default' : 'secondary'}>{sprint.status}</Badge>
+            {sprint.velocity != null && <span className="text-xs text-muted-foreground">{t('sprints.velocity', { n: sprint.velocity })}</span>}
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? t('sprints.hideTickets') : t('sprints.ticketsCount', { n: counts?.total ?? 0 })}
             </Button>
-          )}
-          {sprint.status === 'ACTIVE' && (
-            <Button size="sm" variant="outline" onClick={() => act(() => api.completeSprint(sprint.id), t('sprints.completed'))}>
-              {t('sprints.complete')}
-            </Button>
-          )}
+            {sprint.status === 'PLANNING' && (
+              <Button size="sm" variant="outline" onClick={() => act(() => api.startSprint(sprint.id), t('sprints.started'))}>
+                {t('sprints.start')}
+              </Button>
+            )}
+            {sprint.status === 'ACTIVE' && (
+              <Button size="sm" variant="outline" onClick={() => act(() => api.completeSprint(sprint.id), t('sprints.completed'))}>
+                {t('sprints.complete')}
+              </Button>
+            )}
+          </div>
         </div>
+        {/* R12 — editable sprint goal */}
+        {editingGoal ? (
+          <div className="flex items-center gap-1">
+            <Input
+              value={goalDraft}
+              onChange={(e) => setGoalDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void saveGoal()
+                if (e.key === 'Escape') { setEditingGoal(false); setGoalDraft(sprint.goal ?? '') }
+              }}
+              autoFocus
+              placeholder={t('sprints.goalPlaceholder')}
+              className="h-7 text-sm"
+            />
+            <button onClick={() => void saveGoal()} className="text-muted-foreground hover:text-foreground" aria-label={t('common.save')}><Check className="h-4 w-4" /></button>
+            <button onClick={() => { setEditingGoal(false); setGoalDraft(sprint.goal ?? '') }} className="text-muted-foreground hover:text-foreground" aria-label={t('common.cancel')}><X className="h-4 w-4" /></button>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setGoalDraft(sprint.goal ?? ''); setEditingGoal(true) }}
+            className="group flex items-center gap-1 text-left"
+          >
+            <span className={cn('text-sm text-muted-foreground', !sprint.goal && 'italic')}>{sprint.goal || t('sprints.noGoal')}</span>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          </button>
+        )}
       </CardHeader>
       <CardContent>
-        {sprint.goal && <p className="mb-2 text-sm text-muted-foreground">{sprint.goal}</p>}
         <div className="mb-1 flex justify-between text-xs text-muted-foreground">
           <span>{t('sprints.completion')}</span>
           <span>
@@ -152,16 +206,60 @@ function SprintRow({
         {expanded && (
           <div className="mt-4 space-y-3">
             <div>
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('sprints.inThisSprint')}</div>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('sprints.inThisSprint')}</div>
+                <div className="flex items-center gap-1.5">
+                  <select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)} className={selectCls}>
+                    <option value="">{t('board.assigneeAny')}</option>
+                    {members.data?.members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
+                  </select>
+                  <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className={selectCls}>
+                    <option value="">{t('list.allStatuses')}</option>
+                    {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                  </select>
+                </div>
+              </div>
               <ul className="divide-y rounded-md border">
-                {detail.data?.tickets.map((tk) => (
-                  <li key={tk.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                    <span className="truncate">
+                {sprintTickets.map((tk) => (
+                  <li key={tk.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                    <button
+                      onClick={() => navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${tk.number}`)}
+                      className="min-w-0 flex-1 truncate text-left hover:underline"
+                    >
                       <span className="font-mono text-xs text-muted-foreground">{tk.key}</span> {tk.title}
-                    </span>
+                    </button>
+                    <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold', PRIORITY_CLASS[tk.priority])}>{tk.priority}</span>
+                    <select
+                      value={tk.status}
+                      onChange={(e) => act(() => api.updateTicketStatus(tk.id, e.target.value as TicketStatus), t('sprints.statusChanged'))}
+                      className={selectCls}
+                    >
+                      {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                    </select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="shrink-0" title={tk.assignedTo?.name ?? t('drawer.unassigned')}>
+                          <Avatar className="h-6 w-6">
+                            {tk.assignedTo?.avatarUrl && <AvatarImage src={tk.assignedTo.avatarUrl} />}
+                            <AvatarFallback className="text-[9px]">
+                              {tk.assignedTo ? tk.assignedTo.name.slice(0, 2).toUpperCase() : '—'}
+                            </AvatarFallback>
+                          </Avatar>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => assign(tk, null)}>{t('drawer.unassigned')}</DropdownMenuItem>
+                        {members.data?.members.map((m) => (
+                          <DropdownMenuItem key={m.userId} onClick={() => assign(tk, m.userId)}>{m.name}</DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {tk.storyPoints != null && (
+                      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{t('sprints.pts', { n: tk.storyPoints })}</span>
+                    )}
                     {/* Move this ticket to another sprint, or back to the backlog. */}
                     <select
-                      className="h-8 shrink-0 rounded-md border border-input bg-transparent px-2 text-xs"
+                      className={selectCls}
                       value={sprint.id}
                       onChange={(e) => {
                         const v = e.target.value
@@ -179,7 +277,7 @@ function SprintRow({
                     </select>
                   </li>
                 ))}
-                {detail.data?.tickets.length === 0 && (
+                {sprintTickets.length === 0 && (
                   <li className="px-3 py-3 text-center text-xs text-muted-foreground">{t('sprints.noTicketsInSprint')}</li>
                 )}
               </ul>
@@ -306,7 +404,7 @@ export default function Sprints() {
         <div className="space-y-3">
           {projectId &&
             sprints.data?.sprints.map((s) => (
-              <SprintRow key={s.id} sprint={s} projectId={projectId} allSprints={sprints.data!.sprints} onChanged={refresh} />
+              <SprintRow key={s.id} sprint={s} projectId={projectId} allSprints={sprints.data!.sprints} slug={slug} projectSlug={projectSlug} onChanged={refresh} />
             ))}
           {sprints.data?.sprints.length === 0 && <p className="text-sm text-muted-foreground">{t('sprints.empty')}</p>}
         </div>

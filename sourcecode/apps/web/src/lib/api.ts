@@ -526,6 +526,8 @@ export const api = {
   getBurndown: (id: string) => request<Burndown>('GET', `/api/sprints/${id}/burndown`),
   createSprint: (projectId: string, name: string, goal?: string) =>
     request<{ sprint: Sprint }>('POST', '/api/sprints', { projectId, name, goal }),
+  updateSprint: (id: string, body: { name?: string; goal?: string | null }) =>
+    request<{ sprint: Sprint }>('PATCH', `/api/sprints/${id}`, body),
   startSprint: (id: string) => request<{ sprint: Sprint }>('POST', `/api/sprints/${id}/start`),
   completeSprint: (id: string) =>
     request<{ sprint: Sprint; counts: SprintCounts }>('POST', `/api/sprints/${id}/complete`),

@@ -149,6 +149,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 
 ## Sprints
 - Goal + dates, start/complete lifecycle, capacity view, **burndown chart**, recorded velocity.
+- **Editable goal** inline (click the pencil), and an **expandable ticket list** you can manage without opening each ticket: change **status** and **assignee**, see priority and points at a glance, jump to a ticket, or move it to another sprint/backlog. A small **assignee/status filter** narrows a big sprint. Everything updates live for the whole team.
 
 ## Timeline (Gantt)
 - A horizontal **timeline** of every scheduled ticket: each shows as a bar from its start to its due date (a single date shows as a one-day marker), colored by status.
