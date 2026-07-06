@@ -88,6 +88,7 @@ Phase 7  Autonomous Sprints             → milestone → planned & shipped spri
 | 3.5 | [phase-3.5-platform-hygiene.md](phases/phase-3.5-platform-hygiene.md) | Hygiene — org/project **settings pages** (done); monitoring / plan limits / API tokens **moved to 3.6** |
 | 3.6 | [phase-3.6-polish-hardening.md](phases/phase-3.6-polish-hardening.md) | Polish & hardening — carried-over hygiene (monitoring, plan limits, tokens/webhooks) + a loose-ends audit across the 3.x arc + the first web test scaffold |
 | 3.7 | [phase-3.7-review-feedback.md](phases/phase-3.7-review-feedback.md) | Review-driven planning surfaces — project Overview dashboard (new landing), interactive Gantt + milestones, quick-create/inline-subtask, sprint-vs-ad-hoc workstreams, release readiness; AI asks deferred to Phase 5 (Beta affordances only) |
+| 3.7.1 | [phase-3.7.1-gap-closure.md](phases/phase-3.7.1-gap-closure.md) | 3.7 gap closure from the 2026-07-06 audit — drawer Start date, milestone rename/delete UI, sprint-detail live sync, subtask chips (R9.4), List Due column (R13), Gantt mobile rail (R7.7) |
 | 4 | [phase-4-notifications-channels.md](phases/phase-4-notifications-channels.md) | Email notifications, then WhatsApp + Slack |
 | 5 | [phase-5-github-code-agent.md](phases/phase-5-github-code-agent.md) | Third-party integration: GitHub App + Code Agent + agent-first UI |
 | 5.5 | [phase-5.5-agent-first.md](phases/phase-5.5-agent-first.md) | Agent-first surfaces (@agent, draft-with-agent, agent swimlane) — **parked; lands with Phase 5** (was 2.7) |
