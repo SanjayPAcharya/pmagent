@@ -1,6 +1,6 @@
 # Phase 3.7.1 — 3.7 gap closure (audit follow-ups)
 
-> **Status: 🟡 OPEN** (opened 2026-07-06). Source: an independent audit of Phase 3.7 on 2026-07-06. Verdict: **the phase core is genuinely done** — every R0–R14 artifact exists and works (api 76/76 · web 31/31 · both typechecks · vite build green), and the one item PROGRESS had flagged "browser check pending" (multi-select Board/List filters) was **browser-verified during the audit** (Board: MEDIUM then +LOW narrowed/restored cards with a "MEDIUM +1" trigger summary; List: LOW left only RELA-1; both cleared cleanly, no data writes). The six steps below are the spec fine-print that was cut or missed. None are regressions.
+> **Status: ✅ DONE** (opened + completed 2026-07-06 — all F1–F6 shipped, each browser-verified; api 77/77 · web 31/31 · typechecks + vite build green). Source: an independent audit of Phase 3.7 on 2026-07-06. Verdict: **the phase core is genuinely done** — every R0–R14 artifact exists and works (api 76/76 · web 31/31 · both typechecks · vite build green), and the one item PROGRESS had flagged "browser check pending" (multi-select Board/List filters) was **browser-verified during the audit** (Board: MEDIUM then +LOW narrowed/restored cards with a "MEDIUM +1" trigger summary; List: LOW left only RELA-1; both cleared cleanly, no data writes). The six steps below are the spec fine-print that was cut or missed. None are regressions.
 >
 > **This doc is written to be self-contained**: each step names the exact files, line-anchors, code shapes, i18n keys, tests, and done-criteria, so anyone (or any model) can pick up the next unticked step with no other context. When an instruction says "copy the idiom at X", open X first and mirror it — do not invent a new pattern.
 
@@ -112,7 +112,7 @@ useProjectSync(projectId, [['sprints', projectId], ['tickets', projectId], ['spr
 ---
 
 ### - [x] F4 — Subtask progress chips on board cards (M) *(3.7 R9.4, was cut)* *(done 2026-07-06)*
-> API integration-tested: list response gives a parent `subtasks: { done: 1, total: 2 }` with one child DONE, one CANCELLED (excluded), and a childless ticket has no `subtasks` key (api 77/77). Chip JSX mirrors the working blocked-chip. **Visual chip screenshot pending** — the Keycloak session expired mid-verification and re-login needs the owner (can't authenticate on their behalf).
+> API integration-tested: list response gives a parent `subtasks: { done: 1, total: 2 }` with one child DONE, one CANCELLED (excluded), and a childless ticket has no `subtasks` key (api 77/77). **Browser-verified**: created two subtasks under RELA-5 via the inline input → its board card showed a "0/2" `ListTodo` chip next to the priority pill. Subtasks deleted + counter reset afterward (data restored).
 
 **Goal:** parents show "1/3" so subtask work is visible from the board.
 
@@ -138,7 +138,7 @@ Implement with one `prisma.ticket.groupBy({ by: ['parentId', 'status'], _count: 
 ---
 
 ### - [x] F5 — Due column in the List chooser (S) *(3.7 R13's "Due(?)")* *(done 2026-07-06)*
-> Added `'due'` to the `ProjectList` column model (ColId/COL_ORDER/TOGGLEABLE/DEFAULT_VISIBLE off/DEFAULT_WIDTHS/COL_LABEL + a `renderCell` case mirroring `start`), i18n `list.colDue`. Chooser/colgroup/colSpan/resize all derive from the model — no other edits; CSV export already carried Due. Typecheck + build green; visual toggle check deferred with the others to the owner's re-login.
+> Added `'due'` to the `ProjectList` column model (ColId/COL_ORDER/TOGGLEABLE/DEFAULT_VISIBLE off/DEFAULT_WIDTHS/COL_LABEL + a `renderCell` case mirroring `start`), i18n `list.colDue`. Chooser/colgroup/colSpan/resize all derive from the model — no other edits; CSV export already carried Due. **Browser-verified**: enabling Due in the Columns menu rendered a Due column showing RELA-1's `2026-03-09`; toggled back off after (pref restored).
 
 **Goal:** the List can show Due like it shows Start.
 
