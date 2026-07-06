@@ -321,7 +321,9 @@ export default function Sprints() {
     enabled: Boolean(projectId),
   })
   // 3.7 R3 — live sync: refetch sprints + tickets on any project change.
-  useProjectSync(projectId, [['sprints', projectId], ['tickets', projectId]])
+  // 3.7.1 F3 — also the bare ['sprint'] prefix so foreign events refresh any
+  // expanded sprint's detail (['sprint', id]); local mutations already do this.
+  useProjectSync(projectId, [['sprints', projectId], ['tickets', projectId], ['sprint']])
   const backlog = (allTickets.data?.items ?? []).filter((tk) => !tk.sprintId)
 
   const sensors = useSensors(

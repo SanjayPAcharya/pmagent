@@ -92,7 +92,8 @@ Add an identical block **immediately before it** for Start: `Label` = `t('drawer
 
 ---
 
-### - [ ] F3 — Live-sync the expanded sprint detail (XS)
+### - [x] F3 — Live-sync the expanded sprint detail (XS) *(done 2026-07-06)*
+> Browser + Redis-verified: with Oracle Sprint 1 expanded, published a foreign-actor `sprint.updated` to `agentpm:events` → a `GET /api/sprints/9436b20b-…` (the `['sprint', id]` detail) refetched, which only the new `['sprint']` prefix triggers (the sprints-list invalidation hits a different endpoint). No data written.
 
 **Goal:** finish 3.7 R3's "plus per-sprint detail keys if trivial" — it is trivial.
 
