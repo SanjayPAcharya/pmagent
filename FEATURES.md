@@ -113,6 +113,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - Filters (search / priority / type / assignee / sprint) — each is **multi-select** (tick several priorities, people, or sprints at once) — plus sort options and the **"My tickets"** focus dim (`f`).
 - On phones: columns snap-scroll, **swipe** a card to advance/retreat its status.
 - **Live presence** — viewer avatars on cards, ghost outlines of teammates' in-flight drags.
+- Cards show a small **subtask counter** (e.g. "1/3") when a ticket has subtasks, so you can see progress without opening it.
 
 ## Sprint vs ad-hoc work
 - Every ticket is either **Sprint work** (planned into sprints) or **Ad-hoc** (operational work that lives outside sprints). Set it in the ticket drawer's **Workstream** field.

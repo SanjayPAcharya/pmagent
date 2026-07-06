@@ -111,7 +111,8 @@ useProjectSync(projectId, [['sprints', projectId], ['tickets', projectId], ['spr
 
 ---
 
-### - [ ] F4 — Subtask progress chips on board cards (M) *(3.7 R9.4, was cut)*
+### - [x] F4 — Subtask progress chips on board cards (M) *(3.7 R9.4, was cut)* *(done 2026-07-06)*
+> API integration-tested: list response gives a parent `subtasks: { done: 1, total: 2 }` with one child DONE, one CANCELLED (excluded), and a childless ticket has no `subtasks` key (api 77/77). Chip JSX mirrors the working blocked-chip. **Visual chip screenshot pending** — the Keycloak session expired mid-verification and re-login needs the owner (can't authenticate on their behalf).
 
 **Goal:** parents show "1/3" so subtask work is visible from the board.
 

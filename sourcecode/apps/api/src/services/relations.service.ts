@@ -39,6 +39,30 @@ export async function blockedByCounts(ticketIds: string[]): Promise<Map<string, 
   return map
 }
 
+/**
+ * Map of parentId → subtask progress {done, total} over its non-archived,
+ * non-CANCELLED children (done = status DONE). Parents with no such children
+ * are absent from the map (so callers can omit the chip entirely). 3.7.1 F4.
+ */
+export async function subtaskCounts(parentIds: string[]): Promise<Map<string, { done: number; total: number }>> {
+  const map = new Map<string, { done: number; total: number }>()
+  if (parentIds.length === 0) return map
+  const groups = await prisma.ticket.groupBy({
+    by: ['parentId', 'status'],
+    _count: { _all: true },
+    where: { parentId: { in: parentIds }, archivedAt: null, status: { not: 'CANCELLED' } },
+  })
+  for (const g of groups) {
+    if (!g.parentId) continue
+    const n = g._count._all
+    const row = map.get(g.parentId) ?? { done: 0, total: 0 }
+    row.total += n
+    if (g.status === 'DONE') row.done += n
+    map.set(g.parentId, row)
+  }
+  return map
+}
+
 export async function getRelations(ticketId: string) {
   const t = await prisma.ticket.findUnique({
     where: { id: ticketId },

@@ -302,4 +302,26 @@ describe('workstream — CSV import + automation invariant (3.7 R11)', () => {
     expect(patched.json().ticket.sprintId).toBeNull()
     expect(patched.json().ticket.workstream).toBe('ADHOC')
   })
+
+  it('list response carries subtask counts on parents (done/total; CANCELLED excluded; absent when childless)', async () => {
+    const owner = await tokenFor('sub-owner')
+    const { id: orgId } = await makeOrg(owner, 'Subtasks Co')
+    const { id: projectId } = await makeProject(owner, orgId, 'App')
+
+    const parent = (await createTicket(owner, { projectId, title: 'Parent' })).json().ticket
+    const childless = (await createTicket(owner, { projectId, title: 'Childless' })).json().ticket
+    const c1 = (await createTicket(owner, { projectId, title: 'Sub A', parentId: parent.id })).json().ticket
+    await createTicket(owner, { projectId, title: 'Sub B', parentId: parent.id })
+    const c3 = (await createTicket(owner, { projectId, title: 'Sub C', parentId: parent.id })).json().ticket
+    // one subtask done, one cancelled → total counts 2 (A + B), done 1
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${c1.id}/status`, headers: bearer(owner), payload: { status: 'DONE' } })
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${c3.id}/status`, headers: bearer(owner), payload: { status: 'CANCELLED' } })
+
+    const list = await app.inject({ method: 'GET', url: `/api/tickets?projectId=${projectId}`, headers: bearer(owner) })
+    const items = list.json().items as Array<{ id: string; subtasks?: { done: number; total: number } }>
+    const parentItem = items.find((t) => t.id === parent.id)!
+    const childlessItem = items.find((t) => t.id === childless.id)!
+    expect(parentItem.subtasks).toEqual({ done: 1, total: 2 })
+    expect(childlessItem.subtasks).toBeUndefined()
+  })
 })

@@ -351,6 +351,7 @@
     "tabAll": "All",
     "tabSprint": "Sprint work",
     "tabAdhoc": "Ad-hoc",
+    "subtasksTooltip": "{{done}} of {{total}} subtasks done",
     "wipLimit": "{{count}} of {{limit}} — over the WIP limit",
     "firstTicketTitle": "Create your first ticket",
     "firstTicketHint": "Tickets work best when an agent can pick them up.",

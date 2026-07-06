@@ -175,6 +175,7 @@ export interface Ticket {
   labels: Label[]
   watcherIds: string[]
   blockedBy?: number // count of incomplete dependencies (present on list responses)
+  subtasks?: { done: number; total: number } // subtask progress (list responses; absent when childless)
   createdAt: string
   updatedAt: string
 }

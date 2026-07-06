@@ -17,7 +17,7 @@ import {
   type UpdateTicketInput,
 } from '../services/tickets.service.js'
 import { parseMentions, filterOrgMembers } from '../services/notifications.service.js'
-import { blockedByCounts, getRelations, addDependency, removeDependency } from '../services/relations.service.js'
+import { blockedByCounts, subtaskCounts, getRelations, addDependency, removeDependency } from '../services/relations.service.js'
 
 const priorityEnum = z.enum(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 const typeEnum = z.enum(['FEATURE', 'BUG', 'CHORE', 'SPIKE'])
@@ -206,9 +206,10 @@ const routes: FastifyPluginAsync = async (app) => {
       ...(q.cursor ? { cursor: { id: decodeCursor(q.cursor) }, skip: 1 } : {}),
     })
     const { items, nextCursor } = paginate(rows, q.limit)
-    const blocked = await blockedByCounts(items.map((t) => t.id))
+    const ids = items.map((t) => t.id)
+    const [blocked, subtasks] = await Promise.all([blockedByCounts(ids), subtaskCounts(ids)])
     return {
-      items: items.map((t) => ({ ...serializeTicket(t), blockedBy: blocked.get(t.id) ?? 0 })),
+      items: items.map((t) => ({ ...serializeTicket(t), blockedBy: blocked.get(t.id) ?? 0, subtasks: subtasks.get(t.id) })),
       nextCursor,
     }
   })

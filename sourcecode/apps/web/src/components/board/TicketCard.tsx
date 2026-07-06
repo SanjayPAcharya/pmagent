@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
-import { Ban, Eye, MoreHorizontal, ListPlus } from 'lucide-react'
+import { Ban, Eye, MoreHorizontal, ListPlus, ListTodo } from 'lucide-react'
 import type { Member, Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, BOARD_COLUMNS, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { staleBorderClass } from '@/lib/time'
@@ -60,6 +60,14 @@ export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; 
               title={t('list.blockedHint', { count: ticket.blockedBy })}
             >
               <Ban className="h-3 w-3" /> {t('list.blocked')}
+            </span>
+          )}
+          {ticket.subtasks && ticket.subtasks.total > 0 && (
+            <span
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
+              title={t('board.subtasksTooltip', { done: ticket.subtasks.done, total: ticket.subtasks.total })}
+            >
+              <ListTodo className="h-3 w-3" /> {ticket.subtasks.done}/{ticket.subtasks.total}
             </span>
           )}
           {/* E1 — live viewers currently on this ticket */}
