@@ -47,6 +47,7 @@ interface Props {
   today: number
   scrollRef?: RefObject<HTMLDivElement>
   interactive?: boolean
+  narrow?: boolean // below sm: shrink the rail to the key only, freeing width for the bars
   onOpenTicket: (number: number) => void
   onReschedule?: (id: string, startDay: number, endDay: number) => void
   onScheduleFromTray?: (id: string, startDay: number) => void
@@ -63,6 +64,7 @@ export function GanttChart({
   today,
   scrollRef,
   interactive = false,
+  narrow = false,
   onOpenTicket,
   onReschedule,
   onScheduleFromTray,
@@ -70,6 +72,7 @@ export function GanttChart({
   onDragActiveChange,
 }: Props) {
   const pxPerDay = PX_PER_DAY[scale]
+  const railW = narrow ? 88 : RAIL_W
   const xOf = (day: number) => xForDay(day, range.startDay, scale)
   const svgRef = useRef<SVGSVGElement>(null)
 
@@ -173,7 +176,7 @@ export function GanttChart({
   }
 
   return (
-    <div className="grid overflow-hidden rounded-lg border bg-card" style={{ gridTemplateColumns: `${RAIL_W}px 1fr` }}>
+    <div className="grid overflow-hidden rounded-lg border bg-card" style={{ gridTemplateColumns: `${railW}px 1fr` }}>
       {/* Left rail — sticky ticket list, aligned row-for-row with the svg. */}
       <div className="border-r bg-card">
         <div style={{ height: TOP }} className="border-b" />
@@ -185,7 +188,7 @@ export function GanttChart({
             className="flex w-full items-center gap-2 border-b px-3 text-left last:border-b-0 hover:bg-accent"
           >
             <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{r.item.key}</span>
-            <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.item.title}</span>
+            {!narrow && <span className="min-w-0 flex-1 truncate text-xs text-foreground">{r.item.title}</span>}
           </button>
         ))}
       </div>

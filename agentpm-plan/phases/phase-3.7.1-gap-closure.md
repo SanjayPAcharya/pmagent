@@ -157,7 +157,8 @@ Implement with one `prisma.ticket.groupBy({ by: ['parentId', 'status'], _count: 
 
 ---
 
-### - [ ] F6 — Gantt rail narrows on mobile (S) *(3.7 R7.7, missed)*
+### - [x] F6 — Gantt rail narrows on mobile (S) *(3.7 R7.7, missed)* *(done 2026-07-06)*
+> `ProjectGantt` passes `narrow={!interactive}` (reusing the existing 640px `matchMedia` flag — no new listener) into `GanttChart`, where `RAIL_W` (240) becomes `railW = narrow ? 88 : 240` in the grid template, and the rail row hides the title span (keeps the mono key + drawer click-through) when narrow. Typecheck + build green. **Browser-verified at 390px**: rail collapsed to the key only ("RELA-1", no title) in a narrow column, freeing the bars; desktop unchanged.
 
 **Goal:** below `sm` (640px) the left rail shows the mono key only, ~88px wide.
 

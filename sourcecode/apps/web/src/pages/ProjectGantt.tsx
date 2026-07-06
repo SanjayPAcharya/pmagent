@@ -207,6 +207,7 @@ export default function ProjectGantt() {
           today={today}
           scrollRef={scrollRef}
           interactive={interactive}
+          narrow={!interactive}
           onOpenTicket={openTicket}
           onReschedule={onReschedule}
           onScheduleFromTray={onScheduleFromTray}
