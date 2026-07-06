@@ -72,7 +72,8 @@ Add an identical block **immediately before it** for Start: `Label` = `t('drawer
 
 ---
 
-### - [ ] F2 — Milestone manage: rename, re-date, delete (M)
+### - [x] F2 — Milestone manage: rename, re-date, delete (M) *(done 2026-07-06)*
+> Browser-verified on Oracle/Relationship Manager: pencil toggles a manage mode listing ALL milestones with editable name + date; renamed "Test Milestone"→"Test Milestone Renamed" and re-dated 15 Aug→20 Aug (both persisted and reflected on the Timeline milestone lane via the `['gantt']` invalidation); deleted it (admin-gated) → gone. Seeded milestone removed; data restored. **Deviation from plan:** used an **inline two-click confirm** (trash → red "Delete?" → deletes) instead of `window.confirm` — better UX and it doesn't freeze the tab (native `confirm()` wedged the automated browser during testing).
 
 **Goal:** full milestone lifecycle in the UI. The API is 100% ready (3.7 R2): `GET/POST/PATCH` are MEMBER, `DELETE` is ADMIN and returns 204; every mutation already publishes `milestone.updated`. Web client fns all exist in `src/lib/api.ts` (~line 447): `listMilestones`, `createMilestone`, `updateMilestone`, `deleteMilestone`.
 

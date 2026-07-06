@@ -3,8 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Ban, Sparkles, Plus, Check, Rocket, LayoutGrid } from 'lucide-react'
-import { api, type OverviewMilestone, type WorkloadRow } from '@/lib/api'
+import { Ban, Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2 } from 'lucide-react'
+import { api, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { BetaBadge } from '@/components/BetaBadge'
 import { Button } from '@/components/ui/button'
@@ -99,10 +99,42 @@ export default function ProjectOverview() {
   })
   useProjectSync(projectId, [['overview', projectId], ['tickets', projectId]])
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['overview', projectId] })
+  const isAdmin = org.data?.org.role === 'OWNER' || org.data?.org.role === 'ADMIN'
+  const [managing, setManaging] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  // Manage mode edits ALL milestones (the overview payload only carries the next 3 open).
+  const allMilestones = useQuery({
+    queryKey: ['milestones', projectId],
+    queryFn: () => api.listMilestones(projectId!),
+    enabled: managing && Boolean(projectId),
+  })
+
+  // A milestone change touches the overview cards, the manage list, and the Gantt lane.
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['overview', projectId] })
+    qc.invalidateQueries({ queryKey: ['milestones', projectId] })
+    qc.invalidateQueries({ queryKey: ['gantt', projectId] })
+  }
   const toggleMilestone = useMutation({
-    mutationFn: (m: OverviewMilestone) => api.updateMilestone(projectId!, m.id, { done: !m.done }),
+    mutationFn: (m: { id: string; done: boolean }) => api.updateMilestone(projectId!, m.id, { done: !m.done }),
     onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message),
+  })
+  const saveMilestone = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { name?: string; date?: string } }) =>
+      api.updateMilestone(projectId!, id, body),
+    onSuccess: () => {
+      refresh()
+      toast.success(t('overview.milestoneSaved'))
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  const deleteMilestone = useMutation({
+    mutationFn: (id: string) => api.deleteMilestone(projectId!, id),
+    onSuccess: () => {
+      refresh()
+      toast.success(t('overview.milestoneDeleted'))
+    },
     onError: (e: Error) => toast.error(e.message),
   })
   const [msName, setMsName] = useState('')
@@ -239,11 +271,86 @@ export default function ProjectOverview() {
 
           {/* Milestones */}
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-base">{t('overview.milestonesTitle')}</CardTitle>
+              <button
+                onClick={() => {
+                  setManaging((v) => !v)
+                  setConfirmDeleteId(null)
+                }}
+                aria-label={t('overview.manageMilestones')}
+                title={t('overview.manageMilestones')}
+                className={cn(
+                  'shrink-0 rounded p-1 text-muted-foreground hover:text-foreground',
+                  managing && 'text-primary',
+                )}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {data.milestones.length === 0 ? (
+              {managing ? (
+                (allMilestones.data?.milestones.length ?? 0) === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {allMilestones.isLoading ? t('common.loading') : t('overview.milestonesEmpty')}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {allMilestones.data!.milestones.map((m) => (
+                      <li key={m.id} className="flex items-center gap-2">
+                        <Input
+                          defaultValue={m.name}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim()
+                            if (v && v !== m.name) saveMilestone.mutate({ id: m.id, body: { name: v } })
+                          }}
+                          className="h-8 flex-1"
+                        />
+                        <Input
+                          type="date"
+                          defaultValue={m.date.slice(0, 10)}
+                          onBlur={(e) => {
+                            const v = e.target.value
+                            if (v && v !== m.date.slice(0, 10)) saveMilestone.mutate({ id: m.id, body: { date: new Date(v).toISOString() } })
+                          }}
+                          className="h-8 w-36"
+                        />
+                        <button
+                          onClick={() => toggleMilestone.mutate(m)}
+                          aria-label={t('overview.toggleDone')}
+                          className={cn(
+                            'shrink-0 rounded-full border p-1 text-muted-foreground hover:text-foreground',
+                            m.done && 'border-green-500 bg-green-500/10 text-green-500',
+                          )}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        {isAdmin &&
+                          (confirmDeleteId === m.id ? (
+                            <button
+                              onClick={() => {
+                                deleteMilestone.mutate(m.id)
+                                setConfirmDeleteId(null)
+                              }}
+                              className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium text-destructive hover:bg-destructive/10"
+                            >
+                              {t('overview.milestoneDeleteConfirm')}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteId(m.id)}
+                              aria-label={t('overview.deleteMilestone')}
+                              title={t('overview.deleteMilestone')}
+                              className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          ))}
+                      </li>
+                    ))}
+                  </ul>
+                )
+              ) : data.milestones.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t('overview.milestonesEmpty')}</p>
               ) : (
                 <ul className="space-y-2">

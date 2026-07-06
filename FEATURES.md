@@ -102,7 +102,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - **Status** — open vs. done counts, a to-do/in-progress/done bar, and a sprint-vs-ad-hoc split.
 - **Active sprint** — progress bar, days left, and the burndown chart; a prompt to start one if none is active.
 - **Blockers** — the top blocked tickets (either marked Blocked or waiting on unfinished dependencies); click one to open it.
-- **Milestones** — your next target dates with a readiness ring (how many of the tickets due before each are done). Add one inline (name + date) and tick it off when reached.
+- **Milestones** — your next target dates with a readiness ring (how many of the tickets due before each are done). Add one inline (name + date) and tick it off when reached. Click the **pencil** to manage all of them: rename, change a date, or delete one (deleting is limited to admins).
 - **Capacity** — open tickets per teammate plus a recent-velocity estimate.
 - **Recent activity** across the project, and a **Project summary** card (Beta — the AI-written digest arrives with the agent release).
 - Every card updates live as teammates make changes — no refresh needed.
