@@ -30,16 +30,16 @@ const SORTABLE: Record<string, string> = { key: 'number', priority: 'priority', 
 
 // 3.7 R13 — list columns. Select/Key/Title are always on; the rest are chooser-
 // toggleable. Fixed canonical order; each has a default width (px, resizable).
-type ColId = 'select' | 'key' | 'title' | 'status' | 'priority' | 'assignee' | 'sprint' | 'workstream' | 'start' | 'points' | 'updated'
-const COL_ORDER: ColId[] = ['select', 'key', 'title', 'status', 'priority', 'assignee', 'sprint', 'workstream', 'start', 'points', 'updated']
+type ColId = 'select' | 'key' | 'title' | 'status' | 'priority' | 'assignee' | 'sprint' | 'workstream' | 'start' | 'due' | 'points' | 'updated'
+const COL_ORDER: ColId[] = ['select', 'key', 'title', 'status', 'priority', 'assignee', 'sprint', 'workstream', 'start', 'due', 'points', 'updated']
 const ALWAYS: ColId[] = ['select', 'key', 'title']
-const TOGGLEABLE: ColId[] = ['status', 'priority', 'assignee', 'sprint', 'workstream', 'start', 'points', 'updated']
-const DEFAULT_VISIBLE: Record<string, boolean> = { status: true, priority: true, assignee: true, sprint: true, workstream: true, start: false, points: true, updated: true }
-const DEFAULT_WIDTHS: Record<ColId, number> = { select: 40, key: 92, title: 340, status: 120, priority: 104, assignee: 168, sprint: 148, workstream: 124, start: 116, points: 60, updated: 116 }
+const TOGGLEABLE: ColId[] = ['status', 'priority', 'assignee', 'sprint', 'workstream', 'start', 'due', 'points', 'updated']
+const DEFAULT_VISIBLE: Record<string, boolean> = { status: true, priority: true, assignee: true, sprint: true, workstream: true, start: false, due: false, points: true, updated: true }
+const DEFAULT_WIDTHS: Record<ColId, number> = { select: 40, key: 92, title: 340, status: 120, priority: 104, assignee: 168, sprint: 148, workstream: 124, start: 116, due: 116, points: 60, updated: 116 }
 const COL_LABEL: Record<ColId, string> = {
   select: '', key: 'list.colKey', title: 'list.colTitle', status: 'list.colStatus', priority: 'list.colPriority',
   assignee: 'list.colAssignee', sprint: 'list.colSprint', workstream: 'list.colWorkstream',
-  start: 'list.colStart', points: 'list.colPoints', updated: 'list.colUpdated',
+  start: 'list.colStart', due: 'list.colDue', points: 'list.colPoints', updated: 'list.colUpdated',
 }
 
 export default function ProjectList() {
@@ -228,6 +228,8 @@ export default function ProjectList() {
         return <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{tk.workstream === 'ADHOC' ? t('drawer.workstreamAdhoc') : t('drawer.workstreamSprint')}</span>
       case 'start':
         return <span className="text-xs text-muted-foreground">{tk.startDate?.slice(0, 10) ?? '—'}</span>
+      case 'due':
+        return <span className="text-xs text-muted-foreground">{tk.dueDate?.slice(0, 10) ?? '—'}</span>
       case 'points':
         return <span className="text-xs text-muted-foreground">{tk.storyPoints ?? '—'}</span>
       case 'updated':

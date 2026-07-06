@@ -311,6 +311,7 @@
     "colSprint": "Sprint",
     "colWorkstream": "Workstream",
     "colStart": "Start",
+    "colDue": "Due",
     "colPoints": "Pts",
     "columns": "Columns",
     "colUpdated": "Updated",

@@ -137,7 +137,8 @@ Implement with one `prisma.ticket.groupBy({ by: ['parentId', 'status'], _count: 
 
 ---
 
-### - [ ] F5 — Due column in the List chooser (S) *(3.7 R13's "Due(?)")*
+### - [x] F5 — Due column in the List chooser (S) *(3.7 R13's "Due(?)")* *(done 2026-07-06)*
+> Added `'due'` to the `ProjectList` column model (ColId/COL_ORDER/TOGGLEABLE/DEFAULT_VISIBLE off/DEFAULT_WIDTHS/COL_LABEL + a `renderCell` case mirroring `start`), i18n `list.colDue`. Chooser/colgroup/colSpan/resize all derive from the model — no other edits; CSV export already carried Due. Typecheck + build green; visual toggle check deferred with the others to the owner's re-login.
 
 **Goal:** the List can show Due like it shows Start.
 
