@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Ban, ArrowUp, ArrowDown, Columns3 } from 'lucide-react'
-import { api, type Priority, type Ticket, type TicketStatus, type TicketType } from '../lib/api'
+import { api, type Ticket, type TicketType } from '../lib/api'
+import { MultiSelect } from '../components/MultiSelect'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '../lib/board'
 import { cn } from '../lib/utils'
 import { formatRelative } from '../lib/time'
@@ -77,34 +78,36 @@ export default function ProjectList() {
   // ── Filters (mirrors Board's A4 bar, plus status + label) ──
   const [q, setQ] = useState('')
   const [qDebounced, setQDebounced] = useState('')
-  const [status, setStatus] = useState<TicketStatus | ''>('')
-  const [priority, setPriority] = useState<Priority | ''>('')
-  const [type, setType] = useState<TicketType | ''>('')
-  const [assignedToId, setAssignedToId] = useState('')
-  const [sprintFilter, setSprintFilter] = useState('')
-  const [labelFilter, setLabelFilter] = useState('')
-  const [workstreamFilter, setWorkstreamFilter] = useState('')
+  const [status, setStatus] = useState<string[]>([])
+  const [priority, setPriority] = useState<string[]>([])
+  const [type, setType] = useState<string[]>([])
+  const [assignedToId, setAssignedToId] = useState<string[]>([])
+  const [sprintFilter, setSprintFilter] = useState<string[]>([])
+  const [labelFilter, setLabelFilter] = useState<string[]>([])
+  const [workstreamFilter, setWorkstreamFilter] = useState<string[]>([])
   const [sort, setSort] = useState('-updatedAt')
   useEffect(() => {
     const id = setTimeout(() => setQDebounced(q), 300)
     return () => clearTimeout(id)
   }, [q])
-  const hasFilters = Boolean(qDebounced || status || priority || type || assignedToId || sprintFilter || labelFilter || workstreamFilter)
+  const hasFilters = Boolean(
+    qDebounced || status.length || priority.length || type.length || assignedToId.length || sprintFilter.length || labelFilter.length || workstreamFilter.length,
+  )
   const clearFilters = () => {
-    setQ(''); setQDebounced(''); setStatus(''); setPriority(''); setType('')
-    setAssignedToId(''); setSprintFilter(''); setLabelFilter(''); setWorkstreamFilter('')
+    setQ(''); setQDebounced(''); setStatus([]); setPriority([]); setType([])
+    setAssignedToId([]); setSprintFilter([]); setLabelFilter([]); setWorkstreamFilter([])
   }
 
   const params = useMemo(() => {
     const p: Record<string, string> = { sort }
     if (qDebounced) p.q = qDebounced
-    if (status) p.status = status
-    if (priority) p.priority = priority
-    if (type) p.type = type
-    if (assignedToId) p.assignedToId = assignedToId
-    if (sprintFilter) p.sprintId = sprintFilter
-    if (labelFilter) p.labelId = labelFilter
-    if (workstreamFilter) p.workstream = workstreamFilter
+    if (status.length) p.status = status.join(',')
+    if (priority.length) p.priority = priority.join(',')
+    if (type.length) p.type = type.join(',')
+    if (assignedToId.length) p.assignedToId = assignedToId.join(',')
+    if (sprintFilter.length) p.sprintId = sprintFilter.join(',')
+    if (labelFilter.length) p.labelId = labelFilter.join(',')
+    if (workstreamFilter.length) p.workstream = workstreamFilter.join(',')
     return p
   }, [sort, qDebounced, status, priority, type, assignedToId, sprintFilter, labelFilter, workstreamFilter])
 
@@ -257,35 +260,51 @@ export default function ProjectList() {
           placeholder={t('board.search')}
           className="h-8 w-48 rounded-md border border-input bg-transparent px-2 text-sm"
         />
-        <select value={status} onChange={(e) => setStatus(e.target.value as TicketStatus | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('list.allStatuses')}</option>
-          {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-        </select>
-        <select value={priority} onChange={(e) => setPriority(e.target.value as Priority | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.priorityAny')}</option>
-          {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <select value={type} onChange={(e) => setType(e.target.value as TicketType | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.typeAny')}</option>
-          {TYPES.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
-        </select>
-        <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.assigneeAny')}</option>
-          {members.data?.members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
-        </select>
-        <select value={sprintFilter} onChange={(e) => setSprintFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.sprintAny')}</option>
-          {sprints.data?.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        <select value={labelFilter} onChange={(e) => setLabelFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('list.allLabels')}</option>
-          {labels.data?.labels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
-        <select value={workstreamFilter} onChange={(e) => setWorkstreamFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('gantt.allWorkstreams')}</option>
-          <option value="SPRINT">{t('drawer.workstreamSprint')}</option>
-          <option value="ADHOC">{t('drawer.workstreamAdhoc')}</option>
-        </select>
+        <MultiSelect
+          placeholder={t('list.allStatuses')}
+          selected={status}
+          onChange={setStatus}
+          options={ALL_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
+        />
+        <MultiSelect
+          placeholder={t('board.priorityAny')}
+          selected={priority}
+          onChange={setPriority}
+          options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+        />
+        <MultiSelect
+          placeholder={t('board.typeAny')}
+          selected={type}
+          onChange={setType}
+          options={TYPES.map((tp) => ({ value: tp, label: tp }))}
+        />
+        <MultiSelect
+          placeholder={t('board.assigneeAny')}
+          selected={assignedToId}
+          onChange={setAssignedToId}
+          options={(members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name }))}
+        />
+        <MultiSelect
+          placeholder={t('board.sprintAny')}
+          selected={sprintFilter}
+          onChange={setSprintFilter}
+          options={(sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name }))}
+        />
+        <MultiSelect
+          placeholder={t('list.allLabels')}
+          selected={labelFilter}
+          onChange={setLabelFilter}
+          options={(labels.data?.labels ?? []).map((l) => ({ value: l.id, label: l.name }))}
+        />
+        <MultiSelect
+          placeholder={t('gantt.allWorkstreams')}
+          selected={workstreamFilter}
+          onChange={setWorkstreamFilter}
+          options={[
+            { value: 'SPRINT', label: t('drawer.workstreamSprint') },
+            { value: 'ADHOC', label: t('drawer.workstreamAdhoc') },
+          ]}
+        />
         {hasFilters && (
           <button onClick={clearFilters} className="text-sm text-muted-foreground hover:text-foreground">
             {t('board.clearFilters')}

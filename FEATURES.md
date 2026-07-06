@@ -122,7 +122,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 
 ## List view
 - **Board ⇄ List** toggle (remembered per browser).
-- Filterable, sortable table; row click opens the ticket panel.
+- Filterable (every filter is **multi-select** — status, priority, type, assignee, sprint, label, workstream), sortable table; row click opens the ticket panel.
 - **Choose your columns** — a *Columns* button toggles Status, Priority, Assignee, Sprint, Workstream, Start, Points, and Updated on/off (Key + Title always show). **Drag a column's edge to resize it.** Both your column choices and widths are remembered. (CSV export always includes every column, regardless of what's shown.)
 - **Export CSV** of exactly what your filters show; **Import CSV** with a preview and Jira-compatible headers (Summary, Issue Type, Story Points…). Imports now bring **labels and the assignee** along too — labels match by name (separate several with `;`), the assignee by their email or exact display name; anything that doesn't match is simply skipped, never an error. Not sure of the format? Click **Sample CSV** to download a ready-made example you can open, edit, and re-import.
 
