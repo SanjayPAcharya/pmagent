@@ -110,16 +110,24 @@ const importSchema = z.object({
     .max(500),
 })
 
+// List filters accept a comma-separated value (multi-select) — a single value is
+// just a 1-element list, so older single-select callers keep working.
+const csvOf = <T extends z.ZodTypeAny>(item: T) =>
+  z
+    .string()
+    .transform((s) => s.split(',').map((v) => v.trim()).filter(Boolean))
+    .pipe(z.array(item).min(1))
+
 const listQuerySchema = z.object({
   projectId: z.string().uuid(),
   q: z.string().max(200).optional(),
-  status: statusEnum.optional(),
-  priority: priorityEnum.optional(),
-  type: typeEnum.optional(),
-  assignedToId: z.string().uuid().optional(),
-  labelId: z.string().uuid().optional(),
-  sprintId: z.string().uuid().optional(),
-  workstream: workstreamEnum.optional(),
+  status: csvOf(statusEnum).optional(),
+  priority: csvOf(priorityEnum).optional(),
+  type: csvOf(typeEnum).optional(),
+  assignedToId: csvOf(z.string().uuid()).optional(),
+  labelId: csvOf(z.string().uuid()).optional(),
+  sprintId: csvOf(z.string().uuid()).optional(),
+  workstream: csvOf(workstreamEnum).optional(),
   includeArchived: z.coerce.boolean().optional(),
   sort: sortEnum.default('position'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
@@ -177,13 +185,13 @@ const routes: FastifyPluginAsync = async (app) => {
 
     const where: Prisma.TicketWhereInput = { projectId: q.projectId }
     if (!q.includeArchived) where.archivedAt = null
-    if (q.status) where.status = q.status
-    if (q.priority) where.priority = q.priority
-    if (q.type) where.type = q.type
-    if (q.assignedToId) where.assignedToId = q.assignedToId
-    if (q.sprintId) where.sprintId = q.sprintId
-    if (q.workstream) where.workstream = q.workstream
-    if (q.labelId) where.labels = { some: { labelId: q.labelId } }
+    if (q.status) where.status = { in: q.status }
+    if (q.priority) where.priority = { in: q.priority }
+    if (q.type) where.type = { in: q.type }
+    if (q.assignedToId) where.assignedToId = { in: q.assignedToId }
+    if (q.sprintId) where.sprintId = { in: q.sprintId }
+    if (q.workstream) where.workstream = { in: q.workstream }
+    if (q.labelId) where.labels = { some: { labelId: { in: q.labelId } } }
     if (q.q) {
       const or: Prisma.TicketWhereInput[] = [{ title: { contains: q.q, mode: 'insensitive' } }]
       if (/^\d+$/.test(q.q)) or.push({ number: Number(q.q) })

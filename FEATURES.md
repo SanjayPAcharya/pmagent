@@ -110,7 +110,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Board
 - Columns: Backlog · To Do · In Progress · In Review · Blocked · Done, with drag & drop and within-column reordering.
 - **WIP limits** — In Progress and In Review pulse when overloaded.
-- Filters (search / priority / type / assignee / sprint), sort options, **"My tickets"** focus dim (`f`).
+- Filters (search / priority / type / assignee / sprint) — each is **multi-select** (tick several priorities, people, or sprints at once) — plus sort options and the **"My tickets"** focus dim (`f`).
 - On phones: columns snap-scroll, **swipe** a card to advance/retreat its status.
 - **Live presence** — viewer avatars on cards, ghost outlines of teammates' in-flight drags.
 

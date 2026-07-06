@@ -17,8 +17,9 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
-import { api, type Member, type Priority, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
+import { api, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
+import { MultiSelect } from '@/components/MultiSelect'
 import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { useProjectWebSocket } from '@/lib/websocket'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
@@ -76,23 +77,23 @@ export default function Board() {
   // ── Filters (A4) ──
   const [q, setQ] = useState('')
   const [qDebounced, setQDebounced] = useState('')
-  const [priority, setPriority] = useState<Priority | ''>('')
-  const [type, setType] = useState<TicketType | ''>('')
-  const [assignedToId, setAssignedToId] = useState('')
-  const [sprintFilter, setSprintFilter] = useState('')
+  const [priority, setPriority] = useState<string[]>([])
+  const [type, setType] = useState<string[]>([])
+  const [assignedToId, setAssignedToId] = useState<string[]>([])
+  const [sprintFilter, setSprintFilter] = useState<string[]>([])
   const [sort, setSort] = useState('position')
   useEffect(() => {
     const id = setTimeout(() => setQDebounced(q), 300)
     return () => clearTimeout(id)
   }, [q])
-  const hasFilters = Boolean(qDebounced || priority || type || assignedToId || sprintFilter || sort !== 'position')
+  const hasFilters = Boolean(qDebounced || priority.length || type.length || assignedToId.length || sprintFilter.length || sort !== 'position')
   const clearFilters = () => {
     setQ('')
     setQDebounced('')
-    setPriority('')
-    setType('')
-    setAssignedToId('')
-    setSprintFilter('')
+    setPriority([])
+    setType([])
+    setAssignedToId([])
+    setSprintFilter([])
     setSort('position')
   }
 
@@ -102,10 +103,10 @@ export default function Board() {
   const params = useMemo(() => {
     const p: Record<string, string> = { sort }
     if (qDebounced) p.q = qDebounced
-    if (priority) p.priority = priority
-    if (type) p.type = type
-    if (assignedToId) p.assignedToId = assignedToId
-    if (sprintFilter) p.sprintId = sprintFilter
+    if (priority.length) p.priority = priority.join(',')
+    if (type.length) p.type = type.join(',')
+    if (assignedToId.length) p.assignedToId = assignedToId.join(',')
+    if (sprintFilter.length) p.sprintId = sprintFilter.join(',')
     if (wsTab !== 'all') p.workstream = wsTab
     return p
   }, [sort, qDebounced, priority, type, assignedToId, sprintFilter, wsTab])
@@ -485,38 +486,30 @@ export default function Board() {
           placeholder={t('board.search')}
           className="h-8 w-56 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
-        <select value={priority} onChange={(e) => setPriority(e.target.value as Priority | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.priorityAny')}</option>
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <select value={type} onChange={(e) => setType(e.target.value as TicketType | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.typeAny')}</option>
-          {(['FEATURE', 'BUG', 'CHORE', 'SPIKE'] as TicketType[]).map((ty) => (
-            <option key={ty} value={ty}>
-              {ty}
-            </option>
-          ))}
-        </select>
-        <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.assigneeAny')}</option>
-          {members.data?.members.map((m) => (
-            <option key={m.userId} value={m.userId}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-        <select value={sprintFilter} onChange={(e) => setSprintFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.sprintAny')}</option>
-          {sprints.data?.sprints.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <MultiSelect
+          placeholder={t('board.priorityAny')}
+          selected={priority}
+          onChange={setPriority}
+          options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+        />
+        <MultiSelect
+          placeholder={t('board.typeAny')}
+          selected={type}
+          onChange={setType}
+          options={(['FEATURE', 'BUG', 'CHORE', 'SPIKE'] as TicketType[]).map((ty) => ({ value: ty, label: ty }))}
+        />
+        <MultiSelect
+          placeholder={t('board.assigneeAny')}
+          selected={assignedToId}
+          onChange={setAssignedToId}
+          options={(members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name }))}
+        />
+        <MultiSelect
+          placeholder={t('board.sprintAny')}
+          selected={sprintFilter}
+          onChange={setSprintFilter}
+          options={(sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name }))}
+        />
         <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
           <option value="position">{t('board.sortManual')}</option>
           <option value="-updatedAt">{t('board.sortUpdated')}</option>

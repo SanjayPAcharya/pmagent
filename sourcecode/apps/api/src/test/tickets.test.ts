@@ -147,6 +147,24 @@ describe('tickets', () => {
     expect(cursor).toBeNull() // terminated cleanly
   })
 
+  it('filters accept comma-separated (multi-select) values', async () => {
+    const owner = await tokenFor('t-multi')
+    const { id: orgId } = await makeOrg(owner, 'Multi Co')
+    const { id: projectId } = await makeProject(owner, orgId, 'Board')
+    await createTicket(owner, { projectId, title: 'Urgent one', priority: 'URGENT' })
+    await createTicket(owner, { projectId, title: 'High one', priority: 'HIGH' })
+    await createTicket(owner, { projectId, title: 'Low one', priority: 'LOW' })
+
+    const both = await app.inject({ method: 'GET', url: `/api/tickets?projectId=${projectId}&priority=URGENT,HIGH`, headers: bearer(owner) })
+    const titles = (both.json().items as { title: string }[]).map((t) => t.title).sort()
+    expect(titles).toEqual(['High one', 'Urgent one'])
+
+    // A single value still works (1-element list).
+    const one = await app.inject({ method: 'GET', url: `/api/tickets?projectId=${projectId}&priority=LOW`, headers: bearer(owner) })
+    expect(one.json().items).toHaveLength(1)
+    expect(one.json().items[0].title).toBe('Low one')
+  })
+
   it('soft-deletes: archived tickets are excluded unless includeArchived=true', async () => {
     const owner = await tokenFor('t-owner6')
     const { id: orgId } = await makeOrg(owner, 'Trash Co')
