@@ -8,6 +8,8 @@ import { logout } from '../lib/auth'
 import { useTheme } from '../lib/theme'
 import { useOrgAccent } from '../lib/accent'
 import { useLocalStorageState } from '../lib/useLocalStorage'
+import { initialsOf } from '../lib/utils'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { OrgTree } from '@/components/OrgTree'
@@ -64,7 +66,19 @@ export default function Layout() {
           </Link>
           <Breadcrumbs />
           <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground sm:gap-3">
-            <span className="hidden max-w-[30vw] truncate lg:inline">{me.data?.user.email}</span>
+            <Link
+              to="/account"
+              title={t('account.title')}
+              className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-accent hover:text-foreground"
+            >
+              <Avatar className="h-6 w-6">
+                {me.data?.user.avatarUrl && <AvatarImage src={me.data.user.avatarUrl} alt={me.data.user.name} />}
+                <AvatarFallback className="text-[10px]">
+                  {me.data ? initialsOf(me.data.user.name, me.data.user.email) : '…'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden max-w-[30vw] truncate lg:inline">{me.data?.user.email}</span>
+            </Link>
             <Button
               variant="ghost"
               size="icon"

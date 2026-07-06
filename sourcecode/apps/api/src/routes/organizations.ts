@@ -92,6 +92,11 @@ const routes: FastifyPluginAsync = async (app) => {
   app.get('/:slug', { preHandler: requireOrgRole('MEMBER') }, async (request) => {
     const { slug } = request.params as { slug: string }
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
+    // The caller's own role — needed by the settings page to gate rename/delete.
+    const membership = await prisma.orgMember.findUnique({
+      where: { orgId_userId: { orgId: org.id, userId: request.userId! } },
+      select: { role: true },
+    })
     const [projectCount, memberCount, ticketGroups, activeSprintCount, previewMembers, pendingInviteCount] =
       await Promise.all([
         prisma.project.count({ where: { orgId: org.id } }),
@@ -114,6 +119,7 @@ const routes: FastifyPluginAsync = async (app) => {
     return {
       org: {
         ...org,
+        role: membership?.role,
         stats: { projectCount, memberCount, ticketsByStatus, activeSprintCount },
         membersPreview: previewMembers.map((m) => ({
           userId: m.userId,

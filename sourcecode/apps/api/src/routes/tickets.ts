@@ -17,10 +17,11 @@ import {
   type UpdateTicketInput,
 } from '../services/tickets.service.js'
 import { parseMentions, filterOrgMembers } from '../services/notifications.service.js'
-import { blockedByCounts, getRelations, addDependency, removeDependency } from '../services/relations.service.js'
+import { blockedByCounts, subtaskCounts, getRelations, addDependency, removeDependency } from '../services/relations.service.js'
 
 const priorityEnum = z.enum(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 const typeEnum = z.enum(['FEATURE', 'BUG', 'CHORE', 'SPIKE'])
+const workstreamEnum = z.enum(['SPRINT', 'ADHOC'])
 const statusEnum = z.enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'DONE', 'CANCELLED'])
 const sortEnum = z.enum(['position', '-position', 'updatedAt', '-updatedAt', 'priority', '-priority', 'number', '-number'])
 
@@ -37,6 +38,8 @@ const createTicketSchema = z.object({
   type: typeEnum.optional(),
   storyPoints: z.number().int().positive().optional(),
   dueDate: z.string().datetime().optional(),
+  startDate: z.string().datetime().nullable().optional(),
+  workstream: workstreamEnum.optional(),
   assignedToId: z.string().uuid().optional(),
   assignedAgentType: z.enum(['CODE', 'SPEC']).optional(),
   labelIds: z.array(z.string().uuid()).optional(),
@@ -56,6 +59,8 @@ const updateTicketSchema = z
     type: typeEnum,
     storyPoints: z.number().int().positive().nullable(),
     dueDate: z.string().datetime().nullable(),
+    startDate: z.string().datetime().nullable(),
+    workstream: workstreamEnum,
     position: z.number(),
     sprintId: z.string().uuid().nullable(),
     assignedToId: z.string().uuid().nullable(),
@@ -71,6 +76,7 @@ const batchSchema = z.object({
       status: statusEnum,
       assignedToId: z.string().uuid().nullable(),
       sprintId: z.string().uuid().nullable(),
+      workstream: workstreamEnum,
       addLabelIds: z.array(z.string().uuid()),
       archived: z.boolean(),
     })
@@ -91,22 +97,37 @@ const importSchema = z.object({
         priority: priorityEnum.optional(),
         type: typeEnum.optional(),
         storyPoints: z.number().int().positive().optional(),
+        startDate: z.string().datetime().optional(),
+        workstream: workstreamEnum.optional(),
         acceptanceCriteria: z.string().max(10_000).optional(),
+        // Resolved here, not on the client: label names matched case-insensitively
+        // within the org (unknowns dropped), assignee matched by member email/name.
+        labels: z.array(z.string().min(1).max(50)).max(20).optional(),
+        assignee: z.string().max(200).optional(),
       }),
     )
     .min(1)
     .max(500),
 })
 
+// List filters accept a comma-separated value (multi-select) — a single value is
+// just a 1-element list, so older single-select callers keep working.
+const csvOf = <T extends z.ZodTypeAny>(item: T) =>
+  z
+    .string()
+    .transform((s) => s.split(',').map((v) => v.trim()).filter(Boolean))
+    .pipe(z.array(item).min(1))
+
 const listQuerySchema = z.object({
   projectId: z.string().uuid(),
   q: z.string().max(200).optional(),
-  status: statusEnum.optional(),
-  priority: priorityEnum.optional(),
-  type: typeEnum.optional(),
-  assignedToId: z.string().uuid().optional(),
-  labelId: z.string().uuid().optional(),
-  sprintId: z.string().uuid().optional(),
+  status: csvOf(statusEnum).optional(),
+  priority: csvOf(priorityEnum).optional(),
+  type: csvOf(typeEnum).optional(),
+  assignedToId: csvOf(z.string().uuid()).optional(),
+  labelId: csvOf(z.string().uuid()).optional(),
+  sprintId: csvOf(z.string().uuid()).optional(),
+  workstream: csvOf(workstreamEnum).optional(),
   includeArchived: z.coerce.boolean().optional(),
   sort: sortEnum.default('position'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
@@ -164,12 +185,13 @@ const routes: FastifyPluginAsync = async (app) => {
 
     const where: Prisma.TicketWhereInput = { projectId: q.projectId }
     if (!q.includeArchived) where.archivedAt = null
-    if (q.status) where.status = q.status
-    if (q.priority) where.priority = q.priority
-    if (q.type) where.type = q.type
-    if (q.assignedToId) where.assignedToId = q.assignedToId
-    if (q.sprintId) where.sprintId = q.sprintId
-    if (q.labelId) where.labels = { some: { labelId: q.labelId } }
+    if (q.status) where.status = { in: q.status }
+    if (q.priority) where.priority = { in: q.priority }
+    if (q.type) where.type = { in: q.type }
+    if (q.assignedToId) where.assignedToId = { in: q.assignedToId }
+    if (q.sprintId) where.sprintId = { in: q.sprintId }
+    if (q.workstream) where.workstream = { in: q.workstream }
+    if (q.labelId) where.labels = { some: { labelId: { in: q.labelId } } }
     if (q.q) {
       const or: Prisma.TicketWhereInput[] = [{ title: { contains: q.q, mode: 'insensitive' } }]
       if (/^\d+$/.test(q.q)) or.push({ number: Number(q.q) })
@@ -184,9 +206,10 @@ const routes: FastifyPluginAsync = async (app) => {
       ...(q.cursor ? { cursor: { id: decodeCursor(q.cursor) }, skip: 1 } : {}),
     })
     const { items, nextCursor } = paginate(rows, q.limit)
-    const blocked = await blockedByCounts(items.map((t) => t.id))
+    const ids = items.map((t) => t.id)
+    const [blocked, subtasks] = await Promise.all([blockedByCounts(ids), subtaskCounts(ids)])
     return {
-      items: items.map((t) => ({ ...serializeTicket(t), blockedBy: blocked.get(t.id) ?? 0 })),
+      items: items.map((t) => ({ ...serializeTicket(t), blockedBy: blocked.get(t.id) ?? 0, subtasks: subtasks.get(t.id) })),
       nextCursor,
     }
   })
@@ -354,9 +377,36 @@ const routes: FastifyPluginAsync = async (app) => {
     if (!project) throw new ApiError(404, 'Project not found')
     await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
 
+    // Resolve label names / assignee identifiers once for the whole file.
+    // Unknown values are silently dropped — a half-matching import should
+    // still land the tickets.
+    const needsLookups = tickets.some((t) => t.labels?.length || t.assignee)
+    const labelByName = new Map<string, string>()
+    const memberByKey = new Map<string, string>()
+    if (needsLookups) {
+      const [orgLabels, orgMembers] = await Promise.all([
+        prisma.label.findMany({ where: { orgId: project.orgId }, select: { id: true, name: true } }),
+        prisma.orgMember.findMany({
+          where: { orgId: project.orgId },
+          select: { userId: true, user: { select: { email: true, name: true } } },
+        }),
+      ])
+      for (const l of orgLabels) labelByName.set(l.name.toLowerCase(), l.id)
+      // Email wins over a same-string name; names only match exactly (case-insensitive).
+      for (const m of orgMembers) if (m.user.name) memberByKey.set(m.user.name.toLowerCase(), m.userId)
+      for (const m of orgMembers) memberByKey.set(m.user.email.toLowerCase(), m.userId)
+    }
+
     let created = 0
-    for (const row of tickets) {
-      const { events } = await createTicket(project.orgId, request.userId!, { projectId, ...row })
+    for (const { labels, assignee, ...row } of tickets) {
+      const labelIds = [...new Set(labels?.map((n) => labelByName.get(n.trim().toLowerCase())).filter((id): id is string => !!id))]
+      const assignedToId = assignee ? memberByKey.get(assignee.trim().toLowerCase()) : undefined
+      const { events } = await createTicket(project.orgId, request.userId!, {
+        projectId,
+        ...row,
+        labelIds: labelIds.length ? labelIds : undefined,
+        assignedToId,
+      })
       for (const e of events) await publishEvent(e.type, e.payload)
       created++
     }
@@ -380,6 +430,7 @@ const routes: FastifyPluginAsync = async (app) => {
     if (patch.status !== undefined) fieldPatch.status = patch.status
     if (patch.assignedToId !== undefined) fieldPatch.assignedToId = patch.assignedToId
     if (patch.sprintId !== undefined) fieldPatch.sprintId = patch.sprintId
+    if (patch.workstream !== undefined) fieldPatch.workstream = patch.workstream
     const hasFieldPatch = Object.keys(fieldPatch).length > 0
 
     if (patch.addLabelIds?.length) {

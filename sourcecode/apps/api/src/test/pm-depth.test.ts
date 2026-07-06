@@ -129,6 +129,24 @@ describe('global search', () => {
     })
     expect(byKey.json().items.map((t: { key: string }) => t.key)).toContain(items[0].key)
   })
+
+  it('matches ticket descriptions (title hits ranked first) and project names', async () => {
+    const owner = await tokenFor('srch-deep')
+    const outsider = await tokenFor('srch-deep-outsider')
+    const { projectId } = await makeOrgProject(owner, 'Deep Search Org')
+    await createTicket(owner, { projectId, title: 'Plain title', description: 'mentions kraken deep in the body' })
+    await createTicket(owner, { projectId, title: 'The kraken ticket' })
+
+    const res = await app.inject({ method: 'GET', url: '/api/search?q=kraken', headers: bearer(owner) })
+    const items = res.json().items as { title: string }[]
+    expect(items.map((t) => t.title)).toEqual(['The kraken ticket', 'Plain title'])
+
+    // Project-name hits ride along, membership-scoped (helper names projects 'Proj').
+    const byName = await app.inject({ method: 'GET', url: '/api/search?q=proj', headers: bearer(owner) })
+    expect(byName.json().projects.map((p: { name: string }) => p.name)).toContain('Proj')
+    const denied = await app.inject({ method: 'GET', url: '/api/search?q=proj', headers: bearer(outsider) })
+    expect(denied.json().projects).toEqual([])
+  })
 })
 
 describe('my work', () => {

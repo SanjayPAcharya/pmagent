@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { X } from 'lucide-react'
-import { api, type TicketRef } from '@/lib/api'
+import { api, type TicketRef, type Workstream } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
@@ -18,16 +18,21 @@ import { Badge } from '@/components/ui/badge'
 interface Props {
   ticketId: string
   projectId: string
+  /** R9: new subtasks inherit the parent's workstream. */
+  parentWorkstream?: Workstream
 }
 
 const DONE = new Set(['DONE', 'CANCELLED'])
 
-export function RelationsSection({ ticketId, projectId }: Props) {
+export function RelationsSection({ ticketId, projectId, parentWorkstream }: Props) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const { slug = '', projectSlug = '' } = useParams()
-  const { pathname } = useLocation()
+  const location = useLocation()
+  const { pathname } = location
+  const [newSubtask, setNewSubtask] = useState('')
+  const subtaskInputRef = useRef<HTMLInputElement>(null)
 
   const rel = useQuery({ queryKey: ['relations', ticketId], queryFn: () => api.getRelations(ticketId) })
   const candidates = useQuery({
@@ -41,6 +46,27 @@ export function RelationsSection({ ticketId, projectId }: Props) {
     void qc.invalidateQueries({ queryKey: ['ticket', ticketId] })
   }
   const run = (p: Promise<unknown>) => p.then(refresh).catch((e) => toast.error((e as Error).message))
+
+  // R9 — inline subtask create: fast Enter-Enter batch entry without leaving the drawer.
+  const createSubtask = async () => {
+    const title = newSubtask.trim()
+    if (!title) return
+    try {
+      await api.createTicket({ projectId, title, parentId: ticketId, workstream: parentWorkstream })
+      setNewSubtask('')
+      refresh()
+      toast.success(t('relations.subtaskCreated'))
+      subtaskInputRef.current?.focus()
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  // Card "+ subtask" affordance deep-links here with focusSubtask state.
+  const relLoaded = Boolean(rel.data)
+  useEffect(() => {
+    if (relLoaded && (location.state as { focusSubtask?: boolean } | null)?.focusSubtask) subtaskInputRef.current?.focus()
+  }, [relLoaded, location.state])
 
   // Stay in the current view (board vs list) when jumping to a related ticket.
   const base = `/orgs/${slug}/projects/${projectSlug}`
@@ -128,8 +154,21 @@ export function RelationsSection({ ticketId, projectId }: Props) {
         </Label>
         <div className="mt-1 flex flex-wrap items-center gap-1">
           {relations.subtasks.map((s) => refBadge(s, () => run(api.updateTicket(s.id, { parentId: null }))))}
-          <AddPicker label={t('common.add')} onPick={(c) => run(api.updateTicket(c.id, { parentId: ticketId }))} />
+          <AddPicker label={t('relations.linkExisting')} onPick={(c) => run(api.updateTicket(c.id, { parentId: ticketId }))} />
         </div>
+        <Input
+          ref={subtaskInputRef}
+          value={newSubtask}
+          onChange={(e) => setNewSubtask(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void createSubtask()
+            }
+          }}
+          placeholder={t('relations.newSubtaskPlaceholder')}
+          className="mt-1.5 h-8 text-sm"
+        />
       </div>
 
       <div>

@@ -13,7 +13,7 @@ export default function ViewToggle({ slug, projectSlug, active }: { slug: string
   const base = `/orgs/${slug}/projects/${projectSlug}`
   const go = (view: 'board' | 'list') => {
     localStorage.setItem(VIEW_PREF_KEY, view)
-    if (view !== active) navigate(view === 'board' ? base : `${base}/list`)
+    if (view !== active) navigate(view === 'board' ? `${base}/board` : `${base}/list`)
   }
   const btn = (view: 'board' | 'list', Icon: typeof LayoutGrid, label: string) => (
     <button

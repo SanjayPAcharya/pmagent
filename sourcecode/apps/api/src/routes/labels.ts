@@ -15,6 +15,12 @@ const createSchema = z.object({
   name: z.string().min(1).max(40),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'color must be a #rrggbb hex'),
 })
+const updateSchema = z
+  .object({
+    name: z.string().min(1).max(40),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'color must be a #rrggbb hex'),
+  })
+  .partial()
 const listQuery = z.object({ orgId: z.string().uuid() })
 const idParams = z.object({ id: z.string().uuid() })
 
@@ -26,8 +32,13 @@ const routes: FastifyPluginAsync = async (app) => {
 
   r.get('/', { schema: { querystring: listQuery, tags: ['labels'] } }, async (request) => {
     await assertOrgRole(request.userId!, request.query.orgId, 'MEMBER')
-    const labels = await prisma.label.findMany({ where: { orgId: request.query.orgId }, orderBy: { name: 'asc' } })
-    return { labels }
+    const labels = await prisma.label.findMany({
+      where: { orgId: request.query.orgId },
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { tickets: true } } },
+    })
+    // Flatten the count — clients read `usageCount`, not Prisma's _count shape.
+    return { labels: labels.map(({ _count, ...l }) => ({ ...l, usageCount: _count.tickets })) }
   })
 
   r.post('/', { schema: { body: createSchema, tags: ['labels'] } }, async (request, reply) => {
@@ -37,6 +48,19 @@ const routes: FastifyPluginAsync = async (app) => {
     if (existing) throw new ApiError(409, 'A label with that name already exists', 'LABEL_EXISTS')
     const label = await prisma.label.create({ data: { orgId, name, color } })
     return reply.code(201).send({ label })
+  })
+
+  r.patch('/:id', { schema: { params: idParams, body: updateSchema, tags: ['labels'] } }, async (request) => {
+    const label = await prisma.label.findUnique({ where: { id: request.params.id } })
+    if (!label) throw new ApiError(404, 'Label not found')
+    await assertOrgRole(request.userId!, label.orgId, 'ADMIN')
+    const { name, color } = request.body
+    if (name && name !== label.name) {
+      const clash = await prisma.label.findUnique({ where: { orgId_name: { orgId: label.orgId, name } } })
+      if (clash) throw new ApiError(409, 'A label with that name already exists', 'LABEL_EXISTS')
+    }
+    const updated = await prisma.label.update({ where: { id: label.id }, data: { name, color } })
+    return { label: updated }
   })
 
   r.delete('/:id', { schema: { params: idParams, tags: ['labels'] } }, async (request, reply) => {

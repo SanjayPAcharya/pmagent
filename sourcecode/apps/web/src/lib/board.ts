@@ -23,6 +23,17 @@ export const WIP_LIMITS: Partial<Record<TicketStatus, number>> = {
   IN_REVIEW: 3,
 }
 
+// 3.7 R7 — fixed status hues for SVG fills (Gantt bars). Read on light + dark.
+export const STATUS_COLOR: Record<TicketStatus, string> = {
+  BACKLOG: '#94a3b8', // slate-400
+  TODO: '#64748b', // slate-500
+  IN_PROGRESS: '#3b82f6', // blue-500
+  IN_REVIEW: '#a855f7', // purple-500
+  BLOCKED: '#ef4444', // red-500
+  DONE: '#10b981', // emerald-500
+  CANCELLED: '#6b7280', // gray-500
+}
+
 export const PRIORITIES: Priority[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']
 
 export const PRIORITY_CLASS: Record<Priority, string> = {

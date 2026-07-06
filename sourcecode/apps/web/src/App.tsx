@@ -4,12 +4,18 @@ import Landing from './pages/Landing'
 import Layout from './pages/Layout'
 import Dashboard from './pages/Dashboard'
 import OrgProjects from './pages/OrgProjects'
+import ProjectOverview from './pages/ProjectOverview'
+import ProjectGantt from './pages/ProjectGantt'
 import Board from './pages/Board'
 import ProjectList from './pages/ProjectList'
 import Sprints from './pages/Sprints'
+import ProjectSettings from './pages/ProjectSettings'
 import Members from './pages/Members'
+import OrgSettings from './pages/OrgSettings'
 import InviteAccept from './pages/InviteAccept'
 import MyWork from './pages/MyWork'
+import AccountSettings from './pages/AccountSettings'
+import ProjectReports from './pages/ProjectReports'
 
 // Public routes render regardless of auth; gated routes sit behind RequireAuth.
 // keycloak is initialized in main.tsx before the app mounts.
@@ -30,13 +36,21 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/my-work" element={<MyWork />} />
+            <Route path="/account" element={<AccountSettings />} />
             <Route path="/orgs/:slug" element={<OrgProjects />} />
             <Route path="/orgs/:slug/members" element={<Members />} />
-            <Route path="/orgs/:slug/projects/:projectSlug" element={<Board />} />
+            <Route path="/orgs/:slug/settings" element={<OrgSettings />} />
+            <Route path="/orgs/:slug/projects/:projectSlug" element={<ProjectOverview />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/board" element={<Board />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/board/ticket/:number" element={<Board />} />
+            {/* Legacy deep link — kept so old /ticket/:number URLs still open the board drawer. */}
             <Route path="/orgs/:slug/projects/:projectSlug/ticket/:number" element={<Board />} />
             <Route path="/orgs/:slug/projects/:projectSlug/list" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/list/ticket/:number" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/sprints" element={<Sprints />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/gantt" element={<ProjectGantt />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/reports" element={<ProjectReports />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/settings" element={<ProjectSettings />} />
           </Route>
         </Route>
       </Routes>

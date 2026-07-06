@@ -106,11 +106,19 @@ export interface CreateTicketInput {
   type?: 'FEATURE' | 'BUG' | 'CHORE' | 'SPIKE'
   storyPoints?: number
   dueDate?: string
+  startDate?: string | null
+  workstream?: 'SPRINT' | 'ADHOC'
   assignedToId?: string
   assignedAgentType?: 'CODE' | 'SPEC'
   labelIds?: string[]
   dependsOnIds?: string[]
   parentId?: string
+}
+
+// Both dates present and start after due is a caller error (create + update).
+function assertDateRange(startDate: Date | null | undefined, dueDate: Date | null | undefined) {
+  if (startDate && dueDate && startDate.getTime() > dueDate.getTime())
+    throw new ApiError(400, 'startDate must be on or before dueDate', 'DATE_RANGE')
 }
 
 export interface ServiceResult {
@@ -127,6 +135,11 @@ export interface ServiceResult {
 export async function createTicket(orgId: string, createdById: string, input: CreateTicketInput): Promise<ServiceResult> {
   const labelIds = input.labelIds ?? []
   const dependsOnIds = input.dependsOnIds ?? []
+
+  // Invariant: ad-hoc work never belongs to a sprint.
+  if (input.workstream === 'ADHOC' && input.sprintId)
+    throw new ApiError(400, 'Ad-hoc tickets cannot belong to a sprint', 'ADHOC_SPRINT_CONFLICT')
+  assertDateRange(input.startDate ? new Date(input.startDate) : null, input.dueDate ? new Date(input.dueDate) : null)
 
   const ticket = await prisma.$transaction(async (tx) => {
     if (input.assignedToId) await assertOrgMember(tx, orgId, input.assignedToId, 'Assignee')
@@ -170,6 +183,8 @@ export async function createTicket(orgId: string, createdById: string, input: Cr
         type: input.type ?? 'FEATURE',
         storyPoints: input.storyPoints,
         dueDate: input.dueDate ? new Date(input.dueDate) : undefined,
+        startDate: input.startDate ? new Date(input.startDate) : undefined,
+        workstream: input.workstream ?? undefined,
         assignedToId: input.assignedToId,
         assignedAgentType: input.assignedAgentType,
         parentId: input.parentId,
@@ -204,6 +219,8 @@ export interface UpdateTicketInput {
   type?: 'FEATURE' | 'BUG' | 'CHORE' | 'SPIKE'
   storyPoints?: number | null
   dueDate?: string | null
+  startDate?: string | null
+  workstream?: 'SPRINT' | 'ADHOC'
   position?: number
   sprintId?: string | null
   assignedToId?: string | null
@@ -239,6 +256,22 @@ export async function updateTicket(
     if (input.assignedToId) await assertOrgMember(tx, orgId, input.assignedToId, 'Assignee')
     if (input.sprintId) await assertSprintInProject(tx, before.projectId, input.sprintId)
     if (has('labelIds')) await assertLabelsInOrg(tx, orgId, input.labelIds ?? [])
+
+    // Workstream ⇄ sprint invariant (R1). Compute the effective final values, then
+    // let a sprint assignment or an ADHOC switch coerce the other field.
+    if (has('workstream') && input.workstream === 'ADHOC' && has('sprintId') && input.sprintId)
+      throw new ApiError(400, 'Ad-hoc tickets cannot belong to a sprint', 'ADHOC_SPRINT_CONFLICT')
+    let effSprintId: string | null = has('sprintId') ? (input.sprintId ?? null) : before.sprintId
+    let effWorkstream = has('workstream') ? input.workstream! : before.workstream
+    if (effWorkstream === 'ADHOC' && effSprintId) {
+      if (has('sprintId') && input.sprintId) effWorkstream = 'SPRINT' // assigning a sprint wins
+      else effSprintId = null // switching to ad-hoc drops the sprint
+    }
+
+    // Date rule — start must not fall after due once the patch is applied.
+    const effStartDate = has('startDate') ? (input.startDate ? new Date(input.startDate) : null) : before.startDate
+    const effDueDate = has('dueDate') ? (input.dueDate ? new Date(input.dueDate) : null) : before.dueDate
+    assertDateRange(effStartDate, effDueDate)
     // Parent must be in the same project; walk ancestors to reject a cycle.
     if (has('parentId') && input.parentId) {
       if (input.parentId === ticketId) throw new ApiError(400, 'A ticket cannot be its own parent', 'CYCLE')
@@ -262,8 +295,10 @@ export async function updateTicket(
       activity.push({ type: 'PRIORITY_CHANGED', fromValue: before.priority, toValue: input.priority! })
     if (has('assignedToId') && input.assignedToId !== before.assignedToId)
       activity.push({ type: 'ASSIGNED', fromValue: before.assignedToId, toValue: input.assignedToId ?? null })
-    if (has('sprintId') && input.sprintId !== before.sprintId)
-      activity.push({ type: 'SPRINT_CHANGED', fromValue: before.sprintId, toValue: input.sprintId ?? null })
+    if (effSprintId !== before.sprintId)
+      activity.push({ type: 'SPRINT_CHANGED', fromValue: before.sprintId, toValue: effSprintId })
+    if (effWorkstream !== before.workstream)
+      activity.push({ type: 'WORKSTREAM_CHANGED', fromValue: before.workstream, toValue: effWorkstream })
 
     // New assignee auto-watches (before the update so the response reflects it).
     if (input.assignedToId && input.assignedToId !== before.assignedToId) {
@@ -288,7 +323,9 @@ export async function updateTicket(
         storyPoints: input.storyPoints,
         position: input.position,
         dueDate: has('dueDate') ? (input.dueDate ? new Date(input.dueDate) : null) : undefined,
-        sprintId: has('sprintId') ? input.sprintId : undefined,
+        startDate: has('startDate') ? (input.startDate ? new Date(input.startDate) : null) : undefined,
+        sprintId: effSprintId !== before.sprintId ? effSprintId : undefined,
+        workstream: effWorkstream !== before.workstream ? effWorkstream : undefined,
         parentId: has('parentId') ? input.parentId : undefined,
         assignedToId: has('assignedToId') ? input.assignedToId : undefined,
         // Replace the whole label set when labelIds is provided.

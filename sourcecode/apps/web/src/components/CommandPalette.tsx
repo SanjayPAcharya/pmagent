@@ -17,6 +17,7 @@ import {
   SunMoon,
   Clock,
   Search,
+  GanttChartSquare,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
@@ -134,7 +135,7 @@ export function CommandPalette() {
       })
       qc.invalidateQueries({ queryKey: ['tickets', projectId] })
       toast.success(t('board.ticketCreated'))
-      go(`/orgs/${slug}/projects/${projectSlug}/ticket/${ticket.number}`)
+      go(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)
     } catch (e) {
       toast.error((e as Error).message)
     }
@@ -288,6 +289,12 @@ export function CommandPalette() {
             )}
 
             <CommandGroup heading={t('palette.general')}>
+              {projectId && projectSlug && (
+                <CommandItem value="go to timeline gantt" onSelect={() => go(`/orgs/${slug}/projects/${projectSlug}/gantt`)}>
+                  <GanttChartSquare className="h-4 w-4" />
+                  {t('gantt.title')}
+                </CommandItem>
+              )}
               <CommandItem value="toggle theme" onSelect={() => { cycleTheme(); reset(false) }}>
                 <SunMoon className="h-4 w-4" />
                 {t('palette.toggleTheme')}
@@ -300,7 +307,7 @@ export function CommandPalette() {
                   <CommandItem
                     key={tk.id}
                     value={`${tk.key} ${tk.title}`}
-                    onSelect={() => go(`/orgs/${slug}/projects/${projectSlug}/ticket/${tk.number}`)}
+                    onSelect={() => go(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${tk.number}`)}
                   >
                     <Hash className="h-4 w-4" />
                     <span className="font-mono text-xs text-muted-foreground">{tk.key}</span>
@@ -310,16 +317,29 @@ export function CommandPalette() {
               </CommandGroup>
             )}
 
-            {searchDebounced.length >= 2 && (globalHits.data?.items.length ?? 0) > 0 && (
+            {searchDebounced.length >= 2 &&
+              ((globalHits.data?.items.length ?? 0) > 0 || (globalHits.data?.projects.length ?? 0) > 0) && (
               <CommandGroup heading={t('palette.everywhere')}>
-                {globalHits.data!.items
+                {(globalHits.data?.projects ?? []).map((p) => (
+                  <CommandItem
+                    key={p.id}
+                    value={`global project ${p.key} ${p.name}`}
+                    onSelect={() => go(`/orgs/${p.orgSlug}/projects/${p.slug}`)}
+                  >
+                    <FolderKanban className="h-4 w-4" />
+                    <span className="font-mono text-xs text-muted-foreground">{p.key}</span>
+                    <span className="truncate">{p.name}</span>
+                    <span className="ml-auto truncate text-xs text-muted-foreground">{p.orgSlug}</span>
+                  </CommandItem>
+                ))}
+                {(globalHits.data?.items ?? [])
                   .filter((hit) => !tickets.data?.items.some((tk) => tk.id === hit.id))
                   .slice(0, 8)
                   .map((hit) => (
                     <CommandItem
                       key={hit.id}
                       value={`global ${hit.key} ${hit.title}`}
-                      onSelect={() => go(`/orgs/${hit.orgSlug}/projects/${hit.projectSlug}/ticket/${hit.number}`)}
+                      onSelect={() => go(`/orgs/${hit.orgSlug}/projects/${hit.projectSlug}/board/ticket/${hit.number}`)}
                     >
                       <Search className="h-4 w-4" />
                       <span className="font-mono text-xs text-muted-foreground">{hit.key}</span>

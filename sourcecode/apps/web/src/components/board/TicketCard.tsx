@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
-import { Ban, Eye, MoreHorizontal } from 'lucide-react'
+import { Ban, Eye, MoreHorizontal, ListPlus, ListTodo } from 'lucide-react'
 import type { Member, Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, BOARD_COLUMNS, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { staleBorderClass } from '@/lib/time'
@@ -62,6 +62,14 @@ export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; 
               <Ban className="h-3 w-3" /> {t('list.blocked')}
             </span>
           )}
+          {ticket.subtasks && ticket.subtasks.total > 0 && (
+            <span
+              className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
+              title={t('board.subtasksTooltip', { done: ticket.subtasks.done, total: ticket.subtasks.total })}
+            >
+              <ListTodo className="h-3 w-3" /> {ticket.subtasks.done}/{ticket.subtasks.total}
+            </span>
+          )}
           {/* E1 — live viewers currently on this ticket */}
           {viewers && viewers.length > 0 && (
             <div className="flex -space-x-1.5" title={viewers.map((v) => v.name).join(', ')}>
@@ -97,6 +105,8 @@ interface TicketCardProps {
   ticket: Ticket
   onOpen: (t: Ticket) => void
   onStatusChange: (id: string, status: TicketStatus) => void
+  /** R9: open the drawer focused on the inline "new subtask" input. */
+  onAddSubtask?: (t: Ticket) => void
   /** B4 focus mode: cards that aren't mine are dimmed (not hidden). */
   dimmed?: boolean
   /** E1: members currently viewing this ticket (minus me). */
@@ -106,7 +116,7 @@ interface TicketCardProps {
   onToggleSelect?: (id: string) => void
 }
 
-export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers, selected, onToggleSelect }: TicketCardProps) {
+export function TicketCard({ ticket, onOpen, onStatusChange, onAddSubtask, dimmed, viewers, selected, onToggleSelect }: TicketCardProps) {
   const { t } = useTranslation()
   // useSortable gives within-column reordering (cards shift to make room) plus
   // cross-column moves. The 5px activation distance (set on the board) lets a
@@ -194,7 +204,20 @@ export function TicketCard({ ticket, onOpen, onStatusChange, dimmed, viewers, se
           />
         </div>
       )}
-      <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100" onPointerDown={stop} onClick={stop}>
+      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" onPointerDown={stop} onClick={stop}>
+        {onAddSubtask && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddSubtask(ticket)
+            }}
+            className="rounded bg-card p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title={t('relations.addSubtask')}
+            aria-label={t('relations.addSubtask')}
+          >
+            <ListPlus className="h-4 w-4" />
+          </button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="rounded bg-card p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground" title={t('board.changeStatus')}>

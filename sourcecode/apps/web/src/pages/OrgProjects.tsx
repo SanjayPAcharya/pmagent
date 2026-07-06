@@ -189,6 +189,9 @@ export default function OrgProjects() {
         <Link to={`/orgs/${slug}/members`} className="ml-auto text-sm text-muted-foreground hover:underline">
           {t('projects.membersLink')}
         </Link>
+        <Link to={`/orgs/${slug}/settings`} className="text-sm text-muted-foreground hover:underline">
+          {t('projects.settingsLink')}
+        </Link>
       </div>
 
       {/* Create */}

@@ -55,6 +55,49 @@ describe('organizations', () => {
     expect(res.statusCode).toBe(403)
   })
 
+  it("returns the caller's own role on GET /:slug", async () => {
+    const owner = await tokenFor('roleowner')
+    await app.inject({ method: 'POST', url: '/api/orgs', headers: bearer(owner), payload: { name: 'Role Org' } })
+
+    // Materialize the member's user record, then add them as MEMBER.
+    const member = await tokenFor('rolemember')
+    await app.inject({ method: 'GET', url: '/api/me', headers: bearer(member) })
+    await app.inject({
+      method: 'POST',
+      url: '/api/orgs/role-org/members',
+      headers: bearer(owner),
+      payload: { email: 'rolemember@x.com', role: 'MEMBER' },
+    })
+
+    const asOwner = await app.inject({ method: 'GET', url: '/api/orgs/role-org', headers: bearer(owner) })
+    expect(asOwner.json().org.role).toBe('OWNER')
+    const asMember = await app.inject({ method: 'GET', url: '/api/orgs/role-org', headers: bearer(member) })
+    expect(asMember.json().org.role).toBe('MEMBER')
+  })
+
+  it('deletes an org: OWNER only', async () => {
+    const owner = await tokenFor('delowner')
+    await app.inject({ method: 'POST', url: '/api/orgs', headers: bearer(owner), payload: { name: 'Doomed Org' } })
+
+    const admin = await tokenFor('deladmin')
+    await app.inject({ method: 'GET', url: '/api/me', headers: bearer(admin) })
+    await app.inject({
+      method: 'POST',
+      url: '/api/orgs/doomed-org/members',
+      headers: bearer(owner),
+      payload: { email: 'deladmin@x.com', role: 'ADMIN' },
+    })
+
+    const denied = await app.inject({ method: 'DELETE', url: '/api/orgs/doomed-org', headers: bearer(admin) })
+    expect(denied.statusCode).toBe(403)
+
+    const deleted = await app.inject({ method: 'DELETE', url: '/api/orgs/doomed-org', headers: bearer(owner) })
+    expect(deleted.statusCode).toBe(204)
+
+    const gone = await app.inject({ method: 'GET', url: '/api/orgs/doomed-org', headers: bearer(owner) })
+    expect(gone.statusCode).toBe(404)
+  })
+
   it('blocks removing the last owner', async () => {
     const t = await tokenFor('owner4')
     await app.inject({ method: 'POST', url: '/api/orgs', headers: bearer(t), payload: { name: 'Solo Org' } })

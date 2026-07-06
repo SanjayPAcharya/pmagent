@@ -50,6 +50,36 @@ describe('projects', () => {
     expect(denied.statusCode).toBe(403)
   })
 
+  it('deletes a project (admin+); plain member gets 403', async () => {
+    const owner = await tokenFor('pdelowner')
+    const orgId = await makeOrg(owner, 'Demolition Co')
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: bearer(owner),
+      payload: { orgId, name: 'Temp Project' },
+    })
+    const projectId = created.json().project.id as string
+
+    const member = await tokenFor('pdelmember')
+    await app.inject({ method: 'GET', url: '/api/me', headers: bearer(member) })
+    await app.inject({
+      method: 'POST',
+      url: '/api/orgs/demolition-co/members',
+      headers: bearer(owner),
+      payload: { email: 'pdelmember@x.com', role: 'MEMBER' },
+    })
+
+    const denied = await app.inject({ method: 'DELETE', url: `/api/projects/${projectId}`, headers: bearer(member) })
+    expect(denied.statusCode).toBe(403)
+
+    const deleted = await app.inject({ method: 'DELETE', url: `/api/projects/${projectId}`, headers: bearer(owner) })
+    expect(deleted.statusCode).toBe(204)
+
+    const list = await app.inject({ method: 'GET', url: `/api/projects?orgId=${orgId}`, headers: bearer(owner) })
+    expect(list.json().projects).toEqual([])
+  })
+
   it('rejects a missing orgId with 400', async () => {
     const t = await tokenFor('pvalid')
     const res = await app.inject({

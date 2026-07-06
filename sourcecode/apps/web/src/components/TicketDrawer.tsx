@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronRight, Eye, Maximize2, Minimize2, Tag, X } from 'lucide-react'
-import { api, type Comment as CommentType, type Member, type Priority, type Ticket, type TicketStatus, type TicketType as TicketKind, type UpdateTicketInput } from '@/lib/api'
+import { api, type Comment as CommentType, type Member, type Priority, type Ticket, type TicketStatus, type TicketType as TicketKind, type UpdateTicketInput, type Workstream } from '@/lib/api'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { renderMarkdown } from '@/lib/markdown'
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelationsSection } from '@/components/RelationsSection'
+import { BetaAIButton } from '@/components/BetaBadge'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
@@ -120,6 +121,14 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
       if (prev) qc.setQueryData(key, prev)
       toast.error((err as Error).message)
     }
+  }
+
+  // R11 — server clears sprintId on ADHOC (R1 rule); refresh sprints so their
+  // counts update. Non-undoable (the sprint clear makes a clean inverse ambiguous).
+  async function changeWorkstream(w: Workstream) {
+    if (!ticket || w === ticket.workstream) return
+    await patch({ workstream: w }, t('drawer.saved'), { undoable: false })
+    qc.invalidateQueries({ queryKey: ['sprints', ticket.projectId] })
   }
 
   async function remove() {
@@ -298,7 +307,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
           <DropdownMenuTrigger asChild>
             <button
               aria-label={t('drawer.addReaction')}
-              className="rounded-full border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-accent group-hover/comment:opacity-100 focus-visible:opacity-100"
+              className="rounded-full border border-dashed border-border px-1.5 py-0.5 text-xs text-muted-foreground opacity-50 transition-opacity hover:bg-accent hover:opacity-100 group-hover/comment:opacity-100 focus-visible:opacity-100"
             >
               +🙂
             </button>
@@ -527,6 +536,18 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                 />
               </div>
               <div>
+                <Label>{t('drawer.startDate')}</Label>
+                <Input
+                  type="date"
+                  defaultValue={ticket.startDate ? ticket.startDate.slice(0, 10) : ''}
+                  onBlur={(e) => {
+                    const v = e.target.value ? new Date(e.target.value).toISOString() : null
+                    patch({ startDate: v })
+                  }}
+                  className="mt-1"
+                />
+              </div>
+              <div>
                 <Label>{t('drawer.dueDate')}</Label>
                 <Input
                   type="date"
@@ -557,6 +578,23 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </div>
+              <div>
+                <Label>{t('drawer.workstream')}</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="mt-1 w-full justify-between">
+                      {ticket.workstream === 'ADHOC' ? t('drawer.workstreamAdhoc') : t('drawer.workstreamSprint')} <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => changeWorkstream('SPRINT')}>{t('drawer.workstreamSprint')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => changeWorkstream('ADHOC')}>{t('drawer.workstreamAdhoc')}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {ticket.workstream === 'SPRINT' && ticket.sprintId && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">{t('drawer.adhocClearsSprint')}</p>
+                )}
               </div>
             </div>
 
@@ -701,7 +739,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
               </button>
               {sectionOpen('relations', false) && (
                 <div className="border-t px-3 pb-3 pt-0 [&>div]:mt-3">
-                  <RelationsSection ticketId={ticketId} projectId={ticket.projectId} />
+                  <RelationsSection ticketId={ticketId} projectId={ticket.projectId} parentWorkstream={ticket.workstream} />
                 </div>
               )}
             </div>
@@ -721,9 +759,12 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                     {t('readiness.label', { ...ticketReadiness(ticket) })}
                   </span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setEditingDesc((v) => !v)}>
-                  {editingDesc ? t('common.preview') : t('common.edit')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <BetaAIButton label={t('beta.autoFill')} />
+                  <Button variant="ghost" size="sm" onClick={() => setEditingDesc((v) => !v)}>
+                    {editingDesc ? t('common.preview') : t('common.edit')}
+                  </Button>
+                </div>
               </div>
               {editingDesc ? (
                 <div className="mt-1 space-y-2">

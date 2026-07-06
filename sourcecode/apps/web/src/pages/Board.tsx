@@ -17,9 +17,12 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
-import { api, type Member, type Priority, type Ticket, type TicketStatus, type TicketType } from '@/lib/api'
+import { api, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
+import { MultiSelect } from '@/components/MultiSelect'
+import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { useProjectWebSocket } from '@/lib/websocket'
+import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { Column } from '@/components/board/Column'
 import { TicketCardBody } from '@/components/board/TicketCard'
 import { BoardSkeleton } from '@/components/board/BoardSkeleton'
@@ -74,35 +77,39 @@ export default function Board() {
   // ── Filters (A4) ──
   const [q, setQ] = useState('')
   const [qDebounced, setQDebounced] = useState('')
-  const [priority, setPriority] = useState<Priority | ''>('')
-  const [type, setType] = useState<TicketType | ''>('')
-  const [assignedToId, setAssignedToId] = useState('')
-  const [sprintFilter, setSprintFilter] = useState('')
+  const [priority, setPriority] = useState<string[]>([])
+  const [type, setType] = useState<string[]>([])
+  const [assignedToId, setAssignedToId] = useState<string[]>([])
+  const [sprintFilter, setSprintFilter] = useState<string[]>([])
   const [sort, setSort] = useState('position')
   useEffect(() => {
     const id = setTimeout(() => setQDebounced(q), 300)
     return () => clearTimeout(id)
   }, [q])
-  const hasFilters = Boolean(qDebounced || priority || type || assignedToId || sprintFilter || sort !== 'position')
+  const hasFilters = Boolean(qDebounced || priority.length || type.length || assignedToId.length || sprintFilter.length || sort !== 'position')
   const clearFilters = () => {
     setQ('')
     setQDebounced('')
-    setPriority('')
-    setType('')
-    setAssignedToId('')
-    setSprintFilter('')
+    setPriority([])
+    setType([])
+    setAssignedToId([])
+    setSprintFilter([])
     setSort('position')
   }
+
+  // 3.7 R11 — sprint vs ad-hoc lens (a filter, not a fork; server rules from R1).
+  const [wsTab, setWsTab] = useLocalStorageState<'all' | 'SPRINT' | 'ADHOC'>(`agentpm-board-ws-${projectId ?? ''}`, 'all')
 
   const params = useMemo(() => {
     const p: Record<string, string> = { sort }
     if (qDebounced) p.q = qDebounced
-    if (priority) p.priority = priority
-    if (type) p.type = type
-    if (assignedToId) p.assignedToId = assignedToId
-    if (sprintFilter) p.sprintId = sprintFilter
+    if (priority.length) p.priority = priority.join(',')
+    if (type.length) p.type = type.join(',')
+    if (assignedToId.length) p.assignedToId = assignedToId.join(',')
+    if (sprintFilter.length) p.sprintId = sprintFilter.join(',')
+    if (wsTab !== 'all') p.workstream = wsTab
     return p
-  }, [sort, qDebounced, priority, type, assignedToId, sprintFilter])
+  }, [sort, qDebounced, priority, type, assignedToId, sprintFilter, wsTab])
 
   const ticketsPrefix = useMemo(() => ['tickets', projectId], [projectId])
   const ticketsKey = useMemo(() => ['tickets', projectId, params], [projectId, params])
@@ -126,6 +133,7 @@ export default function Board() {
     })
   useEffect(() => setSelectedIds(new Set()), [projectId])
   const labels = useQuery({ queryKey: ['labels', orgId], queryFn: () => api.listLabels(orgId!), enabled: Boolean(orgId) })
+  const templates = useQuery({ queryKey: ['templates', orgId], queryFn: () => api.listTemplates(orgId!), enabled: Boolean(orgId) })
   // E1 — userIds viewing each ticket; B1 — other viewers' in-flight drags.
   const [ticketViewers, setTicketViewers] = useState<Record<string, string[]>>({})
   const [ghosts, setGhosts] = useState<Record<string, { actorId: string; status: TicketStatus }>>({})
@@ -254,16 +262,53 @@ export default function Board() {
     }
   }
 
-  async function quickAdd(status: TicketStatus, title: string) {
+  async function quickAdd(status: TicketStatus, parsed: ParsedQuickCreate) {
     if (!projectId) return
     try {
-      await api.createTicket({ projectId, title, status })
+      await api.createTicket({
+        projectId,
+        title: parsed.title,
+        status,
+        priority: parsed.priority,
+        assignedToId: parsed.assignedToId,
+        // On the Ad-hoc tab, new work is ad-hoc and never joins a sprint.
+        workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
+        sprintId: wsTab === 'ADHOC' ? undefined : parsed.sprintId,
+      })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       toast.success(t('board.ticketCreated'))
     } catch (err) {
       toast.error(t('board.createFailed', { message: (err as Error).message }))
     }
   }
+
+  // R9 — create a ticket in this column pre-filled from a template, then open it.
+  async function createFromTemplate(status: TicketStatus, tpl: TicketTemplate) {
+    if (!projectId) return
+    try {
+      const validLabelIds = tpl.labelIds.filter((id) => labels.data?.labels.some((l) => l.id === id))
+      const { ticket } = await api.createTicket({
+        projectId,
+        status,
+        title: tpl.title?.trim() || tpl.name,
+        type: tpl.type,
+        priority: tpl.priority,
+        description: tpl.description ?? undefined,
+        acceptanceCriteria: tpl.acceptanceCriteria ?? undefined,
+        goal: tpl.goal ?? undefined,
+        constraints: tpl.constraints ?? undefined,
+        labelIds: validLabelIds.length ? validLabelIds : undefined,
+      })
+      qc.invalidateQueries({ queryKey: ticketsPrefix })
+      navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)
+    } catch (err) {
+      toast.error(t('board.createFailed', { message: (err as Error).message }))
+    }
+  }
+
+  // R9 — open the drawer focused on the inline "new subtask" input.
+  const addSubtask = (tk: Ticket) =>
+    navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${tk.number}`, { state: { focusSubtask: true } })
 
   // H1 — guided first ticket: create in Backlog and open the drawer so the
   // author lands on the goal/AC fields (the agent-ready pattern).
@@ -275,7 +320,7 @@ export default function Board() {
       const { ticket } = await api.createTicket({ projectId, title, status: 'BACKLOG' })
       setFirstTitle('')
       qc.invalidateQueries({ queryKey: ticketsPrefix })
-      navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${ticket.number}`)
+      navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)
     } catch (err) {
       toast.error(t('board.createFailed', { message: (err as Error).message }))
     }
@@ -303,8 +348,8 @@ export default function Board() {
   }
   const clearGhost = (id: string) => send({ type: 'ticket.drag', ticketId: id, status: null })
 
-  const openTicket = (t: Ticket) => navigate(`/orgs/${slug}/projects/${projectSlug}/ticket/${t.number}`)
-  const closeDrawer = () => navigate(`/orgs/${slug}/projects/${projectSlug}`)
+  const openTicket = (t: Ticket) => navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${t.number}`)
+  const closeDrawer = () => navigate(`/orgs/${slug}/projects/${projectSlug}/board`)
   const drawerTicket = number ? tickets.data?.items.find((t) => t.number === Number(number)) : undefined
 
   // D2 frecency — record project + opened-ticket visits for the palette's Recent.
@@ -316,7 +361,7 @@ export default function Board() {
       recordVisit('ticket', {
         key: drawerTicket.id,
         label: drawerTicket.title,
-        href: `/orgs/${slug}/projects/${projectSlug}/ticket/${drawerTicket.number}`,
+        href: `/orgs/${slug}/projects/${projectSlug}/board/ticket/${drawerTicket.number}`,
         meta: drawerTicket.key,
       })
   }, [drawerTicket?.id])
@@ -362,6 +407,21 @@ export default function Board() {
           <h2 className="text-xl font-semibold text-foreground">{project?.name ?? projectSlug}</h2>
         </div>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
+            {(['all', 'SPRINT', 'ADHOC'] as const).map((w) => (
+              <button
+                key={w}
+                onClick={() => setWsTab(w)}
+                aria-pressed={wsTab === w}
+                className={cn(
+                  'h-7 rounded px-2.5 text-xs transition-colors',
+                  wsTab === w ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t(w === 'all' ? 'board.tabAll' : w === 'SPRINT' ? 'board.tabSprint' : 'board.tabAdhoc')}
+              </button>
+            ))}
+          </div>
           <ViewToggle slug={slug} projectSlug={projectSlug} active="board" />
           {orgId && project && (
             <div className="flex items-center gap-0.5">
@@ -384,6 +444,12 @@ export default function Board() {
             className="text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
             {t('board.sprints')}
+          </Link>
+          <Link
+            to={`/orgs/${slug}/projects/${projectSlug}/reports`}
+            className="hidden text-sm text-muted-foreground hover:text-foreground hover:underline sm:inline"
+          >
+            {t('reports.title')}
           </Link>
           {viewers.length > 0 && (
             <div className="flex -space-x-2">
@@ -420,38 +486,30 @@ export default function Board() {
           placeholder={t('board.search')}
           className="h-8 w-56 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
-        <select value={priority} onChange={(e) => setPriority(e.target.value as Priority | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.priorityAny')}</option>
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <select value={type} onChange={(e) => setType(e.target.value as TicketType | '')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.typeAny')}</option>
-          {(['FEATURE', 'BUG', 'CHORE', 'SPIKE'] as TicketType[]).map((ty) => (
-            <option key={ty} value={ty}>
-              {ty}
-            </option>
-          ))}
-        </select>
-        <select value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.assigneeAny')}</option>
-          {members.data?.members.map((m) => (
-            <option key={m.userId} value={m.userId}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-        <select value={sprintFilter} onChange={(e) => setSprintFilter(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-          <option value="">{t('board.sprintAny')}</option>
-          {sprints.data?.sprints.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <MultiSelect
+          placeholder={t('board.priorityAny')}
+          selected={priority}
+          onChange={setPriority}
+          options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+        />
+        <MultiSelect
+          placeholder={t('board.typeAny')}
+          selected={type}
+          onChange={setType}
+          options={(['FEATURE', 'BUG', 'CHORE', 'SPIKE'] as TicketType[]).map((ty) => ({ value: ty, label: ty }))}
+        />
+        <MultiSelect
+          placeholder={t('board.assigneeAny')}
+          selected={assignedToId}
+          onChange={setAssignedToId}
+          options={(members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name }))}
+        />
+        <MultiSelect
+          placeholder={t('board.sprintAny')}
+          selected={sprintFilter}
+          onChange={setSprintFilter}
+          options={(sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name }))}
+        />
         <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
           <option value="position">{t('board.sortManual')}</option>
           <option value="-updatedAt">{t('board.sortUpdated')}</option>
@@ -521,6 +579,11 @@ export default function Board() {
                 onOpen={openTicket}
                 onQuickAdd={quickAdd}
                 onStatusChange={moveTicket}
+                members={members.data?.members ?? []}
+                sprints={sprints.data?.sprints ?? []}
+                templates={templates.data?.templates ?? []}
+                onCreateFromTemplate={createFromTemplate}
+                onAddSubtask={addSubtask}
                 focusUserId={focusMine ? myId : null}
                 viewers={viewersByTicket}
                 ghosts={ghostsByStatus[s] ?? []}

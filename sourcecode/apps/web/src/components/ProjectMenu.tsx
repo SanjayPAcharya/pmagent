@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MoreHorizontal, FolderKanban, Rocket, Users, Star, Copy } from 'lucide-react'
+import { MoreHorizontal, FolderKanban, Rocket, Users, Star, Copy, Settings } from 'lucide-react'
 import { type Project } from '@/lib/api'
 import { useIsFavorite, toggleFavorite } from '@/lib/favorites'
 import {
@@ -29,7 +29,7 @@ export function ProjectMenu({ orgSlug, project }: { orgSlug: string; project: Pr
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => navigate(base)}>
+        <DropdownMenuItem onSelect={() => navigate(`${base}/board`)}>
           <FolderKanban className="mr-2 h-4 w-4" />
           {t('nav.board')}
         </DropdownMenuItem>
@@ -40,6 +40,10 @@ export function ProjectMenu({ orgSlug, project }: { orgSlug: string; project: Pr
         <DropdownMenuItem onSelect={() => navigate(`/orgs/${orgSlug}/members`)}>
           <Users className="mr-2 h-4 w-4" />
           {t('nav.members')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => navigate(`${base}/settings`)}>
+          <Settings className="mr-2 h-4 w-4" />
+          {t('projects.settingsLink')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => toggleFavorite(project.id)}>

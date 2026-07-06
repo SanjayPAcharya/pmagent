@@ -51,17 +51,6 @@ export default function Members() {
     await navigator.clipboard.writeText(inviteLink(token)).catch(() => undefined)
     toast.success(t('members.linkCopied'))
   }
-  // G2 — set/clear the org accent (drives --primary across the workspace).
-  const ACCENT_PRESETS = ['#6d28d9', '#2563eb', '#0891b2', '#059669', '#d97706', '#dc2626', '#db2777']
-  const setAccent = async (accentColor: string | null) => {
-    try {
-      await api.updateOrg(slug, { accentColor })
-      qc.invalidateQueries({ queryKey: ['org', slug] })
-      toast.success(t('members.accentSaved'))
-    } catch (e) {
-      toast.error((e as Error).message)
-    }
-  }
   const addByEmail = async () => {
     const e = email.trim()
     if (!e) return
@@ -99,38 +88,6 @@ export default function Members() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t('members.accentTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-2">
-          {ACCENT_PRESETS.map((c) => (
-            <button
-              key={c}
-              onClick={() => setAccent(c)}
-              title={c}
-              aria-label={c}
-              className="h-7 w-7 rounded-full ring-offset-2 ring-offset-background transition hover:scale-110"
-              style={{
-                backgroundColor: c,
-                boxShadow: org.data?.org.accentColor?.toLowerCase() === c ? `0 0 0 2px ${c}` : undefined,
-              }}
-            />
-          ))}
-          <input
-            type="color"
-            value={org.data?.org.accentColor ?? '#6d28d9'}
-            onChange={(e) => setAccent(e.target.value)}
-            className="h-7 w-9 cursor-pointer rounded border border-input bg-transparent p-0.5"
-            title={t('members.accentCustom')}
-          />
-          {org.data?.org.accentColor && (
-            <Button variant="ghost" size="sm" onClick={() => setAccent(null)}>
-              {t('members.accentReset')}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
 
       {org.data?.org.id && <TemplatesCard orgId={org.data.org.id} />}
 

@@ -114,6 +114,47 @@ describe('ticket comments / watchers / update', () => {
     expect(bad.statusCode).toBe(400)
   })
 
+  it('renames/recolors a label (ADMIN), reports usage counts, rejects name clashes', async () => {
+    const owner = await tokenFor('d-owner-lbl2')
+    const { slug, projectId } = await setup(owner)
+    const orgId = (await app.inject({ method: 'GET', url: `/api/projects/${projectId}`, headers: bearer(owner) })).json().project.orgId
+    const ticketId = (await createTicket(owner, projectId, 'Counted')).json().ticket.id
+
+    const mk = (name: string) =>
+      app.inject({ method: 'POST', url: '/api/labels', headers: bearer(owner), payload: { orgId, name, color: '#112233' } })
+    const a = (await mk('alpha')).json().label.id as string
+    await mk('beta')
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${ticketId}`, headers: bearer(owner), payload: { labelIds: [a] } })
+
+    // usage counts on the list endpoint
+    const list = await app.inject({ method: 'GET', url: `/api/labels?orgId=${orgId}`, headers: bearer(owner) })
+    const byName = Object.fromEntries(list.json().labels.map((l: { name: string; usageCount: number }) => [l.name, l.usageCount]))
+    expect(byName.alpha).toBe(1)
+    expect(byName.beta).toBe(0)
+
+    // rename + recolor
+    const patched = await app.inject({
+      method: 'PATCH', url: `/api/labels/${a}`, headers: bearer(owner),
+      payload: { name: 'alpha-2', color: '#445566' },
+    })
+    expect(patched.statusCode).toBe(200)
+    expect(patched.json().label).toMatchObject({ name: 'alpha-2', color: '#445566' })
+    // …reflected on the ticket
+    const tk = await app.inject({ method: 'GET', url: `/api/tickets/${ticketId}`, headers: bearer(owner) })
+    expect(tk.json().ticket.labels[0]).toMatchObject({ name: 'alpha-2', color: '#445566' })
+
+    // renaming onto an existing name → 409
+    const clash = await app.inject({ method: 'PATCH', url: `/api/labels/${a}`, headers: bearer(owner), payload: { name: 'beta' } })
+    expect(clash.statusCode).toBe(409)
+
+    // plain MEMBER cannot patch
+    const member = await tokenFor('d-member-lbl2')
+    await app.inject({ method: 'GET', url: '/api/me', headers: bearer(member) })
+    await app.inject({ method: 'POST', url: `/api/orgs/${slug}/members`, headers: bearer(owner), payload: { email: 'd-member-lbl2@x.com', role: 'MEMBER' } })
+    const denied = await app.inject({ method: 'PATCH', url: `/api/labels/${a}`, headers: bearer(member), payload: { name: 'nope' } })
+    expect(denied.statusCode).toBe(403)
+  })
+
   it('updates a ticket and records a PRIORITY_CHANGED activity', async () => {
     const owner = await tokenFor('d-owner4')
     const { projectId } = await setup(owner)

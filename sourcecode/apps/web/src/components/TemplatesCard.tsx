@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // 3.4 W1 — org template management (Members page = the org admin surface).
 // Server enforces ADMIN on writes; reads are for every member.
@@ -52,6 +53,13 @@ export function TemplatesCard({ orgId }: { orgId: string }) {
         <CardTitle className="text-base">{t('templates.title')}</CardTitle>
       </CardHeader>
       <CardContent>
+        {templates.isPending && (
+          <div className="space-y-2 py-1">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Skeleton key={i} className="h-8" />
+            ))}
+          </div>
+        )}
         <ul className="divide-y divide-border">
           {(templates.data?.templates ?? []).map((tpl) => (
             <li key={tpl.id} className="flex items-center gap-2 py-2">

@@ -141,11 +141,14 @@ export interface Invite {
 export type TicketStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE' | 'CANCELLED'
 export type Priority = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'
 export type TicketType = 'FEATURE' | 'BUG' | 'CHORE' | 'SPIKE'
+export type Workstream = 'SPRINT' | 'ADHOC'
 
 export interface Label {
   id: string
   name: string
   color: string
+  /** Tickets carrying this label — present on the list endpoint only. */
+  usageCount?: number
 }
 export interface Ticket {
   id: string
@@ -163,6 +166,8 @@ export interface Ticket {
   type: TicketType
   storyPoints: number | null
   dueDate: string | null
+  startDate: string | null
+  workstream: Workstream
   position: number
   assignedToId: string | null
   assignedTo: User | null
@@ -170,11 +175,20 @@ export interface Ticket {
   labels: Label[]
   watcherIds: string[]
   blockedBy?: number // count of incomplete dependencies (present on list responses)
+  subtasks?: { done: number; total: number } // subtask progress (list responses; absent when childless)
   createdAt: string
   updatedAt: string
 }
 /** Ticket from a cross-project surface (search / my-work) — carries link slugs. */
 export type TicketHit = Ticket & { orgSlug: string; projectSlug: string }
+/** Project matched by the global search (by name, membership-scoped). */
+export interface ProjectHit {
+  id: string
+  name: string
+  slug: string
+  key: string
+  orgSlug: string
+}
 export interface TicketRef {
   id: string
   number: number
@@ -196,11 +210,18 @@ export interface ImportTicketRow {
   type?: TicketType
   storyPoints?: number
   acceptanceCriteria?: string
+  startDate?: string
+  workstream?: Workstream
+  // Resolved server-side: label names matched within the org (unknowns ignored),
+  // assignee matched by member email or exact name.
+  labels?: string[]
+  assignee?: string
 }
 export interface BatchPatch {
   status?: TicketStatus
   assignedToId?: string | null
   sprintId?: string | null
+  workstream?: Workstream
   addLabelIds?: string[]
   archived?: boolean
 }
@@ -236,6 +257,15 @@ export interface Burndown {
   unit: 'points' | 'tickets'
   points: { date: string; ideal: number; remaining: number | null }[]
 }
+// 3.7 R2 — project milestone (target date on the timeline).
+export interface Milestone {
+  id: string
+  projectId: string
+  name: string
+  description: string | null
+  date: string
+  done: boolean
+}
 export interface SprintCounts {
   total: number
   done: number
@@ -249,6 +279,107 @@ export interface Notification {
   subject: string | null
   readAt: string | null
   createdAt: string
+}
+
+// 3.3 — per-project reporting aggregates (read-only)
+export interface VelocityPoint {
+  id: string
+  name: string
+  velocity: number | null
+  endDate: string | null
+}
+export interface CycleWeek {
+  weekStart: string
+  count: number
+  leadMedianDays: number | null
+  cycleMedianDays: number | null
+}
+export interface CycleReport {
+  windowDays: number
+  closedCount: number
+  leadMedianDays: number | null
+  leadP85Days: number | null
+  cycleMedianDays: number | null
+  cycleP85Days: number | null
+  weekly: CycleWeek[]
+}
+export interface WorkloadRow {
+  userId: string | null
+  name: string
+  avatarUrl: string | null
+  openCount: number
+  inProgressCount: number
+  sprintCount: number
+  adhocCount: number
+}
+export interface ReadinessMilestone {
+  id: string
+  name: string
+  date: string
+  done: number
+  total: number
+}
+export interface ProjectReports {
+  velocity: VelocityPoint[]
+  cycle: CycleReport
+  workload: WorkloadRow[]
+  readiness: ReadinessMilestone[]
+  overall: { done: number; open: number }
+}
+
+// 3.7 R6 — Gantt payload (raw dates; all date math lives in lib/gantt.ts).
+export interface GanttItem {
+  id: string
+  number: number
+  key: string
+  title: string
+  status: TicketStatus
+  priority: Priority
+  assignedToId: string | null
+  sprintId: string | null
+  workstream: Workstream
+  startDate: string | null
+  dueDate: string | null
+  storyPoints: number | null
+  labelIds: string[]
+}
+export interface GanttEdge {
+  ticketId: string
+  dependsOnId: string
+}
+export interface GanttPayload {
+  items: GanttItem[]
+  edges: GanttEdge[]
+  milestones: Milestone[]
+  truncated: boolean
+}
+
+// 3.7 R4 — project Overview dashboard aggregate.
+export interface OverviewBlocker {
+  id: string
+  number: number
+  key: string
+  title: string
+  openBlockerCount: number
+}
+export interface OverviewMilestone {
+  id: string
+  name: string
+  date: string
+  done: boolean
+  readiness: { done: number; total: number }
+}
+export interface ProjectOverview {
+  status: {
+    byStatus: Partial<Record<TicketStatus, number>>
+    open: number
+    done: number
+    byWorkstream: { SPRINT: number; ADHOC: number }
+  }
+  activeSprint: { id: string; name: string; endDate: string | null; total: number; done: number } | null
+  blockers: OverviewBlocker[]
+  milestones: OverviewMilestone[]
+  capacity: { rows: WorkloadRow[]; recentVelocityAvg: number | null }
 }
 
 export interface CreateTicketInput {
@@ -265,6 +396,10 @@ export interface CreateTicketInput {
   assignedToId?: string
   sprintId?: string
   storyPoints?: number
+  parentId?: string
+  workstream?: Workstream
+  startDate?: string | null
+  dueDate?: string | null
 }
 export interface UpdateTicketInput {
   title?: string
@@ -277,6 +412,8 @@ export interface UpdateTicketInput {
   type?: TicketType
   storyPoints?: number | null
   dueDate?: string | null
+  startDate?: string | null
+  workstream?: Workstream
   position?: number
   sprintId?: string | null
   assignedToId?: string | null
@@ -286,9 +423,15 @@ export interface UpdateTicketInput {
 
 export const api = {
   me: () => request<{ user: User }>('GET', '/api/me'),
+  updateMe: (body: { name?: string; avatarUrl?: string | null }) => request<{ user: User }>('PATCH', '/api/me', body),
   listOrgs: () => request<{ organizations: Organization[] }>('GET', '/api/orgs'),
   getOrg: (slug: string) => request<{ org: OrgDetail }>('GET', `/api/orgs/${slug}`),
   createOrg: (name: string) => request<{ org: Organization }>('POST', '/api/orgs', { name }),
+  deleteOrg: (slug: string) => request<void>('DELETE', `/api/orgs/${slug}`),
+  deleteProject: (projectId: string) => request<void>('DELETE', `/api/projects/${projectId}`),
+  getProjectReports: (projectId: string) => request<{ reports: ProjectReports }>('GET', `/api/projects/${projectId}/reports`),
+  getProjectOverview: (projectId: string) => request<{ overview: ProjectOverview }>('GET', `/api/projects/${projectId}/overview`),
+  getProjectGantt: (projectId: string) => request<{ gantt: GanttPayload }>('GET', `/api/projects/${projectId}/gantt`),
   updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
     request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
   orgActivity: (slug: string) => request<{ activity: ActivityItem[] }>('GET', `/api/orgs/${slug}/activity`),
@@ -300,6 +443,16 @@ export const api = {
     request<{ activity: ActivityItem[] }>('GET', `/api/projects/${projectId}/activity`),
   updateProject: (projectId: string, body: { name?: string; description?: string; defaultBranch?: string; automation?: AutomationSettings }) =>
     request<{ project: Project }>('PATCH', `/api/projects/${projectId}`, body),
+
+  // Milestones (3.7 R2)
+  listMilestones: (projectId: string) =>
+    request<{ milestones: Milestone[] }>('GET', `/api/projects/${projectId}/milestones`),
+  createMilestone: (projectId: string, body: { name: string; description?: string; date: string }) =>
+    request<{ milestone: Milestone }>('POST', `/api/projects/${projectId}/milestones`, body),
+  updateMilestone: (projectId: string, id: string, body: { name?: string; description?: string | null; date?: string; done?: boolean }) =>
+    request<{ milestone: Milestone }>('PATCH', `/api/projects/${projectId}/milestones/${id}`, body),
+  deleteMilestone: (projectId: string, id: string) =>
+    request<void>('DELETE', `/api/projects/${projectId}/milestones/${id}`),
 
   // Templates (3.4 W1)
   listTemplates: (orgId: string) =>
@@ -360,7 +513,7 @@ export const api = {
   removeDependency: (id: string, dependsOnId: string) =>
     request<void>('DELETE', `/api/tickets/${id}/dependencies/${dependsOnId}`),
   searchTickets: (q: string) =>
-    request<{ items: TicketHit[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
+    request<{ items: TicketHit[]; projects: ProjectHit[] }>('GET', `/api/search?q=${encodeURIComponent(q)}`),
   myWork: () => request<{ assigned: TicketHit[]; watching: TicketHit[] }>('GET', '/api/me/work'),
   batchUpdateTickets: (ids: string[], patch: BatchPatch) =>
     request<{ updated: number }>('POST', '/api/tickets/batch', { ids, patch }),
@@ -371,6 +524,8 @@ export const api = {
   listLabels: (orgId: string) => request<{ labels: Label[] }>('GET', `/api/labels?orgId=${encodeURIComponent(orgId)}`),
   createLabel: (orgId: string, name: string, color: string) =>
     request<{ label: Label }>('POST', '/api/labels', { orgId, name, color }),
+  updateLabel: (id: string, body: { name?: string; color?: string }) =>
+    request<{ label: Label }>('PATCH', `/api/labels/${id}`, body),
   deleteLabel: (id: string) => request<void>('DELETE', `/api/labels/${id}`),
 
   // Sprints (Phase 2E)
@@ -381,6 +536,8 @@ export const api = {
   getBurndown: (id: string) => request<Burndown>('GET', `/api/sprints/${id}/burndown`),
   createSprint: (projectId: string, name: string, goal?: string) =>
     request<{ sprint: Sprint }>('POST', '/api/sprints', { projectId, name, goal }),
+  updateSprint: (id: string, body: { name?: string; goal?: string | null }) =>
+    request<{ sprint: Sprint }>('PATCH', `/api/sprints/${id}`, body),
   startSprint: (id: string) => request<{ sprint: Sprint }>('POST', `/api/sprints/${id}/start`),
   completeSprint: (id: string) =>
     request<{ sprint: Sprint; counts: SprintCounts }>('POST', `/api/sprints/${id}/complete`),

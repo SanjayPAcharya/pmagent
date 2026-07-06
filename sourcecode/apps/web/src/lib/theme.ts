@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 
 // G2 — theme tristate: light / dark / system. Persisted to localStorage;
 // "system" follows the OS and reacts live to OS changes. applyTheme runs once
@@ -34,18 +34,36 @@ export function applyTheme(theme: Theme) {
   writeThemeCookie(theme)
 }
 
+// Tiny shared store so every useTheme() consumer (header toggle, account page)
+// sees the same value — a per-hook useState would leave the others stale.
+let current: Theme = typeof window !== 'undefined' ? getInitialTheme() : 'system'
+const listeners = new Set<() => void>()
+
+export function setTheme(theme: Theme) {
+  current = theme
+  applyTheme(theme)
+  listeners.forEach((l) => l())
+}
+
+// While in "system" mode, follow live OS changes.
+if (typeof window !== 'undefined') {
+  window
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', () => {
+      if (current === 'system') applyTheme('system')
+    })
+}
+
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme)
-  useEffect(() => applyTheme(theme), [theme])
-  // While in "system" mode, follow live OS changes.
-  useEffect(() => {
-    if (theme !== 'system') return
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme('system')
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [theme])
+  const theme = useSyncExternalStore(
+    (l) => {
+      listeners.add(l)
+      return () => listeners.delete(l)
+    },
+    () => current,
+    () => 'system' as Theme,
+  )
   // Cycle light → dark → system (used by the toggle button and the "t" shortcut).
-  const cycle = useCallback(() => setTheme((t) => (t === 'light' ? 'dark' : t === 'dark' ? 'system' : 'light')), [])
+  const cycle = useCallback(() => setTheme(current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light'), [])
   return { theme, cycle, setTheme }
 }
