@@ -376,6 +376,7 @@
     "unassigned": "Unassigned",
     "assigned": "Assigned",
     "storyPoints": "Story points",
+    "startDate": "Start date",
     "dueDate": "Due date",
     "sprint": "Sprint",
     "noSprint": "No sprint",

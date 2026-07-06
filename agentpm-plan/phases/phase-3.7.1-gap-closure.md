@@ -40,7 +40,8 @@ This file + `agentpm-plan/README.md` index row + `PROGRESS.md` Now/Next/log (inc
 
 ---
 
-### - [ ] F1 — Start date in the ticket drawer (S)
+### - [x] F1 — Start date in the ticket drawer (S) *(done 2026-07-06)*
+> Browser-verified on RELA-1: set Start 2026-03-01 (before the Mar 9 due date) in the drawer → List Start column showed `2026-03-01`; cleared it → back to `—`. Data restored. DATE_RANGE guard (start > due) already covered by the API suite.
 
 **Goal:** let users schedule a ticket without opening the Timeline.
 

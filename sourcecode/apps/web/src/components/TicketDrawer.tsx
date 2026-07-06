@@ -536,6 +536,18 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                 />
               </div>
               <div>
+                <Label>{t('drawer.startDate')}</Label>
+                <Input
+                  type="date"
+                  defaultValue={ticket.startDate ? ticket.startDate.slice(0, 10) : ''}
+                  onBlur={(e) => {
+                    const v = e.target.value ? new Date(e.target.value).toISOString() : null
+                    patch({ startDate: v })
+                  }}
+                  className="mt-1"
+                />
+              </div>
+              <div>
                 <Label>{t('drawer.dueDate')}</Label>
                 <Input
                   type="date"

@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-05**.)
+> (Kept up to date as features ship — last updated **2026-07-06**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -43,7 +43,7 @@ Open the project (you'll land on the **Overview**) and click **Board** in the si
 2. **New from template** — the 📄 button in the board header (or beside a column's quick-add). Pick *Bug report* or *Feature* and the ticket arrives pre-filled with a proper structure.
 3. **Import CSV** — already tracking work in a spreadsheet or Jira? Switch to the **List** view (toggle at the top) and click **Import CSV**.
 
-Click any card to open the **ticket panel**: set an assignee, due date, priority, labels — and write a description with acceptance criteria (type `- [ ]` lines to get tick-able checkboxes).
+Click any card to open the **ticket panel**: set an assignee, a start date and a due date, priority, labels — and write a description with acceptance criteria (type `- [ ]` lines to get tick-able checkboxes).
 
 **Next → make the board reflect reality.**
 
