@@ -48,6 +48,27 @@ interface TicketEventPayload {
   mentionedUserIds?: string[]
 }
 
+// Postgres raises 40P01 (deadlock detected) when concurrent notification writes
+// race for FK locks on the same ticket/user rows. It's always transient — the
+// loser is rolled back cleanly — so a couple of retries recovers the write.
+function isDeadlock(err: unknown): boolean {
+  return err instanceof Error && /deadlock detected|40P01/i.test(err.message)
+}
+
+async function createNotificationWithRetry(
+  data: Parameters<typeof prisma.notification.create>[0]['data'],
+  attempts = 3,
+) {
+  for (let i = 1; ; i++) {
+    try {
+      return await prisma.notification.create({ data })
+    } catch (err) {
+      if (i >= attempts || !isDeadlock(err)) throw err
+      await new Promise((r) => setTimeout(r, 25 * i)) // brief backoff, then retry
+    }
+  }
+}
+
 async function handleTicketEvent(type: string, payload: TicketEventPayload) {
   if (!payload.ticketId) return
   const ticket = await prisma.ticket.findUnique({
@@ -76,15 +97,13 @@ async function handleTicketEvent(type: string, payload: TicketEventPayload) {
   const ref = `${ticket.project.key}-${ticket.number}`
   for (const userId of recipients) {
     const notifType: NotificationType = mentioned.has(userId) ? 'MENTION' : (TYPE_BY_EVENT[type] ?? 'TICKET_STATUS_CHANGED')
-    const created = await prisma.notification.create({
-      data: {
-        userId,
-        ticketId: ticket.id,
-        type: notifType,
-        channel: 'IN_APP',
-        subject: ref,
-        body: (BODY_BY_EVENT[type] ?? ((r: string, t: string) => `${r} — ${t}`))(ref, ticket.title),
-      },
+    const created = await createNotificationWithRetry({
+      userId,
+      ticketId: ticket.id,
+      type: notifType,
+      channel: 'IN_APP',
+      subject: ref,
+      body: (BODY_BY_EVENT[type] ?? ((r: string, t: string) => `${r} — ${t}`))(ref, ticket.title),
     })
     await publishEvent('notification.new', {
       userId,
@@ -98,6 +117,10 @@ async function handleTicketEvent(type: string, payload: TicketEventPayload) {
 export async function initNotificationService() {
   await subscribeToEvents((type, payload) => {
     if (!type.startsWith('ticket.')) return // ignore our own notification.new etc.
-    void handleTicketEvent(type, payload as TicketEventPayload)
+    // Best-effort fan-out: a failed notification write must never become an
+    // unhandled rejection (which would crash the process / fail the test run).
+    handleTicketEvent(type, payload as TicketEventPayload).catch((err) => {
+      console.error('[notifications] fan-out failed for', type, err)
+    })
   })
 }
