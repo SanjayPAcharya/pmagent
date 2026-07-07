@@ -249,6 +249,9 @@ export default function ProjectList() {
           <Link to={`${base}/sprints`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             {t('board.sprints')}
           </Link>
+          <Link to={`${base}/archived`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+            {t('archived.link')}
+          </Link>
         </div>
       </div>
 

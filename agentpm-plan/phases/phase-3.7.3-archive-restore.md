@@ -21,7 +21,9 @@
 ### - [x] A1 — API: `archivedOnly` list filter (XS) *(done 2026-07-07)*
 `routes/tickets.ts` `listQuerySchema` gained `archivedOnly: z.coerce.boolean().optional()`; the list handler now does `if (q.archivedOnly) where.archivedAt = { not: null }` else `if (!q.includeArchived) where.archivedAt = null`. Test lives in a **new `src/test/archive.test.ts`** (create + archive + `archivedOnly` returns only it, default hides it, batch restore clears it) — *not* appended to `tickets.test.ts`, which has a latent within-file ordering fragility that a new `it` there tripped (the route change alone is clean; a dedicated file is the right home for B2's project-archive tests anyway). **api 77 → 78**, typecheck green.
 
-### - [ ] A2 — Web: dedicated archived-tickets page + restore (M)
+### - [x] A2 — Web: dedicated archived-tickets page + restore (M) *(done 2026-07-07)*
+**Scope grew:** the plan assumed `api.deleteTicket` hard-deletes, but `DELETE /api/tickets/:id` is itself the **soft-delete** (sets `archivedAt`) — so "Delete permanently" needed a real endpoint. Added `DELETE /api/tickets/:ticketId/permanent` (ADMIN → `prisma.ticket.delete`; relations cascade, subtasks `SetNull`) + web `api.deleteTicketPermanent` + a test (**api 78 → 79**). Page/route/link/i18n as specced. Browser-verified: RELA-5 (accidentally archived by the P5 test automation) **restored** to the board; RELA-6 throwaway **permanently deleted** (two-click confirm); RELA-4 (owner's genuine archived ticket) untouched.
+
 - New route `/orgs/:slug/projects/:projectSlug/archived` (register in the router next to `/list`). Reuse the List page's data shape: `api.listTickets(projectId, { archivedOnly: 'true' })`.
 - Rows show key + title + archived-relative-time; each row has **Restore** (`api.batchUpdateTickets([id], { archived: false })`) and **Delete permanently** (`api.deleteTicket(id)`, inline two-click confirm). Toast + invalidate `['tickets', projectId]` + the archived query on success. `Loader2` while busy.
 - Empty → shared `EmptyState` (icon `Archive`, message `archived.emptyTickets`).

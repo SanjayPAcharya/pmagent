@@ -493,6 +493,8 @@ export const api = {
   updateTicketStatus: (id: string, status: TicketStatus) =>
     request<{ ticket: Ticket }>('PATCH', `/api/tickets/${id}/status`, { status }),
   deleteTicket: (id: string) => request<void>('DELETE', `/api/tickets/${id}`),
+  // Hard delete (ADMIN) — irreversible; used from the Archived view.
+  deleteTicketPermanent: (id: string) => request<void>('DELETE', `/api/tickets/${id}/permanent`),
   listComments: (id: string) => request<{ comments: Comment[] }>('GET', `/api/tickets/${id}/comments`),
   addComment: (id: string, body: string) =>
     request<{ comment: Comment }>('POST', `/api/tickets/${id}/comments`, { body }),

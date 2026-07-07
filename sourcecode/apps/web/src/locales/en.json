@@ -275,6 +275,19 @@
     "updated": "{n} tickets updated",
     "archived": "{n} tickets archived"
   },
+  "archived": {
+    "link": "Archived",
+    "ticketsTitle": "Archived tickets",
+    "ticketsHint": "Tickets you've archived. Restore one to bring it back to the board, or delete it permanently.",
+    "backToList": "Back to list",
+    "archivedAgo": "Archived {{rel}}",
+    "restore": "Restore",
+    "restored": "{{key}} restored",
+    "deleteForever": "Delete permanently",
+    "deleteConfirm": "Delete?",
+    "deleted": "{{key}} deleted",
+    "emptyTickets": "No archived tickets."
+  },
   "mywork": {
     "title": "My work",
     "assigned": "Assigned to me",

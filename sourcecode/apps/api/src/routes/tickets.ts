@@ -247,6 +247,16 @@ const routes: FastifyPluginAsync = async (app) => {
     return reply.code(204).send()
   })
 
+  // ── Permanent delete (hard) — ADMIN; from the Archived view. Relations
+  //    cascade (deps/labels/comments/watchers/activity/notifications); subtasks
+  //    keep their rows with parentId set null.
+  r.delete('/:ticketId/permanent', { schema: { params: idParams, tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'ADMIN')
+    await prisma.ticket.delete({ where: { id: t.id } })
+    await publishEvent('ticket.deleted', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
+    return reply.code(204).send()
+  })
+
   // ── Comments ────────────────────────────────────────────
   r.post('/:ticketId/comments', { schema: { params: idParams, body: commentSchema, tags: ['tickets'] } }, async (request, reply) => {
     const t = await loadTicketAuthorized(request, 'MEMBER')

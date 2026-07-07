@@ -50,4 +50,20 @@ describe('archived tickets', () => {
     expect(await listTickets(owner, `projectId=${projectId}&archivedOnly=true`)).toHaveLength(0)
     expect((await listTickets(owner, `projectId=${projectId}`)).map((t) => t.id).sort()).toEqual([liveId, goneId].sort())
   })
+
+  it('permanent delete removes the ticket entirely (even from includeArchived)', async () => {
+    const owner = await tokenFor('perm-owner')
+    const orgId = await makeOrg(owner, 'Shredder Co')
+    const projectId = await makeProject(owner, orgId, 'Bin')
+    const id = (await createTicket(owner, projectId, 'Doomed for real')).json().ticket.id
+    await app.inject({ method: 'DELETE', url: `/api/tickets/${id}`, headers: bearer(owner) }) // archive first
+
+    const del = await app.inject({ method: 'DELETE', url: `/api/tickets/${id}/permanent`, headers: bearer(owner) })
+    expect(del.statusCode).toBe(204)
+    // Gone even when archived rows are included.
+    expect(await listTickets(owner, `projectId=${projectId}&includeArchived=true`)).toHaveLength(0)
+    // And a second attempt 404s.
+    const again = await app.inject({ method: 'DELETE', url: `/api/tickets/${id}/permanent`, headers: bearer(owner) })
+    expect(again.statusCode).toBe(404)
+  })
 })
