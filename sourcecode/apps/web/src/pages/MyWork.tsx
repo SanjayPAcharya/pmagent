@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Eye, UserCircle2 } from 'lucide-react'
+import { Eye, UserCircle2, Inbox, type LucideIcon } from 'lucide-react'
 import { BlockedBadge } from '@/components/BlockedBadge'
+import { EmptyState } from '@/components/EmptyState'
 import { api, type TicketHit } from '../lib/api'
 import { PRIORITY_CLASS, STATUS_LABEL } from '../lib/board'
 import { formatRelative } from '../lib/time'
@@ -52,7 +53,7 @@ export default function MyWork() {
     </li>
   )
 
-  const section = (title: React.ReactNode, items: TicketHit[] | undefined, emptyKey: string) => (
+  const section = (title: React.ReactNode, items: TicketHit[] | undefined, emptyKey: string, emptyIcon: LucideIcon) => (
     <section className="mb-8">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">{title}</h3>
       <ul className="divide-y divide-border rounded-lg border bg-card">
@@ -65,7 +66,7 @@ export default function MyWork() {
               </li>
             ))
           : items.length === 0
-            ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">{t(emptyKey)}</li>
+            ? <li><EmptyState icon={emptyIcon} message={t(emptyKey)} className="border-0 bg-transparent py-6" /></li>
             : items.map(row)}
       </ul>
     </section>
@@ -84,11 +85,13 @@ export default function MyWork() {
             <><UserCircle2 className="h-4 w-4" /> {t('mywork.assigned')} {work.data && <span className="text-xs font-normal text-muted-foreground">({work.data.assigned.length})</span>}</>,
             work.data?.assigned,
             'mywork.emptyAssigned',
+            Inbox,
           )}
           {section(
             <><Eye className="h-4 w-4" /> {t('mywork.watching')} {work.data && <span className="text-xs font-normal text-muted-foreground">({work.data.watching.length})</span>}</>,
             work.data?.watching,
             'mywork.emptyWatching',
+            Eye,
           )}
         </>
       )}

@@ -71,7 +71,7 @@ export function FieldError({ children }: { children?: React.ReactNode }) {
 
 ---
 
-### - [ ] P2 — Shared `EmptyState` component (S)
+### - [x] P2 — Shared `EmptyState` component (S) *(done 2026-07-07)*
 
 **Goal:** one empty-state idiom — muted lucide icon + message + optional CTA slot — replacing the four divergent renderings. lucide icons only, no illustrations (identity constraint).
 

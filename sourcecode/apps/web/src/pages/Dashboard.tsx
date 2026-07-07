@@ -9,6 +9,8 @@ import { DensityToggle, type Density } from '../components/DensityToggle'
 import { GettingStarted } from '../components/GettingStarted'
 import { useLocalStorageState } from '../lib/useLocalStorage'
 import { cn } from '../lib/utils'
+import { Building2 } from 'lucide-react'
+import { EmptyState } from '../components/EmptyState'
 
 function AccentDot({ color }: { color?: string | null }) {
   return <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color ?? 'hsl(var(--primary))' }} />
@@ -81,9 +83,7 @@ export default function Dashboard() {
           ))}
         </div>
       ) : !hasOrgs ? (
-        <div className="mt-6 rounded-xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-          {t('dashboard.empty')}
-        </div>
+        <EmptyState icon={Building2} message={t('dashboard.empty')} className="mt-6" />
       ) : density === 'grid' ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((o) => (

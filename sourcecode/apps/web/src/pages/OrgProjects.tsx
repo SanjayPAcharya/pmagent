@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Rocket, Star } from 'lucide-react'
+import { Rocket, Star, FolderKanban } from 'lucide-react'
+import { EmptyState } from '../components/EmptyState'
 import { api, type Project } from '../lib/api'
 import { Skeleton } from '../components/ui/skeleton'
 import { MetricChip } from '../components/MetricChip'
@@ -240,9 +241,7 @@ export default function OrgProjects() {
           ))}
         </div>
       ) : !hasProjects ? (
-        <div className="mt-6 rounded-xl border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-          {t('projects.empty')}
-        </div>
+        <EmptyState icon={FolderKanban} message={t('projects.empty')} className="mt-6" />
       ) : density === 'grid' ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((p) => (

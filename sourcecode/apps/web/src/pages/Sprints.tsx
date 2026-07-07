@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, Rocket } from 'lucide-react'
+import { EmptyState } from '@/components/EmptyState'
 import {
   DndContext,
   DragOverlay,
@@ -408,7 +409,7 @@ export default function Sprints() {
             sprints.data?.sprints.map((s) => (
               <SprintRow key={s.id} sprint={s} projectId={projectId} allSprints={sprints.data!.sprints} slug={slug} projectSlug={projectSlug} onChanged={refresh} />
             ))}
-          {sprints.data?.sprints.length === 0 && <p className="text-sm text-muted-foreground">{t('sprints.empty')}</p>}
+          {sprints.data?.sprints.length === 0 && <EmptyState icon={Rocket} message={t('sprints.empty')} />}
         </div>
 
         <DragOverlay>{activeTicket ? <TicketChip ticket={activeTicket} /> : null}</DragOverlay>

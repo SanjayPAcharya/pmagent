@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowUp, ArrowDown, Columns3 } from 'lucide-react'
+import { ArrowUp, ArrowDown, Columns3, Inbox, Filter } from 'lucide-react'
 import { BlockedBadge } from '@/components/BlockedBadge'
+import { EmptyState } from '@/components/EmptyState'
 import { api, type Ticket, type TicketType } from '../lib/api'
 import { MultiSelect } from '../components/MultiSelect'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '../lib/board'
@@ -393,8 +394,12 @@ export default function ProjectList() {
                   ))}
               {tickets.data && tickets.data.items.length === 0 && (
                 <tr>
-                  <td colSpan={shownCols.length} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                    {hasFilters ? t('list.emptyFiltered') : t('list.empty')}
+                  <td colSpan={shownCols.length} className="px-3 py-8">
+                    <EmptyState
+                      icon={hasFilters ? Filter : Inbox}
+                      message={hasFilters ? t('list.emptyFiltered') : t('list.empty')}
+                      className="border-0 bg-transparent py-6"
+                    />
                   </td>
                 </tr>
               )}
