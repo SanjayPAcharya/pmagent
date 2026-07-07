@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { Moon, Sun, Monitor, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useTheme, type Theme } from '@/lib/theme'
 import { cn, initialsOf } from '@/lib/utils'
@@ -31,6 +31,7 @@ export default function AccountSettings() {
 
   const [name, setName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [busy, setBusy] = useState(false)
   useEffect(() => {
     if (user) {
       setName(user.name)
@@ -42,6 +43,7 @@ export default function AccountSettings() {
 
   const save = async () => {
     if (!user || !name.trim()) return
+    setBusy(true)
     try {
       await api.updateMe({
         name: name.trim(),
@@ -51,6 +53,8 @@ export default function AccountSettings() {
       toast.success(t('account.saved'))
     } catch (e) {
       toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -101,7 +105,8 @@ export default function AccountSettings() {
               <Input value={user?.email ?? ''} disabled className="mt-1" />
               <p className="mt-1 text-xs text-muted-foreground">{t('account.emailHint')}</p>
             </div>
-            <Button size="sm" onClick={() => void save()} disabled={!dirty || !name.trim()}>
+            <Button size="sm" onClick={() => void save()} disabled={!dirty || !name.trim() || busy}>
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
               {t('common.save')}
             </Button>
           </CardContent>

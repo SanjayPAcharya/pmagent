@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,6 @@ interface Props {
 }
 
 export function DangerZone({ title, description, confirmLabel, confirmHint, actionLabel, onDelete }: Props) {
-  const { t } = useTranslation()
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const armed = typed.trim() === confirmLabel
@@ -51,7 +50,8 @@ export function DangerZone({ title, description, confirmLabel, confirmHint, acti
             }
           }}
         >
-          {busy ? t('common.loading') : actionLabel}
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          {actionLabel}
         </Button>
       </CardContent>
     </Card>

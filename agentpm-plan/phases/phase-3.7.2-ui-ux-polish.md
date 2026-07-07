@@ -143,7 +143,7 @@ export function BlockedBadge({ count, showIcon = true, title }: { count?: number
 
 ---
 
-### - [ ] P4 — Spinner-in-button busy feedback (S)
+### - [x] P4 — Spinner-in-button busy feedback (S) *(done 2026-07-07)*
 
 **Goal:** the first `Loader2` in the codebase, applied to the four worst async buttons. Also kills the double-submit bug on the three Save handlers.
 
