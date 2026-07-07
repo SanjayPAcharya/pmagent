@@ -107,7 +107,7 @@ export function EmptyState({ icon: Icon, message, cta, className }: {
 
 ---
 
-### - [ ] P3 — Blocked badge → `--destructive` token + shared component (S)
+### - [x] P3 — Blocked badge → `--destructive` token + shared component (S) *(done 2026-07-07)*
 
 **Goal:** kill the copy-pasted hardcoded-red badge; one `BlockedBadge` on the destructive token. Includes the root-cause token fix.
 
@@ -130,7 +130,7 @@ export function BlockedBadge({ count, showIcon = true, title }: { count?: number
 - `components/board/TicketCard.tsx:57–64` (keep `title={t('list.blockedHint', …)}`)
 - `pages/ProjectList.tsx:201–206`
 - `pages/MyWork.tsx:43–47`
-- `components/TicketDrawer.tsx:734–738` (collapsed Relationships header — `showIcon={false}` to match current)
+- `components/TicketDrawer.tsx:734–738` (collapsed Relationships header — `showIcon={false}` to match current; passed `className="ml-auto"` since the shared component has no `ml-auto`). *(Note found during verify: this badge is **dormant** — its `(ticket.blockedBy ?? 0) > 0` guard never fires because `api.getTicket` doesn't return a blocker count, so the header badge doesn't render even for a genuinely-blocked ticket. Pre-existing, not introduced here; the swap preserves the guard verbatim. Tracked as a separate follow-up (needs an API-side count).)*
 - `pages/ProjectOverview.tsx:258–263` (the divergent `bg-red-500/10 text-red-500` one — `count={b.openBlockerCount}`)
 
 **4. Deliberately untouched:** the amber/orange priority classes (`lib/board.ts:39–43`), stale-border ambers (`lib/time.ts:35–37`), green success accents (ReadinessRing, checklists), sprint-capacity amber/emerald — semantic status colors with no token; see out of scope.

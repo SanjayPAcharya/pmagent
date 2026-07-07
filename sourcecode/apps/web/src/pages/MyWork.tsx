@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Ban, Eye, UserCircle2 } from 'lucide-react'
+import { Eye, UserCircle2 } from 'lucide-react'
+import { BlockedBadge } from '@/components/BlockedBadge'
 import { api, type TicketHit } from '../lib/api'
 import { PRIORITY_CLASS, STATUS_LABEL } from '../lib/board'
 import { formatRelative } from '../lib/time'
@@ -40,11 +41,7 @@ export default function MyWork() {
       >
         <span className="w-20 shrink-0 font-mono text-xs text-muted-foreground">{tk.key}</span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{tk.title}</span>
-        {(tk.blockedBy ?? 0) > 0 && (
-          <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
-            <Ban className="h-3 w-3" /> {t('list.blocked')}
-          </span>
-        )}
+        {(tk.blockedBy ?? 0) > 0 && <BlockedBadge />}
         <span className={cn('hidden shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium sm:inline', PRIORITY_CLASS[tk.priority])}>
           {tk.priority}
         </span>
