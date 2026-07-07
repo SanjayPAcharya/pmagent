@@ -129,6 +129,7 @@ const listQuerySchema = z.object({
   sprintId: csvOf(z.string().uuid()).optional(),
   workstream: csvOf(workstreamEnum).optional(),
   includeArchived: z.coerce.boolean().optional(),
+  archivedOnly: z.coerce.boolean().optional(),
   sort: sortEnum.default('position'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
   cursor: z.string().optional(),
@@ -184,7 +185,8 @@ const routes: FastifyPluginAsync = async (app) => {
     await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
 
     const where: Prisma.TicketWhereInput = { projectId: q.projectId }
-    if (!q.includeArchived) where.archivedAt = null
+    if (q.archivedOnly) where.archivedAt = { not: null }
+    else if (!q.includeArchived) where.archivedAt = null
     if (q.status) where.status = { in: q.status }
     if (q.priority) where.priority = { in: q.priority }
     if (q.type) where.type = { in: q.type }
@@ -241,6 +243,16 @@ const routes: FastifyPluginAsync = async (app) => {
   r.delete('/:ticketId', { schema: { params: idParams, tags: ['tickets'] } }, async (request, reply) => {
     const t = await loadTicketAuthorized(request, 'MEMBER')
     await prisma.ticket.update({ where: { id: t.id }, data: { archivedAt: new Date() } })
+    await publishEvent('ticket.deleted', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
+    return reply.code(204).send()
+  })
+
+  // ── Permanent delete (hard) — ADMIN; from the Archived view. Relations
+  //    cascade (deps/labels/comments/watchers/activity/notifications); subtasks
+  //    keep their rows with parentId set null.
+  r.delete('/:ticketId/permanent', { schema: { params: idParams, tags: ['tickets'] } }, async (request, reply) => {
+    const t = await loadTicketAuthorized(request, 'ADMIN')
+    await prisma.ticket.delete({ where: { id: t.id } })
     await publishEvent('ticket.deleted', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
     return reply.code(204).send()
   })

@@ -22,7 +22,7 @@ export async function orgListStats(orgIds: string[]): Promise<Map<string, OrgLis
   for (const id of orgIds) out.set(id, emptyOrgStat())
 
   const [projects, members] = await Promise.all([
-    prisma.project.findMany({ where: { orgId: { in: orgIds } }, select: { id: true, orgId: true } }),
+    prisma.project.findMany({ where: { orgId: { in: orgIds }, archivedAt: null }, select: { id: true, orgId: true } }),
     prisma.orgMember.groupBy({ by: ['orgId'], where: { orgId: { in: orgIds } }, _count: { _all: true } }),
   ])
   const projectToOrg = new Map(projects.map((p) => [p.id, p.orgId]))

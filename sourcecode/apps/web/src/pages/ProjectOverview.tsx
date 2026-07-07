@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Ban, Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2 } from 'lucide-react'
+import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2 } from 'lucide-react'
+import { BlockedBadge } from '@/components/BlockedBadge'
 import { api, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { BetaBadge } from '@/components/BetaBadge'
@@ -255,12 +256,7 @@ export default function ProjectOverview() {
                       >
                         <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{b.key}</span>
                         <span className="min-w-0 flex-1 truncate text-sm text-foreground">{b.title}</span>
-                        {b.openBlockerCount > 0 && (
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/10 px-1.5 py-0.5 text-[11px] text-red-500">
-                            <Ban className="h-3 w-3" />
-                            {b.openBlockerCount}
-                          </span>
-                        )}
+                        {b.openBlockerCount > 0 && <BlockedBadge count={b.openBlockerCount} />}
                       </button>
                     </li>
                   ))}

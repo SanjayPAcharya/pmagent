@@ -93,13 +93,14 @@ const routes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ project })
   })
 
-  // List projects in an org — MEMBER+
+  // List projects in an org — MEMBER+. Archived projects are hidden by default;
+  // ?archivedOnly=true returns just them (for the Archived projects page).
   app.get('/', async (request) => {
-    const { orgId } = request.query as { orgId?: string }
+    const { orgId, archivedOnly } = request.query as { orgId?: string; archivedOnly?: string }
     if (!orgId) throw new ApiError(400, 'orgId query parameter is required')
     await assertOrgRole(request.userId!, orgId, 'MEMBER')
     const projects = await prisma.project.findMany({
-      where: { orgId },
+      where: { orgId, archivedAt: archivedOnly === 'true' ? { not: null } : null },
       orderBy: { createdAt: 'asc' },
     })
     const stats = await projectListStats(projects.map((p) => p.id))
@@ -158,6 +159,21 @@ const routes: FastifyPluginAsync = async (app) => {
     return { project }
   })
 
+  // 3.7.3 — soft-archive (hide from listings; restorable). The web Danger Zone
+  // now archives instead of hard-deleting; permanent delete lives on the
+  // Archived projects page (the DELETE below).
+  app.post('/:projectId/archive', async (request) => {
+    const project = await loadProjectAuthorized(request, 'ADMIN')
+    const updated = await prisma.project.update({ where: { id: project.id }, data: { archivedAt: new Date() } })
+    return { project: updated }
+  })
+  app.post('/:projectId/restore', async (request) => {
+    const project = await loadProjectAuthorized(request, 'ADMIN')
+    const updated = await prisma.project.update({ where: { id: project.id }, data: { archivedAt: null } })
+    return { project: updated }
+  })
+
+  // Permanent delete (hard) — ADMIN; cascades to tickets/sprints/milestones.
   app.delete('/:projectId', async (request, reply) => {
     await loadProjectAuthorized(request, 'ADMIN')
     const { projectId } = request.params as { projectId: string }

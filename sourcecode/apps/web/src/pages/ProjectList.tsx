@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Ban, ArrowUp, ArrowDown, Columns3 } from 'lucide-react'
+import { ArrowUp, ArrowDown, Columns3, Inbox, Filter } from 'lucide-react'
+import { BlockedBadge } from '@/components/BlockedBadge'
+import { EmptyState } from '@/components/EmptyState'
 import { api, type Ticket, type TicketType } from '../lib/api'
 import { MultiSelect } from '../components/MultiSelect'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '../lib/board'
@@ -198,11 +200,7 @@ export default function ProjectList() {
         return (
           <div className="flex items-center gap-2">
             <span className="truncate font-medium text-foreground">{tk.title}</span>
-            {(tk.blockedBy ?? 0) > 0 && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
-                <Ban className="h-3 w-3" />{t('list.blocked')}
-              </span>
-            )}
+            {(tk.blockedBy ?? 0) > 0 && <BlockedBadge />}
             {tk.labels.slice(0, 3).map((l) => (
               <span key={l.id} className="hidden shrink-0 rounded-full px-1.5 py-0.5 text-[11px] sm:inline" style={{ backgroundColor: `${l.color}22`, color: l.color }}>{l.name}</span>
             ))}
@@ -250,6 +248,9 @@ export default function ProjectList() {
           <ViewToggle slug={slug} projectSlug={projectSlug} active="list" />
           <Link to={`${base}/sprints`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
             {t('board.sprints')}
+          </Link>
+          <Link to={`${base}/archived`} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+            {t('archived.link')}
           </Link>
         </div>
       </div>
@@ -396,8 +397,12 @@ export default function ProjectList() {
                   ))}
               {tickets.data && tickets.data.items.length === 0 && (
                 <tr>
-                  <td colSpan={shownCols.length} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                    {hasFilters ? t('list.emptyFiltered') : t('list.empty')}
+                  <td colSpan={shownCols.length} className="px-3 py-8">
+                    <EmptyState
+                      icon={hasFilters ? Filter : Inbox}
+                      message={hasFilters ? t('list.emptyFiltered') : t('list.empty')}
+                      className="border-0 bg-transparent py-6"
+                    />
                   </td>
                 </tr>
               )}

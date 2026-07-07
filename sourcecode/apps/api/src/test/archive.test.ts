@@ -1,0 +1,109 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import type { FastifyInstance } from 'fastify'
+import { buildServer } from '../index'
+import { signToken } from './auth-test-kit'
+
+// Archive & restore (Phase 3.7.3). Kept in its own file so the shared-DB
+// beforeEach truncation stays cleanly scoped.
+let app: FastifyInstance
+beforeAll(async () => {
+  app = await buildServer()
+})
+afterAll(async () => {
+  await app.close()
+})
+
+const bearer = (t: string) => ({ authorization: `Bearer ${t}` })
+const tokenFor = (sub: string) => signToken({ sub, email: `${sub}@x.com`, name: sub })
+
+async function makeOrg(token: string, name: string): Promise<string> {
+  const res = await app.inject({ method: 'POST', url: '/api/orgs', headers: bearer(token), payload: { name } })
+  return res.json().org.id as string
+}
+async function makeProject(token: string, orgId: string, name: string): Promise<string> {
+  const res = await app.inject({ method: 'POST', url: '/api/projects', headers: bearer(token), payload: { orgId, name } })
+  return res.json().project.id as string
+}
+function createTicket(token: string, projectId: string, title: string) {
+  return app.inject({ method: 'POST', url: '/api/tickets', headers: bearer(token), payload: { projectId, title } })
+}
+const listTickets = (token: string, qs: string) =>
+  app.inject({ method: 'GET', url: `/api/tickets?${qs}`, headers: bearer(token) }).then((r) => r.json().items as { id: string }[])
+
+describe('archived tickets', () => {
+  it('archivedOnly=true returns only archived tickets; default hides them; restore brings them back', async () => {
+    const owner = await tokenFor('arch-owner')
+    const orgId = await makeOrg(owner, 'Attic Co')
+    const projectId = await makeProject(owner, orgId, 'Boxes')
+    const liveId = (await createTicket(owner, projectId, 'Still here')).json().ticket.id
+    const goneId = (await createTicket(owner, projectId, 'Archived one')).json().ticket.id
+
+    // DELETE soft-deletes (sets archivedAt).
+    await app.inject({ method: 'DELETE', url: `/api/tickets/${goneId}`, headers: bearer(owner) })
+
+    expect((await listTickets(owner, `projectId=${projectId}`)).map((t) => t.id)).toEqual([liveId])
+    const archived = await listTickets(owner, `projectId=${projectId}&archivedOnly=true`)
+    expect(archived.map((t) => t.id)).toEqual([goneId])
+
+    // Restore via the batch endpoint clears archivedAt.
+    await app.inject({ method: 'POST', url: '/api/tickets/batch', headers: bearer(owner), payload: { ids: [goneId], patch: { archived: false } } })
+    expect(await listTickets(owner, `projectId=${projectId}&archivedOnly=true`)).toHaveLength(0)
+    expect((await listTickets(owner, `projectId=${projectId}`)).map((t) => t.id).sort()).toEqual([liveId, goneId].sort())
+  })
+
+  it('permanent delete removes the ticket entirely (even from includeArchived)', async () => {
+    const owner = await tokenFor('perm-owner')
+    const orgId = await makeOrg(owner, 'Shredder Co')
+    const projectId = await makeProject(owner, orgId, 'Bin')
+    const id = (await createTicket(owner, projectId, 'Doomed for real')).json().ticket.id
+    await app.inject({ method: 'DELETE', url: `/api/tickets/${id}`, headers: bearer(owner) }) // archive first
+
+    const del = await app.inject({ method: 'DELETE', url: `/api/tickets/${id}/permanent`, headers: bearer(owner) })
+    expect(del.statusCode).toBe(204)
+    // Gone even when archived rows are included.
+    expect(await listTickets(owner, `projectId=${projectId}&includeArchived=true`)).toHaveLength(0)
+    // And a second attempt 404s.
+    const again = await app.inject({ method: 'DELETE', url: `/api/tickets/${id}/permanent`, headers: bearer(owner) })
+    expect(again.statusCode).toBe(404)
+  })
+})
+
+describe('archived projects', () => {
+  const listProjects = (token: string, orgId: string, qs = '') =>
+    app
+      .inject({ method: 'GET', url: `/api/projects?orgId=${orgId}${qs}`, headers: bearer(token) })
+      .then((r) => (r.json().projects as { id: string }[]).map((p) => p.id))
+
+  it('archive hides a project from the list + org count; archivedOnly shows it; restore re-lists it', async () => {
+    const owner = await tokenFor('parch-owner')
+    const orgId = await makeOrg(owner, 'Warehouse Co')
+    const keep = await makeProject(owner, orgId, 'Keeper')
+    const shelve = await makeProject(owner, orgId, 'Shelved')
+
+    const arch = await app.inject({ method: 'POST', url: `/api/projects/${shelve}/archive`, headers: bearer(owner) })
+    expect(arch.statusCode).toBe(200)
+
+    expect(await listProjects(owner, orgId)).toEqual([keep]) // archived hidden
+    expect(await listProjects(owner, orgId, '&archivedOnly=true')).toEqual([shelve])
+
+    // Org summary project count excludes the archived one.
+    const org = await app.inject({ method: 'GET', url: `/api/orgs`, headers: bearer(owner) })
+    const summary = (org.json().organizations as { id: string; projectCount: number }[]).find((o) => o.id === orgId)!
+    expect(summary.projectCount).toBe(1)
+
+    await app.inject({ method: 'POST', url: `/api/projects/${shelve}/restore`, headers: bearer(owner) })
+    expect((await listProjects(owner, orgId)).sort()).toEqual([keep, shelve].sort())
+  })
+
+  it('permanent delete removes an archived project entirely', async () => {
+    const owner = await tokenFor('pdel-owner')
+    const orgId = await makeOrg(owner, 'Demolition Co')
+    const doomed = await makeProject(owner, orgId, 'Doomed Project')
+    await app.inject({ method: 'POST', url: `/api/projects/${doomed}/archive`, headers: bearer(owner) })
+
+    const del = await app.inject({ method: 'DELETE', url: `/api/projects/${doomed}`, headers: bearer(owner) })
+    expect(del.statusCode).toBe(204)
+    expect(await listProjects(owner, orgId, '&archivedOnly=true')).toHaveLength(0)
+    expect(await listProjects(owner, orgId)).toHaveLength(0)
+  })
+})

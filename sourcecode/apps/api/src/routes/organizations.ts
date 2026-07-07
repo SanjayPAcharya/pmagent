@@ -99,7 +99,7 @@ const routes: FastifyPluginAsync = async (app) => {
     })
     const [projectCount, memberCount, ticketGroups, activeSprintCount, previewMembers, pendingInviteCount] =
       await Promise.all([
-        prisma.project.count({ where: { orgId: org.id } }),
+        prisma.project.count({ where: { orgId: org.id, archivedAt: null } }),
         prisma.orgMember.count({ where: { orgId: org.id } }),
         prisma.ticket.groupBy({
           by: ['status'],

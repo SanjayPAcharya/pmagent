@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,6 +32,7 @@ export default function ProjectSettings() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [branch, setBranch] = useState('')
+  const [busy, setBusy] = useState(false)
   useEffect(() => {
     if (project) {
       setName(project.name)
@@ -41,12 +43,15 @@ export default function ProjectSettings() {
 
   const save = async (body: { name?: string; description?: string; defaultBranch?: string }) => {
     if (!project) return
+    setBusy(true)
     try {
       await api.updateProject(project.id, body)
       qc.invalidateQueries({ queryKey: ['projects', orgId] })
       toast.success(t('settings.saved'))
     } catch (e) {
       toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -99,9 +104,10 @@ export default function ProjectSettings() {
           </div>
           <Button
             size="sm"
-            disabled={!isAdmin || !dirty || !name.trim()}
+            disabled={!isAdmin || !dirty || !name.trim() || busy}
             onClick={() => save({ name: name.trim(), description, defaultBranch: branch.trim() || 'main' })}
           >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {t('common.save')}
           </Button>
         </CardContent>
@@ -109,16 +115,16 @@ export default function ProjectSettings() {
 
       {isAdmin && project && (
         <DangerZone
-          title={t('settings.dangerTitle')}
-          description={t('settings.deleteProjectWarning')}
+          title={t('settings.archiveTitle')}
+          description={t('settings.archiveProjectWarning')}
           confirmLabel={project.name}
           confirmHint={t('settings.typeToConfirm', { name: project.name })}
-          actionLabel={t('settings.deleteProject')}
+          actionLabel={t('settings.archiveProject')}
           onDelete={async () => {
             try {
-              await api.deleteProject(project.id)
+              await api.archiveProject(project.id)
               qc.invalidateQueries({ queryKey: ['projects', orgId] })
-              toast.success(t('settings.projectDeleted'))
+              toast.success(t('settings.projectArchived'))
               navigate(`/orgs/${slug}`)
             } catch (e) {
               toast.error((e as Error).message)

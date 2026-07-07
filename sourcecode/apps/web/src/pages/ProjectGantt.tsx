@@ -8,7 +8,9 @@ import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
 import { barForTicket, computeRange, dayNumToISO, toDayNum, traySchedule, xForDay, type GanttScale } from '@/lib/gantt'
 import { useProjectSync } from '@/lib/websocket'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
+import { CalendarRange } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/EmptyState'
 import { GanttChart } from '@/components/gantt/GanttChart'
 import { cn } from '@/lib/utils'
 
@@ -196,7 +198,7 @@ export default function ProjectGantt() {
       {!payload ? (
         <Skeleton className="h-96 rounded-lg" />
       ) : scheduled.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">{t('gantt.empty')}</div>
+        <EmptyState icon={CalendarRange} message={t('gantt.empty')} />
       ) : (
         <GanttChart
           items={scheduled}

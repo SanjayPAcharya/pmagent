@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-06**.)
+> (Kept up to date as features ship — last updated **2026-07-07**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -89,7 +89,8 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 
 ## Settings
 - **Organization settings** (gear in the sidebar, or the "Settings" link on an org's page): rename the org, pick its **workspace accent color** (the whole app follows it), **manage labels** (rename, recolor, delete — each shows how many tickets use it, and renames update everywhere instantly), see your plan, and — for Owners — a danger zone to delete the org (type its name to confirm).
-- **Project settings** (gear in the sidebar, or the project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to delete the project (type-to-confirm). Everything is role-gated — members see it read-only.
+- **Project settings** (gear in the sidebar, or the project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to **archive** the project (type-to-confirm) — archiving hides it from your workspace (and its tickets stop showing in search and My work) but is fully recoverable. Everything is role-gated — members see it read-only.
+- **Archived projects** ("Archived" link on an org's page): see everything you've archived, **Restore** a project back to your workspace, or **delete one permanently** (admins only) along with all its tickets. Individual archived **tickets** have the same place — the "Archived" link in a project's List toolbar.
 - **Your account** (click your email/avatar in the header): set your display name and a profile picture (paste an image link — leave it empty to use your initials), and pick your theme. Your sign-in email is shown read-only; it's managed where you log in.
 
 ## Navigation
@@ -126,10 +127,12 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - Filterable (every filter is **multi-select** — status, priority, type, assignee, sprint, label, workstream), sortable table; row click opens the ticket panel.
 - **Choose your columns** — a *Columns* button toggles Status, Priority, Assignee, Sprint, Workstream, Start, Points, and Updated on/off (Key + Title always show). **Drag a column's edge to resize it.** Both your column choices and widths are remembered. (CSV export always includes every column, regardless of what's shown.)
 - **Export CSV** of exactly what your filters show; **Import CSV** with a preview and Jira-compatible headers (Summary, Issue Type, Story Points…). Imports now bring **labels and the assignee** along too — labels match by name (separate several with `;`), the assignee by their email or exact display name; anything that doesn't match is simply skipped, never an error. Not sure of the format? Click **Sample CSV** to download a ready-made example you can open, edit, and re-import.
+- **Archived** (link in the List toolbar) opens a page of tickets you've archived (bulk-archived off the board). **Restore** any of them back to the board, or **delete one permanently** (admins only; a two-click confirm) when you're sure you won't need it again.
 
 ## Tickets
 - Slide-in panel with a **pinned header** (number, title, status, priority, type) and an **expand-width** ⤢ button (two-column layout on big screens).
 - Grouped sections: **Details** (assignee/points/due/sprint) · **People & labels** (watchers, colored labels) · **Relationships**.
+- Forms flag invalid input in place — e.g. a start date set after the due date, or a required name left blank, gets a red outline and a short message right under the field instead of a silent failure.
 - **Relationships:** parent/subtasks (with done-counter), blocked-by/blocks with automatic red **Blocked** badges. **Add subtasks inline** — type a title and press Enter, repeat for fast batch entry (each new subtask inherits the parent's sprint/ad-hoc workstream). A **+ subtask** button on any board card jumps straight here.
 - **Spec** with Markdown + a **readiness ring** showing how complete the spec is (a ready ticket is one an AI agent could pick up); `- [ ]` acceptance-criteria checklists with progress.
 - **Templates:** org-wide presets; *Bug report* and *Feature* included, Admins manage them on the Members page ("Add starter templates" backfills older orgs).

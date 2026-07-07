@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +24,7 @@ export default function OrgSettings() {
   const data = org.data?.org
 
   const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
   useEffect(() => {
     if (data) setName(data.name)
   }, [data])
@@ -33,6 +35,7 @@ export default function OrgSettings() {
   const saveName = async () => {
     const v = name.trim()
     if (!v || v === data?.name) return
+    setBusy(true)
     try {
       await api.updateOrg(slug, { name: v })
       qc.invalidateQueries({ queryKey: ['org', slug] })
@@ -40,6 +43,8 @@ export default function OrgSettings() {
       toast.success(t('settings.saved'))
     } catch (e) {
       toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
     }
   }
   const setAccent = async (accentColor: string | null) => {
@@ -85,7 +90,8 @@ export default function OrgSettings() {
             <label className="text-xs text-muted-foreground">{t('settings.orgName')}</label>
             <div className="mt-1 flex gap-2">
               <Input value={name} onChange={(e) => setName(e.target.value)} disabled={!isAdmin} />
-              <Button size="sm" onClick={saveName} disabled={!isAdmin || !name.trim() || name === data?.name}>
+              <Button size="sm" onClick={saveName} disabled={!isAdmin || !name.trim() || name === data?.name || busy}>
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                 {t('common.save')}
               </Button>
             </div>

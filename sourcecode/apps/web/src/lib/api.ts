@@ -435,8 +435,13 @@ export const api = {
   updateOrg: (slug: string, body: { name?: string; accentColor?: string | null }) =>
     request<{ org: Organization }>('PATCH', `/api/orgs/${slug}`, body),
   orgActivity: (slug: string) => request<{ activity: ActivityItem[] }>('GET', `/api/orgs/${slug}/activity`),
-  listProjects: (orgId: string) =>
-    request<{ projects: Project[] }>('GET', `/api/projects?orgId=${encodeURIComponent(orgId)}`),
+  listProjects: (orgId: string, opts?: { archivedOnly?: boolean }) =>
+    request<{ projects: Project[] }>(
+      'GET',
+      `/api/projects?orgId=${encodeURIComponent(orgId)}${opts?.archivedOnly ? '&archivedOnly=true' : ''}`,
+    ),
+  archiveProject: (projectId: string) => request<{ project: Project }>('POST', `/api/projects/${projectId}/archive`),
+  restoreProject: (projectId: string) => request<{ project: Project }>('POST', `/api/projects/${projectId}/restore`),
   createProject: (orgId: string, name: string, body?: { key?: string; description?: string }) =>
     request<{ project: Project }>('POST', '/api/projects', { orgId, name, ...body }),
   projectActivity: (projectId: string) =>
@@ -493,6 +498,8 @@ export const api = {
   updateTicketStatus: (id: string, status: TicketStatus) =>
     request<{ ticket: Ticket }>('PATCH', `/api/tickets/${id}/status`, { status }),
   deleteTicket: (id: string) => request<void>('DELETE', `/api/tickets/${id}`),
+  // Hard delete (ADMIN) — irreversible; used from the Archived view.
+  deleteTicketPermanent: (id: string) => request<void>('DELETE', `/api/tickets/${id}/permanent`),
   listComments: (id: string) => request<{ comments: Comment[] }>('GET', `/api/tickets/${id}/comments`),
   addComment: (id: string, body: string) =>
     request<{ comment: Comment }>('POST', `/api/tickets/${id}/comments`, { body }),
