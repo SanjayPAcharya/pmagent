@@ -89,7 +89,8 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 
 ## Settings
 - **Organization settings** (gear in the sidebar, or the "Settings" link on an org's page): rename the org, pick its **workspace accent color** (the whole app follows it), **manage labels** (rename, recolor, delete — each shows how many tickets use it, and renames update everywhere instantly), see your plan, and — for Owners — a danger zone to delete the org (type its name to confirm).
-- **Project settings** (gear in the sidebar, or the project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to delete the project (type-to-confirm). Everything is role-gated — members see it read-only.
+- **Project settings** (gear in the sidebar, or the project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to **archive** the project (type-to-confirm) — archiving hides it from your workspace (and its tickets stop showing in search and My work) but is fully recoverable. Everything is role-gated — members see it read-only.
+- **Archived projects** ("Archived" link on an org's page): see everything you've archived, **Restore** a project back to your workspace, or **delete one permanently** (admins only) along with all its tickets. Individual archived **tickets** have the same place — the "Archived" link in a project's List toolbar.
 - **Your account** (click your email/avatar in the header): set your display name and a profile picture (paste an image link — leave it empty to use your initials), and pick your theme. Your sign-in email is shown read-only; it's managed where you log in.
 
 ## Navigation

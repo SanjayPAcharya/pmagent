@@ -115,16 +115,16 @@ export default function ProjectSettings() {
 
       {isAdmin && project && (
         <DangerZone
-          title={t('settings.dangerTitle')}
-          description={t('settings.deleteProjectWarning')}
+          title={t('settings.archiveTitle')}
+          description={t('settings.archiveProjectWarning')}
           confirmLabel={project.name}
           confirmHint={t('settings.typeToConfirm', { name: project.name })}
-          actionLabel={t('settings.deleteProject')}
+          actionLabel={t('settings.archiveProject')}
           onDelete={async () => {
             try {
-              await api.deleteProject(project.id)
+              await api.archiveProject(project.id)
               qc.invalidateQueries({ queryKey: ['projects', orgId] })
-              toast.success(t('settings.projectDeleted'))
+              toast.success(t('settings.projectArchived'))
               navigate(`/orgs/${slug}`)
             } catch (e) {
               toast.error((e as Error).message)

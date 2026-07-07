@@ -166,7 +166,11 @@
     "orgDeleted": "Organization deleted",
     "deleteProjectWarning": "Permanently delete this project and all of its tickets and sprints. This cannot be undone.",
     "deleteProject": "Delete project",
-    "projectDeleted": "Project deleted"
+    "projectDeleted": "Project deleted",
+    "archiveTitle": "Archive project",
+    "archiveProjectWarning": "Archive this project — it's hidden from your workspace and its tickets stop appearing in search and My work. You can restore it any time from Archived projects.",
+    "archiveProject": "Archive project",
+    "projectArchived": "Project archived"
   },
   "activity": {
     "title": "Recent activity",
@@ -286,7 +290,15 @@
     "deleteForever": "Delete permanently",
     "deleteConfirm": "Delete?",
     "deleted": "{{key}} deleted",
-    "emptyTickets": "No archived tickets."
+    "emptyTickets": "No archived tickets.",
+    "projectsLink": "Archived",
+    "projectsTitle": "Archived projects",
+    "projectsHint": "Projects you've archived. Restore one to bring it back to your workspace, or delete it permanently (along with all its tickets).",
+    "backToOrg": "Back to projects",
+    "deleteProjectConfirm": "Delete forever?",
+    "projectRestored": "{{name}} restored",
+    "projectDeleted": "{{name}} deleted",
+    "emptyProjects": "No archived projects."
   },
   "mywork": {
     "title": "My work",
