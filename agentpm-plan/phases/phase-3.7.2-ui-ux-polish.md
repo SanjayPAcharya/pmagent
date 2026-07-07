@@ -162,7 +162,7 @@ export function BlockedBadge({ count, showIcon = true, title }: { count?: number
 
 ---
 
-### - [ ] P5 — Bulk archive confirm hardening (XS)
+### - [x] P5 — Bulk archive confirm hardening (XS) *(done 2026-07-07)*
 
 **Goal:** the existing two-click confirm (already the F2-blessed pattern — keep it, no modal) gains a count, a timed reset, and busy feedback.
 

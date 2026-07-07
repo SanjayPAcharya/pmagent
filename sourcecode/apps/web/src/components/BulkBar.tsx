@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Archive, ChevronUp, CircleDot, Layers, Rocket, Tag, UserPlus, X } from 'lucide-react'
+import { Archive, ChevronUp, CircleDot, Layers, Loader2, Rocket, Tag, UserPlus, X } from 'lucide-react'
 import { api, type BatchPatch, type Label, type Member, type Sprint, type TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -24,6 +24,14 @@ export function BulkBar({ selectedIds, projectId, members, sprints, labels, onCl
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState(false)
+
+  // Auto-disarm the archive confirm after a few seconds so a stray first click
+  // doesn't leave it armed indefinitely (alongside the onBlur reset).
+  useEffect(() => {
+    if (!confirmArchive) return
+    const id = setTimeout(() => setConfirmArchive(false), 4000)
+    return () => clearTimeout(id)
+  }, [confirmArchive])
 
   const apply = async (patch: BatchPatch, okMsg: string) => {
     if (busy) return
@@ -120,8 +128,10 @@ export function BulkBar({ selectedIds, projectId, members, sprints, labels, onCl
         onClick={() => (confirmArchive ? void apply({ archived: true }, t('bulk.archived')) : setConfirmArchive(true))}
         onBlur={() => setConfirmArchive(false)}
       >
-        <Archive className="h-4 w-4" />
-        <span className="hidden sm:inline">{confirmArchive ? t('bulk.confirmArchive') : t('bulk.archive')}</span>
+        {busy && confirmArchive ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+        <span className="hidden sm:inline">
+          {confirmArchive ? t('bulk.confirmArchiveN', { count: selectedIds.length }) : t('bulk.archive')}
+        </span>
       </Button>
 
       <Button variant="ghost" size="sm" onClick={onClear} aria-label={t('bulk.clear')}>

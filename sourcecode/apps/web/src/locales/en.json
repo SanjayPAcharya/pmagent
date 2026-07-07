@@ -270,7 +270,7 @@
     "label": "Label",
     "noLabels": "No labels yet.",
     "archive": "Archive",
-    "confirmArchive": "Confirm?",
+    "confirmArchiveN": "Archive {{count}}?",
     "clear": "Clear selection",
     "updated": "{n} tickets updated",
     "archived": "{n} tickets archived"
