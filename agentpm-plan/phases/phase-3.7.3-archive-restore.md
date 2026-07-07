@@ -34,10 +34,11 @@
 
 ## Part B — Project archiving (soft-delete + restore + view)
 
-### - [ ] B1 — Schema: `Project.archivedAt` + migration (S)
-Add to `model Project`: `archivedAt DateTime?` and `@@index([orgId, archivedAt])`. Create migration `…_project_archive` (mirror the timestamped dir convention). `prisma generate` in the api container + restart.
+### - [x] B1 — Schema: `Project.archivedAt` + migration (S) *(done 2026-07-07)*
+`model Project` gained `archivedAt DateTime?` + `@@index([orgId, archivedAt])`. Migration `20260707034922_project_archive` (additive nullable column + index) created & applied to the dev DB; client regenerated on host **and** in the api container + restart. api 79/79 unchanged.
 
-### - [ ] B2 — API: archive/restore + exclude archived everywhere (M)
+### - [x] B2 — API: archive/restore + exclude archived everywhere (M) *(done 2026-07-07)*
+Added `POST /api/projects/:id/archive` + `/restore` (ADMIN); kept `DELETE /:id` as permanent. List excludes archived by default + `?archivedOnly=true`. Excluded archived projects from: org count (`organizations.ts`), sidebar stats (`stats.service.ts`), project + ticket search (`search.ts`), and my-work (`me.ts` — `memberOf.project.archivedAt: null`). Tests (archive hides from list/count, archivedOnly shows it, restore re-lists, permanent delete removes) → **api 79 → 81**; full suite green (no regressions from the shared-query guards).
 - **Archive**: `POST /api/projects/:projectId/archive` (ADMIN) → set `archivedAt = new Date()`. **Restore**: `POST /api/projects/:projectId/restore` (ADMIN) → `archivedAt = null`. Keep `DELETE /:projectId` as **permanent** delete (now used from the archived page).
 - **List**: `GET /api/projects` excludes archived by default (`where.archivedAt = null`); add `?archivedOnly=true` → `{ not: null }` (for the archived-projects page).
 - **Exclude archived** in: org project count (`organizations.ts:102`), stats (`stats.service.ts:25`), project search (`search.ts:41`), and cross-project ticket queries so archived-project tickets stop surfacing — ticket search (`search.ts:35`, add `project: { archivedAt: null }`) and my-work (`me.ts:42/50`, add `archivedAt: null` on the ticket's `project`). `loadProjectAuthorized` still resolves archived projects by id (so archive/restore/permanent-delete work).

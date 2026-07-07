@@ -36,7 +36,7 @@ const meRoutes: FastifyPluginAsync = async (app) => {
   // GET /api/me/work — tickets assigned to or watched by me, across all my orgs
   app.get('/work', async (request) => {
     const userId = request.userId!
-    const memberOf = { project: { organization: { members: { some: { userId } } } } }
+    const memberOf = { project: { organization: { members: { some: { userId } } }, archivedAt: null } }
     const [assigned, watching] = await Promise.all([
       prisma.ticket.findMany({
         where: { assignedToId: userId, archivedAt: null, ...memberOf },

@@ -67,3 +67,43 @@ describe('archived tickets', () => {
     expect(again.statusCode).toBe(404)
   })
 })
+
+describe('archived projects', () => {
+  const listProjects = (token: string, orgId: string, qs = '') =>
+    app
+      .inject({ method: 'GET', url: `/api/projects?orgId=${orgId}${qs}`, headers: bearer(token) })
+      .then((r) => (r.json().projects as { id: string }[]).map((p) => p.id))
+
+  it('archive hides a project from the list + org count; archivedOnly shows it; restore re-lists it', async () => {
+    const owner = await tokenFor('parch-owner')
+    const orgId = await makeOrg(owner, 'Warehouse Co')
+    const keep = await makeProject(owner, orgId, 'Keeper')
+    const shelve = await makeProject(owner, orgId, 'Shelved')
+
+    const arch = await app.inject({ method: 'POST', url: `/api/projects/${shelve}/archive`, headers: bearer(owner) })
+    expect(arch.statusCode).toBe(200)
+
+    expect(await listProjects(owner, orgId)).toEqual([keep]) // archived hidden
+    expect(await listProjects(owner, orgId, '&archivedOnly=true')).toEqual([shelve])
+
+    // Org summary project count excludes the archived one.
+    const org = await app.inject({ method: 'GET', url: `/api/orgs`, headers: bearer(owner) })
+    const summary = (org.json().organizations as { id: string; projectCount: number }[]).find((o) => o.id === orgId)!
+    expect(summary.projectCount).toBe(1)
+
+    await app.inject({ method: 'POST', url: `/api/projects/${shelve}/restore`, headers: bearer(owner) })
+    expect((await listProjects(owner, orgId)).sort()).toEqual([keep, shelve].sort())
+  })
+
+  it('permanent delete removes an archived project entirely', async () => {
+    const owner = await tokenFor('pdel-owner')
+    const orgId = await makeOrg(owner, 'Demolition Co')
+    const doomed = await makeProject(owner, orgId, 'Doomed Project')
+    await app.inject({ method: 'POST', url: `/api/projects/${doomed}/archive`, headers: bearer(owner) })
+
+    const del = await app.inject({ method: 'DELETE', url: `/api/projects/${doomed}`, headers: bearer(owner) })
+    expect(del.statusCode).toBe(204)
+    expect(await listProjects(owner, orgId, '&archivedOnly=true')).toHaveLength(0)
+    expect(await listProjects(owner, orgId)).toHaveLength(0)
+  })
+})

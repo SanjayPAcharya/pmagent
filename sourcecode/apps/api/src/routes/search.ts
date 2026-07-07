@@ -32,14 +32,14 @@ const searchRoutes: FastifyPluginAsync = async (app) => {
     const memberOrg = { organization: { members: { some: { userId } } } }
     const [rows, projects] = await Promise.all([
       prisma.ticket.findMany({
-        where: { archivedAt: null, project: memberOrg, OR: or },
+        where: { archivedAt: null, project: { ...memberOrg, archivedAt: null }, OR: or },
         include: ticketIncludeWithOrg,
         // Title matches read as more intentional than body matches — surface them first.
         orderBy: { updatedAt: 'desc' },
         take: limit,
       }),
       prisma.project.findMany({
-        where: { ...memberOrg, name: { contains: q, mode: 'insensitive' } },
+        where: { ...memberOrg, archivedAt: null, name: { contains: q, mode: 'insensitive' } },
         select: { id: true, name: true, slug: true, key: true, organization: { select: { slug: true } } },
         orderBy: { updatedAt: 'desc' },
         take: 5,
