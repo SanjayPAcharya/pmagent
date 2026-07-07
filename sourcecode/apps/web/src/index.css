@@ -57,6 +57,14 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Keyboard focus ring for raw interactive elements (card hover controls,
+     reaction chips, slash/mention suggestion items, theme buttons). Button /
+     Input / Textarea / TicketCard opt out with focus-visible:outline-none +
+     their own ring, so this only reaches the otherwise-naked ones. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 /* Slim, theme-aware scrollbars for in-app scroll surfaces (board columns, list

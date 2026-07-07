@@ -184,7 +184,7 @@ useEffect(() => {
 
 ---
 
-### - [ ] P6 — Global `:focus-visible` polish (XS)
+### - [x] P6 — Global `:focus-visible` polish (XS) *(done 2026-07-07)*
 
 **Goal:** every raw interactive element gets a visible keyboard ring; ring-managed components unaffected.
 
