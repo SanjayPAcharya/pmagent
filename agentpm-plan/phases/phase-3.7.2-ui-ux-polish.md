@@ -45,11 +45,11 @@ This file + `agentpm-plan/README.md` index row + `PROGRESS.md` Now/Next/log.
 
 ---
 
-### - [ ] P1 — Inline field validation pattern (M)
+### - [x] P1 — Inline field validation pattern (M) *(done 2026-07-07)*
 
 **Goal:** a reusable "red border + message under the field" idiom — `aria-invalid` on the input + a tiny `FieldError` component — applied to the two audited offenders: Account-settings name, drawer Start/Due range. No form library; the idiom **is** the ceiling (see out of scope).
 
-**1. `sourcecode/apps/web/src/components/ui/input.tsx`** — line 9 is the single base class string. Append: `aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive`. Do the same in **`ui/textarea.tsx`** (line 9). Callers opt in with `aria-invalid={Boolean(error)}` — no API change, zero effect on existing call sites (nothing sets `aria-invalid` today).
+**1. `sourcecode/apps/web/src/components/ui/input.tsx`** — line 9 is the single base class string. Append: `aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:ring-destructive`. Do the same in **`ui/textarea.tsx`** (line 9). Callers opt in with `aria-invalid={Boolean(error)}` — no API change, zero effect on existing call sites (nothing sets `aria-invalid` today). *(Note: `aria-invalid` is NOT one of Tailwind 3.4's default `aria-*` variants — only busy/checked/disabled/expanded/hidden/pressed/readonly/required/selected are — so the bare `aria-invalid:` variant compiles to nothing. Use the arbitrary-variant form `aria-[invalid=true]:`, which needs no config change and matches React's `aria-invalid="true"`. Verified present in the built CSS.)*
 
 **2. New `sourcecode/apps/web/src/components/ui/field-error.tsx`** (~8 lines), mirroring the muted-hint idiom at `AccountSettings.tsx:90` (`<p className="mt-1 text-xs text-muted-foreground">`):
 ```tsx

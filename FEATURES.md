@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-06**.)
+> (Kept up to date as features ship — last updated **2026-07-07**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -130,6 +130,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Tickets
 - Slide-in panel with a **pinned header** (number, title, status, priority, type) and an **expand-width** ⤢ button (two-column layout on big screens).
 - Grouped sections: **Details** (assignee/points/due/sprint) · **People & labels** (watchers, colored labels) · **Relationships**.
+- Forms flag invalid input in place — e.g. a start date set after the due date, or a required name left blank, gets a red outline and a short message right under the field instead of a silent failure.
 - **Relationships:** parent/subtasks (with done-counter), blocked-by/blocks with automatic red **Blocked** badges. **Add subtasks inline** — type a title and press Enter, repeat for fast batch entry (each new subtask inherits the parent's sprint/ad-hoc workstream). A **+ subtask** button on any board card jumps straight here.
 - **Spec** with Markdown + a **readiness ring** showing how complete the spec is (a ready ticket is one an AI agent could pick up); `- [ ]` acceptance-criteria checklists with progress.
 - **Templates:** org-wide presets; *Bug report* and *Feature* included, Admins manage them on the Members page ("Add starter templates" backfills older orgs).

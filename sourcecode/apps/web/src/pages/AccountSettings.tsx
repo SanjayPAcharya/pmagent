@@ -9,6 +9,7 @@ import { cn, initialsOf } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { FieldError } from '@/components/ui/field-error'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -77,7 +78,13 @@ export default function AccountSettings() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground">{t('account.name')}</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                aria-invalid={Boolean(user) && !name.trim()}
+                className="mt-1"
+              />
+              <FieldError>{user && !name.trim() ? t('account.nameRequired') : null}</FieldError>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">{t('account.avatarUrl')}</label>

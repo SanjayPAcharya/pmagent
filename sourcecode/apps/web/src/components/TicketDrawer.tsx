@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { FieldError } from '@/components/ui/field-error'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -60,6 +61,9 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
   const [constraints, setConstraints] = useState('')
   const [editingDesc, setEditingDesc] = useState(false)
   const [comment, setComment] = useState('')
+  // Inline date-range validation: block the patch when start > due and flag the
+  // offending field. The server's DATE_RANGE 400 (3.7 R1) stays as backstop only.
+  const [dateError, setDateError] = useState<'start' | 'due' | null>(null)
   // Mentions inserted via the picker: the editor shows "@Display Name", and we
   // remember name→userId so we can convert to the server token "@[uuid]" on send.
   const [mentions, setMentions] = useState<{ label: string; userId: string }[]>([])
@@ -540,24 +544,40 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                 <Input
                   type="date"
                   defaultValue={ticket.startDate ? ticket.startDate.slice(0, 10) : ''}
+                  aria-invalid={dateError === 'start'}
                   onBlur={(e) => {
-                    const v = e.target.value ? new Date(e.target.value).toISOString() : null
-                    patch({ startDate: v })
+                    const raw = e.target.value
+                    const due = ticket.dueDate ? ticket.dueDate.slice(0, 10) : ''
+                    if (raw && due && raw > due) {
+                      setDateError('start')
+                      return
+                    }
+                    setDateError(null)
+                    patch({ startDate: raw ? new Date(raw).toISOString() : null })
                   }}
                   className="mt-1"
                 />
+                {dateError === 'start' && <FieldError>{t('drawer.dateRangeError')}</FieldError>}
               </div>
               <div>
                 <Label>{t('drawer.dueDate')}</Label>
                 <Input
                   type="date"
                   defaultValue={ticket.dueDate ? ticket.dueDate.slice(0, 10) : ''}
+                  aria-invalid={dateError === 'due'}
                   onBlur={(e) => {
-                    const v = e.target.value ? new Date(e.target.value).toISOString() : null
-                    patch({ dueDate: v })
+                    const raw = e.target.value
+                    const start = ticket.startDate ? ticket.startDate.slice(0, 10) : ''
+                    if (raw && start && start > raw) {
+                      setDateError('due')
+                      return
+                    }
+                    setDateError(null)
+                    patch({ dueDate: raw ? new Date(raw).toISOString() : null })
                   }}
                   className="mt-1"
                 />
+                {dateError === 'due' && <FieldError>{t('drawer.dateRangeError')}</FieldError>}
               </div>
               <div>
                 <Label>{t('drawer.sprint')}</Label>
