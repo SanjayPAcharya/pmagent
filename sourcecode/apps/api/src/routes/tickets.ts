@@ -129,6 +129,7 @@ const listQuerySchema = z.object({
   sprintId: csvOf(z.string().uuid()).optional(),
   workstream: csvOf(workstreamEnum).optional(),
   includeArchived: z.coerce.boolean().optional(),
+  archivedOnly: z.coerce.boolean().optional(),
   sort: sortEnum.default('position'),
   limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
   cursor: z.string().optional(),
@@ -184,7 +185,8 @@ const routes: FastifyPluginAsync = async (app) => {
     await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
 
     const where: Prisma.TicketWhereInput = { projectId: q.projectId }
-    if (!q.includeArchived) where.archivedAt = null
+    if (q.archivedOnly) where.archivedAt = { not: null }
+    else if (!q.includeArchived) where.archivedAt = null
     if (q.status) where.status = { in: q.status }
     if (q.priority) where.priority = { in: q.priority }
     if (q.type) where.type = { in: q.type }
