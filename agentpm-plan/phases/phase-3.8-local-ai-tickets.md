@@ -1,6 +1,8 @@
 # Phase 3.8 — Local AI ticket drafting (Ollama on the existing EC2)
 
-> **Status: 📋 OPEN** (specced 2026-07-08). Source: owner-supplied external plan (`~/Downloads/ai-tickets-implementation-plan.md`, drafted in another LLM account), adapted to this repo's conventions. Goal: bring the **3.7 R10 inert Beta AI buttons to life** using a self-hosted LLM — **Ollama + `qwen2.5:7b`** as a container on the existing EC2 (Mumbai), no cloud LLM APIs, no API keys, data never leaves the box. Framed as a **quick, fully reversible experiment** (teardown documented in Part C); the API-side LLM client seam is designed to survive into Phase 5/6 when a stronger model/provider replaces it.
+> **Status: 📋 OPEN** (specced 2026-07-08; provider-tier strategy confirmed by owner same day). Source: owner-supplied external plan (`~/Downloads/ai-tickets-implementation-plan.md`), adapted to this repo's conventions. Goal: bring the **3.7 R10 inert Beta AI buttons to life** using a self-hosted LLM — **Ollama + `qwen2.5:7b`** as a container on the existing EC2 (Mumbai) — no cloud LLM APIs in this phase, data never leaves the box.
+>
+> **Product strategy (owner, 2026-07-08) — this is NOT a throwaway experiment.** The AI stack has three permanent tiers: **(1) self-hosted small models = the always-available baseline** for in-product text generation (every user gets AI, no key needed); **(2) BYOK** — an org/user who brings their own Claude/other-LLM key gets the *same features* routed through that provider (follow-up phase; needs encrypted key storage + settings UI); **(3) Phases 5/6 dev agents** run on large LLMs as originally planned — unaffected here. Consequence for this phase: `ai.service.ts` is built as an **`AIProvider` seam from day one** — routes and UI depend only on the interface; `OllamaProvider` is merely the first implementation, and the BYOK provider drops in later without touching endpoints or buttons. Only the *infra sizing* (EC2 resize, model choice) stays reversible-by-design.
 
 ## Conflicts with the external plan (surfaced per its own instruction — resolved as follows)
 
@@ -27,13 +29,14 @@
 
 ## Part A — API: Ollama client + three endpoints (local, hermetic)
 
-### - [ ] A1 — `ai.service.ts` client + config + health (M)
+### - [ ] A1 — `ai.service.ts`: `AIProvider` seam + Ollama impl + config + health (M)
 - `config.ts`: `OLLAMA_BASE_URL` (default `''` = disabled), `OLLAMA_MODEL` (default `qwen2.5:7b`), `AI_TIMEOUT_MS` (default `120000`). Add to `.env.example` under a new `# ── AI (optional, 3.8) ──` block.
-- New `services/ai.service.ts`:
-  - `aiEnabled()` → `!!config.OLLAMA_BASE_URL`.
-  - `generate<T>(opts: { system: string; user: string; schema: JSONSchema; zod: ZodType<T> })` → POST `{OLLAMA_BASE_URL}/api/chat` with `{ model, stream: false, format: schema, options: { temperature: 0.2, num_ctx: 4096 }, messages }`, `AbortSignal.timeout(AI_TIMEOUT_MS)`. Parse `message.content` as JSON → validate with the zod schema. On parse/validation failure: **one corrective re-prompt** (append the error + "return ONLY valid JSON matching the schema"), then throw.
-  - Typed failures via `ApiError`: 503 `AI_UNAVAILABLE` (fetch failed / disabled), 504 `AI_TIMEOUT`, 502 `AI_BAD_OUTPUT` (invalid after retry). The global error handler already maps these.
-  - `aiHealth()` → GET `/api/tags`, model present? → `{ enabled, reachable, modelReady }`.
+- New `services/ai.service.ts`, structured as the **permanent provider seam** (owner strategy above):
+  - `interface AIProvider { generate<T>(opts: { system: string; user: string; schema: JSONSchema; zod: ZodType<T> }): Promise<T>; health(): Promise<{ reachable: boolean; modelReady: boolean }> }`.
+  - `class OllamaProvider implements AIProvider` → POST `{OLLAMA_BASE_URL}/api/chat` with `{ model, stream: false, format: schema, options: { temperature: 0.2, num_ctx: 4096 }, messages }`, `AbortSignal.timeout(AI_TIMEOUT_MS)`. Parse `message.content` as JSON → validate with the zod schema. On parse/validation failure: **one corrective re-prompt** (append the error + "return ONLY valid JSON matching the schema"), then throw.
+  - `resolveProvider(/* orgId */): AIProvider | null` — v1 returns the Ollama provider iff `OLLAMA_BASE_URL` is set, else `null` (= AI disabled). The signature takes the org context **now** so the BYOK phase only changes this one function (org key present → cloud provider; else → local). Routes/UI never know which provider ran.
+  - Typed failures via `ApiError`: 503 `AI_UNAVAILABLE` (no provider / fetch failed), 504 `AI_TIMEOUT`, 502 `AI_BAD_OUTPUT` (invalid after retry). The global error handler already maps these.
+  - `aiHealth()` → provider's `health()` (Ollama: GET `/api/tags`, model present?) → `{ enabled, reachable, modelReady, provider: 'ollama' }` (the `provider` field future-proofs the UI's "powered by" hint for BYOK).
 - `GET /api/ai/health` (new `routes/ai.ts`, `requireAuth`) returning that shape — drives the frontend's disabled-with-reason.
 - Tests (`src/test/ai.test.ts`, mock `fetch` via `vi.stubGlobal`): schema-valid pass-through; malformed → corrective retry → success; malformed twice → 502; timeout → 504; disabled → health `{enabled:false}` and endpoints 503. **api 89 → ~94.**
 
@@ -96,6 +99,6 @@
 
 ## Sequencing & scope notes
 - Order **A1→A4 → B1→B4** entirely on local Ollama (no server cost until proven), then **⛔ checkpoint → C1→C3**.
-- **Out of scope:** email generation (no email in product — Phase 4); streaming responses (nice-to-have; `stream:false` keeps v1 simple); persisting summaries; auto-creating tickets without review; GPU instances; any second model.
-- **Tear-down guarantee:** everything is additive — an env var, one profiled compose service, one route file, one service file, three wired buttons. Reverting = C3's teardown list.
+- **Out of scope (this phase):** **BYOK** — org-scoped provider keys (encrypted at rest, masked in UI, org-settings card, `ClaudeProvider` adapter, per-org `resolveProvider` lookup) is its own follow-up phase (**3.8.1**, spec when 3.8 lands); email generation (no email in product — Phase 4); streaming responses (`stream:false` keeps v1 simple); persisting summaries; auto-creating tickets without review; GPU instances; any second local model. **Phases 5/6 dev agents (large LLMs) are a separate track — nothing here constrains them.**
+- **Tear-down guarantee (infra only):** the *sizing experiment* is reversible — env var, one profiled compose service, resize back — per C3's list. The provider seam, endpoints, and wired buttons are **permanent product surface** (the baseline tier).
 - Expected exit: **api ~94–97 · web ~34**, three live AI features on prod, `release-doc/AI-EXPERIMENT.md` as the standing runbook.
