@@ -39,7 +39,7 @@
 - Test (append to `src/health.test.ts`): inject `GET /health`, assert `x-content-type-options: nosniff` and `x-frame-options` present. **api 81 → 82.**
 - Verify: `curl -i http://localhost:3001/health` shows the headers; `/documentation` still renders.
 
-### - [ ] A2 — Caddy: HSTS + CSP for the SPA (S)
+### - [x] A2 — Caddy: HSTS + CSP for the SPA (S) *(done 2026-07-08 — config only, not yet deployed; see promotion note below)*
 - In `infra/caddy/Caddyfile`, add a `header { … }` block to each site:
   - **All three domains:** `Strict-Transport-Security "max-age=31536000; includeSubDomains"`, `X-Content-Type-Options "nosniff"`, `Referrer-Policy "strict-origin-when-cross-origin"`.
   - **`{$APP_DOMAIN}` only** — SPA CSP (start in **Report-Only** to avoid bricking login on first deploy; promote to enforcing after one verified prod session):
