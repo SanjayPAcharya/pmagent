@@ -17,6 +17,7 @@ import { isReady, markNotReady } from './lib/readiness.js'
 import { initEventBus, disposeEventBus, pingEventBus } from './events/event-bus.js'
 import { wsServer } from './websocket/ws-server.js'
 import { initNotificationService } from './services/notifications.service.js'
+import { purgeExpired } from './services/retention.service.js'
 
 export async function buildServer() {
   const config = loadConfig()
@@ -178,6 +179,16 @@ async function start() {
   }
   process.on('SIGTERM', () => void shutdown('SIGTERM'))
   process.on('SIGINT', () => void shutdown('SIGINT'))
+
+  // 3.7.4 E2 — data-retention sweep: once on boot, then daily. Lives in start()
+  // (not buildServer) so tests never spawn a timer. .unref() so it can't hold
+  // the process open during shutdown.
+  const sweep = () =>
+    purgeExpired()
+      .then((r) => app.log.info(r, 'retention sweep complete'))
+      .catch((err) => app.log.error({ err }, 'retention sweep failed'))
+  void sweep()
+  setInterval(sweep, 24 * 60 * 60 * 1000).unref()
 
   try {
     await app.listen({ port, host: '0.0.0.0' })

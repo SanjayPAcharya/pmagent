@@ -158,7 +158,7 @@ model AuditLog {
 - **Fixing what it flags is in scope** (expect small stuff: contrast on muted text, missing `aria-label` on icon-only buttons, landmark order). If a finding needs a design decision, exclude it with a `// a11y-debt:` comment + a note in this file rather than silently disabling the rule.
 - This is the regression gate the EN 301 549/EAA evidence trail starts from; record "axe: 0 serious+ on 4 core pages" in the Log.
 
-### - [ ] E2 — Retention job: purge stale notifications + expired invites (S)
+### - [x] E2 — Retention job: purge stale notifications + expired invites (S) *(done 2026-07-08)*
 - New `services/retention.service.ts`:
   ```ts
   export async function purgeExpired(now = new Date()) → { notifications, invites }
