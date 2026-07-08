@@ -107,7 +107,7 @@ model AuditLog {
 ```
 - `prisma migrate dev --name audit_log` (additive), then the **container generate + restart** dance (Conventions). api 81-suite unchanged.
 
-### - [ ] C2 — Service + wire the call sites (M)
+### - [x] C2 — Service + wire the call sites (M) *(done 2026-07-08)*
 - New `services/audit.service.ts`: `export async function audit(entry: {orgId?: string; actorId?: string; action: string; targetType: string; targetId?: string; meta?: object})` → `prisma.auditLog.create` wrapped in `try/catch` that only `logger.error`s — **an audit failure must never fail the user's request**. Fire it *after* the mutation succeeds (post-transaction, like event publishing).
 - Wire exactly these sites (grep-verified locations):
 
@@ -123,7 +123,7 @@ model AuditLog {
 
 - Test (`src/test/audit.test.ts`): role-change a member → one `member.role_changed` row with correct meta; delete a project permanently → row exists. **api 85 → 87** (2 tests; assert directly via `prisma.auditLog.findMany` in the test db).
 
-### - [ ] C3 — API: `GET /api/orgs/:slug/audit` (S)
+### - [x] C3 — API: `GET /api/orgs/:slug/audit` (S) *(done 2026-07-08)*
 - In `routes/organizations.ts`, `preHandler: requireOrgRole('ADMIN')`. Cursor-paginated (reuse `lib/pagination.ts` exactly like the activity list at `:136`), newest first, optional `?action=` prefix filter. Resolve actor display names in the handler (batch `user.findMany` on the distinct `actorId`s — no FK, so no include) and return `{ id, action, targetType, targetId, meta, createdAt, actor: {name} | null }`.
 - Test: list returns the C2 rows, MEMBER role gets 403. **api 87 → 88.** *(Web viewer = out of scope this phase — the endpoint is the deliverable; a settings page can consume it later.)*
 

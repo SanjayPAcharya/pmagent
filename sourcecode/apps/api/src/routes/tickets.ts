@@ -18,6 +18,7 @@ import {
 } from '../services/tickets.service.js'
 import { parseMentions, filterOrgMembers } from '../services/notifications.service.js'
 import { blockedByCounts, subtaskCounts, getRelations, addDependency, removeDependency } from '../services/relations.service.js'
+import { audit } from '../services/audit.service.js'
 
 const priorityEnum = z.enum(['URGENT', 'HIGH', 'MEDIUM', 'LOW'])
 const typeEnum = z.enum(['FEATURE', 'BUG', 'CHORE', 'SPIKE'])
@@ -254,6 +255,13 @@ const routes: FastifyPluginAsync = async (app) => {
     const t = await loadTicketAuthorized(request, 'ADMIN')
     await prisma.ticket.delete({ where: { id: t.id } })
     await publishEvent('ticket.deleted', { projectId: t.projectId, ticketId: t.id, actorId: request.userId! })
+    await audit({
+      orgId: t.project.orgId,
+      actorId: request.userId,
+      action: 'ticket.permanently_deleted',
+      targetType: 'ticket',
+      targetId: t.id,
+    })
     return reply.code(204).send()
   })
 

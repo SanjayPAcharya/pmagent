@@ -9,6 +9,7 @@ import { projectReports } from '../services/reports.service.js'
 import { projectOverview } from '../services/overview.service.js'
 import { projectGantt } from '../services/gantt.service.js'
 import { recentActivity } from '../services/activity.service.js'
+import { audit } from '../services/audit.service.js'
 import { publishEvent } from '../events/event-bus.js'
 import { ApiError } from '../lib/errors.js'
 import { slugify, deriveKey } from '../lib/slug.js'
@@ -165,19 +166,22 @@ const routes: FastifyPluginAsync = async (app) => {
   app.post('/:projectId/archive', async (request) => {
     const project = await loadProjectAuthorized(request, 'ADMIN')
     const updated = await prisma.project.update({ where: { id: project.id }, data: { archivedAt: new Date() } })
+    await audit({ orgId: project.orgId, actorId: request.userId, action: 'project.archived', targetType: 'project', targetId: project.id })
     return { project: updated }
   })
   app.post('/:projectId/restore', async (request) => {
     const project = await loadProjectAuthorized(request, 'ADMIN')
     const updated = await prisma.project.update({ where: { id: project.id }, data: { archivedAt: null } })
+    await audit({ orgId: project.orgId, actorId: request.userId, action: 'project.restored', targetType: 'project', targetId: project.id })
     return { project: updated }
   })
 
   // Permanent delete (hard) — ADMIN; cascades to tickets/sprints/milestones.
   app.delete('/:projectId', async (request, reply) => {
-    await loadProjectAuthorized(request, 'ADMIN')
+    const project = await loadProjectAuthorized(request, 'ADMIN')
     const { projectId } = request.params as { projectId: string }
     await prisma.project.delete({ where: { id: projectId } })
+    await audit({ orgId: project.orgId, actorId: request.userId, action: 'project.deleted', targetType: 'project', targetId: projectId })
     return reply.code(204).send()
   })
 
