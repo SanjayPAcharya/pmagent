@@ -114,20 +114,29 @@ const meRoutes: FastifyPluginAsync = async (app) => {
       )
     }
 
-    await prisma.$transaction([
+    await prisma.$transaction(async (tx) => {
       // Don't leave live work assigned to a tombstoned account.
-      prisma.ticket.updateMany({ where: { assignedToId: userId }, data: { assignedToId: null } }),
-      prisma.orgMember.deleteMany({ where: { userId } }),
-      prisma.ticketWatcher.deleteMany({ where: { userId } }),
-      prisma.notification.deleteMany({ where: { userId } }),
-      prisma.commentReaction.deleteMany({ where: { userId } }),
+      await tx.ticket.updateMany({ where: { assignedToId: userId }, data: { assignedToId: null } })
+      await tx.orgMember.deleteMany({ where: { userId } })
+      // Re-verify the owner invariant INSIDE the transaction: the pre-check above
+      // races with a concurrent demotion of the org's other owner (TOCTOU). After
+      // our own membership rows are gone, any owned org counting zero owners means
+      // that race hit — throw so the whole erasure rolls back.
+      for (const m of ownerships) {
+        const owners = await tx.orgMember.count({ where: { orgId: m.orgId, role: 'OWNER' } })
+        if (owners === 0)
+          throw new ApiError(409, `Transfer ownership or delete these organizations first: ${m.organization.slug}`, 'SOLE_OWNER')
+      }
+      await tx.ticketWatcher.deleteMany({ where: { userId } })
+      await tx.notification.deleteMany({ where: { userId } })
+      await tx.commentReaction.deleteMany({ where: { userId } })
       // Anonymize rather than delete — createdTickets is Restrict, and comments/
       // activity attributed to this user should read "Deleted user", not vanish.
-      prisma.user.update({
+      await tx.user.update({
         where: { id: userId },
         data: { email: `deleted-${userId}@anonymized.invalid`, name: 'Deleted user', avatarUrl: null, idpSub: null },
-      }),
-    ])
+      })
+    })
 
     await audit({ actorId: userId, action: 'account.erased', targetType: 'account', targetId: userId })
     return reply.code(204).send()
