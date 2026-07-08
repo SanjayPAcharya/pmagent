@@ -70,12 +70,14 @@
 - `ProjectOverview.tsx` card: button live → renders `{headline, bullets, risks}` in the card (typography, not raw JSON), "Regenerate" after. Cache in react-query keyed `['ai-summary', projectId]` (no persistence — a digest is ephemeral by design). Update the card's hint copy.
 - **Exit Part B: web 32 → ~34** (AIButton + one flow test with mocked api), typecheck + build + browser-verify all three flows against local Ollama.
 
-## Part C — Infra, deploy & runbook  ⛔ **CHECKPOINT: owner go-ahead before this part (costs real money)**
+## Part C — Infra, deploy & runbook
+
+> **C1 is free (a local container) and may be done any time — do it *before* Part B's browser verification** so the app can talk to a real local model via `docker compose --profile ai up`. (Alternative: host-installed Ollama at `http://localhost:11434`; on Apple Silicon that's actually faster than the EC2 CPU.) The **⛔ owner checkpoint gates C2 + C3 only** — those cost real money.
 
 ### - [ ] C1 — Compose: `ollama` service under an `ai` profile (S)
 ```yaml
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:latest   # needs ≥0.5 — JSON-schema `format` (structured outputs) landed in 0.5.0
     profiles: ["ai"]
     volumes: [ollama-models:/root/.ollama]
     environment: { OLLAMA_KEEP_ALIVE: 30m }
@@ -84,7 +86,7 @@
 ```
 - Named volume `ollama-models`; `.env.example` gains `OLLAMA_BASE_URL=http://ollama:11434` (commented out = disabled). Verify dev: `docker compose --profile ai up -d ollama && docker compose exec ollama ollama pull qwen2.5:7b`, then api health goes green.
 
-### - [ ] C2 — `[MANUAL — owner]` EC2 resize + model pull (record numbers in the PROGRESS row)
+### - [ ] C2 — `[MANUAL — owner]` EC2 resize + model pull ⛔ **owner go-ahead required from here (costs real money)** (record numbers in the PROGRESS row)
 1. Stop `pmagent` instance → change type `t3.medium` → **`t3.xlarge`** (4 vCPU/16 GB) → start (~2 min downtime; Elastic IP retained).
 2. `df -h` — need ~6 GB free for the model (resize EBS/gp3 if tight).
 3. On the box: add `--profile ai` to the compose invocation, `docker compose up -d ollama`, `ollama pull qwen2.5:7b`.
@@ -98,7 +100,7 @@
 ---
 
 ## Sequencing & scope notes
-- Order **A1→A4 → B1→B4** entirely on local Ollama (no server cost until proven), then **⛔ checkpoint → C1→C3**.
+- Order **A1→A4 → C1 (free, enables local model) → B1→B4** browser-verified against local Ollama, then **⛔ checkpoint → C2→C3**. Expect 1–2 prompt-tuning iterations during B: a 7B model needs shorter, more directive prompts than a frontier model — judge output samples with the owner before calling B done.
 - **Out of scope (this phase):** **BYOK** — org-scoped provider keys (encrypted at rest, masked in UI, org-settings card, `ClaudeProvider` adapter, per-org `resolveProvider` lookup) is its own follow-up phase (**3.8.1**, spec when 3.8 lands); email generation (no email in product — Phase 4); streaming responses (`stream:false` keeps v1 simple); persisting summaries; auto-creating tickets without review; GPU instances; any second local model. **Phases 5/6 dev agents (large LLMs) are a separate track — nothing here constrains them.**
 - **Tear-down guarantee (infra only):** the *sizing experiment* is reversible — env var, one profiled compose service, resize back — per C3's list. The provider seam, endpoints, and wired buttons are **permanent product surface** (the baseline tier).
 - Expected exit: **api ~94–97 · web ~34**, three live AI features on prod, `release-doc/AI-EXPERIMENT.md` as the standing runbook.
