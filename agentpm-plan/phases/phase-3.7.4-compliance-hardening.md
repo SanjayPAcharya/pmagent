@@ -88,7 +88,7 @@
 
 ## Part C — Audit log (P0 · GDPR Art. 30 / SOC 2 evidence)
 
-### - [ ] C1 — Schema: `AuditLog` + migration (S)
+### - [x] C1 — Schema: `AuditLog` + migration (S) *(done 2026-07-08)*
 ```prisma
 // 3.7.4 — append-only security audit trail. Deliberately NO relations: rows must
 // survive org deletion and user erasure (plain uuid columns, no FK cascade).
