@@ -55,7 +55,7 @@
 
 ## Part B — GDPR data-subject rights (P0 · Art. 15/17/20)
 
-### - [ ] B1 — API: `GET /api/me/export` (M)
+### - [x] B1 — API: `GET /api/me/export` (M) *(done 2026-07-08)*
 - In `routes/me.ts` (all `/api/me` routes already run behind `requireAuth` — confirm the plugin-level hook; if guards are per-route, add one). New handler gathers, in one `Promise.all`:
   - profile (`id,email,name,avatarUrl,createdAt`),
   - memberships → `{ org: {name, slug}, role, joinedAt }`,
