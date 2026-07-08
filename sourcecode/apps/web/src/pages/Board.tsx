@@ -510,7 +510,7 @@ export default function Board() {
           onChange={setSprintFilter}
           options={(sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name }))}
         />
-        <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
+        <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label={t('board.sortLabel')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
           <option value="position">{t('board.sortManual')}</option>
           <option value="-updatedAt">{t('board.sortUpdated')}</option>
           <option value="priority">{t('board.sortPriorityAsc')}</option>

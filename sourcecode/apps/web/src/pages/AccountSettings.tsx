@@ -103,8 +103,9 @@ export default function AccountSettings() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t('account.name')}</label>
+              <label htmlFor="account-name" className="text-xs text-muted-foreground">{t('account.name')}</label>
               <Input
+                id="account-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 aria-invalid={Boolean(user) && !name.trim()}
@@ -113,8 +114,9 @@ export default function AccountSettings() {
               <FieldError>{user && !name.trim() ? t('account.nameRequired') : null}</FieldError>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t('account.avatarUrl')}</label>
+              <label htmlFor="account-avatar" className="text-xs text-muted-foreground">{t('account.avatarUrl')}</label>
               <Input
+                id="account-avatar"
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
                 placeholder="https://…"
@@ -123,8 +125,8 @@ export default function AccountSettings() {
               <p className="mt-1 text-xs text-muted-foreground">{t('account.avatarHint')}</p>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t('account.email')}</label>
-              <Input value={user?.email ?? ''} disabled className="mt-1" />
+              <label htmlFor="account-email" className="text-xs text-muted-foreground">{t('account.email')}</label>
+              <Input id="account-email" value={user?.email ?? ''} disabled className="mt-1" />
               <p className="mt-1 text-xs text-muted-foreground">{t('account.emailHint')}</p>
             </div>
             <Button size="sm" onClick={() => void save()} disabled={!dirty || !name.trim() || busy}>

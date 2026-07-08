@@ -363,6 +363,7 @@
     "typeAny": "Type: any",
     "assigneeAny": "Assignee: any",
     "sprintAny": "Sprint: any",
+    "sortLabel": "Sort tickets",
     "sortManual": "Sort: manual",
     "sortUpdated": "Recently updated",
     "sortPriorityAsc": "Priority ↑",

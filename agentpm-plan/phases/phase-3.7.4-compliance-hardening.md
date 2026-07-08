@@ -153,7 +153,8 @@ model AuditLog {
 
 ## Part E — Accessibility gate + data retention (P1)
 
-### - [ ] E1 — axe-core in Playwright (M)
+### - [x] E1 — axe-core in Playwright (M) *(done 2026-07-08 — found + fixed 3 real defects incl. 1 critical; see log)*
+> **Run prerequisite:** the e2e suite logs in as a seeded Keycloak user via the real hosted-login flow. The committed realm ships no users, so run `infra/keycloak/seed-e2e-user.sh` once against a running stack before `pnpm --filter @agentpm/web test:e2e` (and install browsers via `pnpm --filter @agentpm/web exec playwright install chromium`). e2e is not yet wired into CI (deploy.yml runs vitest only).
 - `pnpm --filter @agentpm/web add -D @axe-core/playwright`. New `e2e/a11y.spec.ts` reusing `e2e/global-setup.ts` auth: for each of **Dashboard, project Board, project List, Account Settings**, run `new AxeBuilder({ page }).analyze()` and assert zero violations with `impact` `critical` or `serious` (log lesser ones, don't fail).
 - **Fixing what it flags is in scope** (expect small stuff: contrast on muted text, missing `aria-label` on icon-only buttons, landmark order). If a finding needs a design decision, exclude it with a `// a11y-debt:` comment + a note in this file rather than silently disabling the rule.
 - This is the regression gate the EN 301 549/EAA evidence trail starts from; record "axe: 0 serious+ on 4 core pages" in the Log.
