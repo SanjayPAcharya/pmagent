@@ -587,7 +587,14 @@
     "email": "Email",
     "emailHint": "Sign-in email is managed by your identity provider.",
     "appearance": "Appearance",
-    "saved": "Profile saved"
+    "saved": "Profile saved",
+    "privacyTitle": "Your data & privacy",
+    "exportHint": "Download a copy of everything tied to your account — profile, org memberships, tickets you created or are assigned, comments, and notifications.",
+    "exportData": "Download my data",
+    "exportDownloaded": "Export downloaded",
+    "deleteTitle": "Delete my account",
+    "deleteWarning": "Removes your name and email and signs you out. Tickets and comments you created stay — attributed to \"Deleted user\" — since they're shared project history. This can't be undone.",
+    "deleteAction": "Delete my account"
   },
   "theme": {
     "light": "light",

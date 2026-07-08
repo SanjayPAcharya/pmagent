@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Moon, Sun, Monitor, Loader2 } from 'lucide-react'
-import { api } from '@/lib/api'
+import { Moon, Sun, Monitor, Loader2, Download } from 'lucide-react'
+import { api, ApiError } from '@/lib/api'
+import { logout } from '@/lib/auth'
 import { useTheme, type Theme } from '@/lib/theme'
 import { cn, initialsOf } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { FieldError } from '@/components/ui/field-error'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DangerZone } from '@/components/DangerZone'
 
 // /account — the user's own profile. Email is owned by Keycloak (read-only
 // here); name + avatar URL live on our User row via PATCH /api/me. No upload
@@ -32,6 +34,8 @@ export default function AccountSettings() {
   const [name, setName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [busy, setBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   useEffect(() => {
     if (user) {
       setName(user.name)
@@ -55,6 +59,24 @@ export default function AccountSettings() {
       toast.error((e as Error).message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const downloadExport = async () => {
+    setExporting(true)
+    try {
+      const { blob, filename } = await api.exportMyData()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(t('account.exportDownloaded'))
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -138,6 +160,45 @@ export default function AccountSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('account.privacyTitle')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">{t('account.exportHint')}</p>
+          <Button size="sm" variant="outline" onClick={() => void downloadExport()} disabled={exporting}>
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {t('account.exportData')}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {user && (
+        <>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DangerZone
+            title={t('account.deleteTitle')}
+            description={t('account.deleteWarning')}
+            confirmLabel={user.email}
+            confirmHint={t('settings.typeToConfirm', { name: user.email })}
+            actionLabel={t('account.deleteAction')}
+            onDelete={async () => {
+              setDeleteError(null)
+              try {
+                await api.deleteMyAccount()
+                void logout()
+              } catch (e) {
+                if (e instanceof ApiError && e.code === 'SOLE_OWNER') {
+                  setDeleteError(e.message)
+                } else {
+                  toast.error((e as Error).message)
+                }
+              }
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }

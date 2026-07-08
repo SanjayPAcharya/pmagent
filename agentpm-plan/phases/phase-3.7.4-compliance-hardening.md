@@ -77,7 +77,7 @@
 - Return `204`. Note in the handler comment: the **Keycloak account is not deleted** (API holds no IdP admin credentials); if the person signs in again a fresh blank account is JIT-provisioned — acceptable and documented in FEATURES.
 - Tests: (1) sole-owner → 409 `SOLE_OWNER`; (2) after adding a second owner, erasure succeeds → user row anonymized, memberships/watchers/notifications gone, their created ticket still exists with author "Deleted user". **api 83 → 85.**
 
-### - [ ] B3 — Web: export + delete-account in Account Settings (M)
+### - [x] B3 — Web: export + delete-account in Account Settings (M) *(done 2026-07-08)*
 - `lib/api.ts`: add `exportMyData()` (fetch → `blob` → programmatic `<a download>` click; must go through the shared `request` path for the auth header — add a `requestBlob` variant rather than duplicating token logic) and `deleteMyAccount()`.
 - `pages/AccountSettings.tsx`:
   - **"Download my data"** button (`Download` icon, `Loader2` while fetching, toast on success).
