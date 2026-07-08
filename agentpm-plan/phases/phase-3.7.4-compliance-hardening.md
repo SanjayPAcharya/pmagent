@@ -131,7 +131,7 @@ model AuditLog {
 
 ## Part D — Supply chain + rate-limit maturity (P1)
 
-### - [ ] D1 — CI: SCA gate + Dependabot (S)
+### - [x] D1 — CI: SCA gate + Dependabot (S) *(done 2026-07-08 — surfaced + fixed 5 real CVEs; see log)*
 - `.github/workflows/deploy.yml`, test job, after `pnpm install`: add `- run: pnpm audit --prod --audit-level high` (blocking; if a finding has no upstream fix, the escape hatch is a documented `pnpm audit --prod --audit-level critical` downgrade in that commit's message — owner decides).
 - New `.github/dependabot.yml`: `npm` ecosystem, `directory: /sourcecode`, weekly; `github-actions`, `directory: /`, weekly; both `open-pull-requests-limit: 5`.
 - Verify: run the audit command locally from `sourcecode/` and record the result in the Log (if it fails today, fixing/updating the offenders is **in scope** for this step).

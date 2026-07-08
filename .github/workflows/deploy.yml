@@ -58,6 +58,10 @@ jobs:
           cache: pnpm
           cache-dependency-path: sourcecode/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # 3.7.4 D1 — supply-chain gate. --prod skips devDependencies (build tooling
+      # noise); high+ only, since low/moderate findings are triaged via Dependabot
+      # PRs instead of blocking every push.
+      - run: pnpm audit --prod --audit-level high
       - run: pnpm --filter @agentpm/api exec prisma generate
       - run: pnpm turbo lint typecheck
       - run: pnpm turbo test
