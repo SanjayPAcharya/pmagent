@@ -65,7 +65,8 @@ const routes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', requireAuth)
 
   // Create org — the creator becomes OWNER; seeded with the starter templates (3.4 W1)
-  app.post('/', async (request, reply) => {
+  // 3.7.4 D2 — tighter cap on this abuse-prone write (each call seeds templates).
+  app.post('/', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
     const body = createOrgSchema.parse(request.body)
     const slug = await uniqueOrgSlug(body.slug ?? slugify(body.name))
     const org = await prisma.organization.create({
@@ -268,7 +269,7 @@ const routes: FastifyPluginAsync = async (app) => {
   })
 
   // ── Invite links ── (accept lives at /api/invites/:token/accept)
-  app.post('/:slug/invites', { preHandler: requireOrgRole('ADMIN') }, async (request, reply) => {
+  app.post('/:slug/invites', { preHandler: requireOrgRole('ADMIN'), config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { slug } = request.params as { slug: string }
     const body = createInviteSchema.parse(request.body)
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })

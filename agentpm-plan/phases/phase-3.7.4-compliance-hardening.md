@@ -136,7 +136,7 @@ model AuditLog {
 - New `.github/dependabot.yml`: `npm` ecosystem, `directory: /sourcecode`, weekly; `github-actions`, `directory: /`, weekly; both `open-pull-requests-limit: 5`.
 - Verify: run the audit command locally from `sourcecode/` and record the result in the Log (if it fails today, fixing/updating the offenders is **in scope** for this step).
 
-### - [ ] D2 — Redis-backed + tiered rate limiting (M)
+### - [x] D2 — Redis-backed + tiered rate limiting (M) *(done 2026-07-08 — Part D complete)*
 - Problem: the in-process store resets per replica and per restart. `@fastify/rate-limit` accepts an **ioredis** client via its `redis` option (the app's `redis` v4 client is not compatible — don't try to adapt it).
 - `pnpm --filter @agentpm/api add ioredis` (+ container rebuild). In `index.ts`:
   ```ts

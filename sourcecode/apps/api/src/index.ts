@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
+import { Redis } from 'ioredis'
 import websocket from '@fastify/websocket'
 import jwt, { type TokenOrHeader } from '@fastify/jwt'
 import buildGetJwks from 'get-jwks'
@@ -50,7 +51,16 @@ export async function buildServer() {
   // default CSP would break Swagger UI at /documentation; the API returns no
   // user-facing HTML anyway.
   await app.register(helmet, { contentSecurityPolicy: false, hsts: false })
-  await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
+  // 3.7.4 D2 — Redis-backed rate limiting so limits hold across API replicas and
+  // survive restarts. Without REDIS_URL (tests, dev-without-redis) the plugin
+  // falls back to its in-process store, keeping those paths hermetic. Uses an
+  // ioredis client (the plugin's required shape); the app's node-redis event-bus
+  // client is a separate connection. Short timeouts so a Redis blip degrades to
+  // the local store rather than stalling requests.
+  const rlRedis = config.REDIS_URL
+    ? new Redis(config.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
+    : undefined
+  await app.register(rateLimit, { max: 100, timeWindow: '1 minute', redis: rlRedis })
   await app.register(websocket)
 
   // Real-time: connect the Redis bus (no-op without REDIS_URL → tests stay
@@ -61,6 +71,7 @@ export async function buildServer() {
   await initNotificationService()
   app.addHook('onClose', async () => {
     await disposeEventBus()
+    if (rlRedis) await rlRedis.quit()
   })
 
   // OpenAPI docs at /documentation, generated from the Phase-2 routes' Zod

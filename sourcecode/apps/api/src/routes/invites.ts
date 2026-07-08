@@ -16,7 +16,8 @@ const routes: FastifyPluginAsync = async (app) => {
   const r = app.withTypeProvider<ZodTypeProvider>()
   r.addHook('preHandler', requireAuth)
 
-  r.post('/:token/accept', { schema: { params: tokenParams, tags: ['invites'] } }, async (request) => {
+  // 3.7.4 D2 — cap accept attempts so a leaked/guessed token can't be hammered.
+  r.post('/:token/accept', { schema: { params: tokenParams, tags: ['invites'] }, config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request) => {
     const { token } = request.params
     const invite = await prisma.orgInvite.findUnique({ where: { token } })
     if (!invite) throw new ApiError(404, 'Invite not found')
