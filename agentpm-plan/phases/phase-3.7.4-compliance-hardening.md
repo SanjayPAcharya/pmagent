@@ -26,7 +26,7 @@
 
 ## Part A — HTTP security headers (P0 · OWASP baseline)
 
-### - [ ] A1 — API: `@fastify/helmet` (S)
+### - [x] A1 — API: `@fastify/helmet` (S) *(done 2026-07-08)*
 - `pnpm --filter @agentpm/api add @fastify/helmet` (v13.x — Fastify v5 compatible). Rebuild the api container (dep change).
 - In `index.ts`, register **before** the routes, right after `rateLimit`:
   ```ts

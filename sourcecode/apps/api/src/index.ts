@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import websocket from '@fastify/websocket'
 import jwt, { type TokenOrHeader } from '@fastify/jwt'
@@ -44,6 +45,11 @@ export async function buildServer() {
   })
 
   await app.register(cors, { origin: config.ALLOWED_ORIGINS, credentials: true })
+  // 3.7.4 A1 — OWASP baseline headers (nosniff, X-Frame-Options, Referrer-Policy, …).
+  // CSP/HSTS stay off here: TLS terminates at Caddy (A2 sets HSTS there), and a
+  // default CSP would break Swagger UI at /documentation; the API returns no
+  // user-facing HTML anyway.
+  await app.register(helmet, { contentSecurityPolicy: false, hsts: false })
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
   await app.register(websocket)
 
