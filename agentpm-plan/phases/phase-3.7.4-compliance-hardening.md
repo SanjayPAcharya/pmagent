@@ -66,7 +66,7 @@
 - Respond with `reply.header('Content-Disposition', 'attachment; filename="agentpm-export-<yyyy-mm-dd>.json"')` and the JSON bundle wrapped as `{ exportedAt, format: 'agentpm/v1', data: {…} }`.
 - Test (`src/test/gdpr.test.ts`): seed a user with an org + a ticket + a comment; assert the export contains each section and **no other user's data**. **api 82 → 83.**
 
-### - [ ] B2 — API: `DELETE /api/me` — erasure by anonymization (M)
+### - [x] B2 — API: `DELETE /api/me` — erasure by anonymization (M) *(done 2026-07-08)*
 - **Guard first:** find memberships where `role: 'OWNER'`; for each, count owners in that org. If any org would be left ownerless → `throw new ApiError(409, 'Transfer ownership or delete these organizations first: <slugs>', 'SOLE_OWNER')`. (Mirrors `guardLastOwner` in `services/authz.ts` — reuse `roleAtLeast`/patterns, don't duplicate the message style.)
 - Then one `prisma.$transaction`:
   1. `ticket.updateMany({ where: { assignedToId: userId }, data: { assignedToId: null } })` — don't leave live work assigned to a tombstone,

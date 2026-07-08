@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth.middleware.js'
 import { ticketIncludeWithOrg, serializeTicketWithOrg } from '../services/tickets.service.js'
 import { blockedByCounts } from '../services/relations.service.js'
 import { audit } from '../services/audit.service.js'
+import { ApiError } from '../lib/errors.js'
 
 const updateMeSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -83,6 +84,53 @@ const meRoutes: FastifyPluginAsync = async (app) => {
     await audit({ actorId: userId, action: 'account.exported', targetType: 'account', targetId: userId })
     reply.header('Content-Disposition', `attachment; filename="agentpm-export-${bundle.exportedAt.slice(0, 10)}.json"`)
     return bundle
+  })
+
+  // DELETE /api/me — GDPR Art. 17 erasure. Ticket.createdBy is onDelete:Restrict
+  // (a ticket author can't be hard-deleted), so this ANONYMIZES the user row
+  // rather than removing it: memberships/watches/notifications/reactions are
+  // deleted, but tickets they created and comments they wrote remain, now
+  // attributed to "Deleted user". The Keycloak account itself is untouched (the
+  // API holds no IdP admin credentials) — signing in again JIT-provisions a
+  // fresh, unrelated account.
+  app.delete('/', async (request, reply) => {
+    const userId = request.userId!
+
+    // Block erasure if it would leave any org without an owner.
+    const ownerships = await prisma.orgMember.findMany({
+      where: { userId, role: 'OWNER' },
+      select: { orgId: true, organization: { select: { slug: true } } },
+    })
+    const soleOwnerOf: string[] = []
+    for (const m of ownerships) {
+      const owners = await prisma.orgMember.count({ where: { orgId: m.orgId, role: 'OWNER' } })
+      if (owners <= 1) soleOwnerOf.push(m.organization.slug)
+    }
+    if (soleOwnerOf.length > 0) {
+      throw new ApiError(
+        409,
+        `Transfer ownership or delete these organizations first: ${soleOwnerOf.join(', ')}`,
+        'SOLE_OWNER',
+      )
+    }
+
+    await prisma.$transaction([
+      // Don't leave live work assigned to a tombstoned account.
+      prisma.ticket.updateMany({ where: { assignedToId: userId }, data: { assignedToId: null } }),
+      prisma.orgMember.deleteMany({ where: { userId } }),
+      prisma.ticketWatcher.deleteMany({ where: { userId } }),
+      prisma.notification.deleteMany({ where: { userId } }),
+      prisma.commentReaction.deleteMany({ where: { userId } }),
+      // Anonymize rather than delete — createdTickets is Restrict, and comments/
+      // activity attributed to this user should read "Deleted user", not vanish.
+      prisma.user.update({
+        where: { id: userId },
+        data: { email: `deleted-${userId}@anonymized.invalid`, name: 'Deleted user', avatarUrl: null, idpSub: null },
+      }),
+    ])
+
+    await audit({ actorId: userId, action: 'account.erased', targetType: 'account', targetId: userId })
+    return reply.code(204).send()
   })
 
   // GET /api/me/work — tickets assigned to or watched by me, across all my orgs
