@@ -262,3 +262,52 @@ describe('AI expand-ticket (3.8 A3)', () => {
     expect(res.statusCode).toBe(404)
   })
 })
+
+describe('AI project-summary (3.8 A4)', () => {
+  it('returns a headline/bullets/risks digest', async () => {
+    process.env.OLLAMA_BASE_URL = 'http://ollama:11434'
+    const owner = await tokenFor('ai-sum-owner')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Summary Co')
+    const projectId = await makeProject(owner, orgId, 'Summary Proj')
+    await makeTicket(owner, projectId, 'First task')
+
+    stubOllama({
+      chat: [
+        JSON.stringify({
+          headline: 'Project is early but on track.',
+          bullets: ['1 ticket open', 'No active sprint yet'],
+          risks: ['No milestones defined'],
+        }),
+      ],
+    })
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/project-summary',
+      headers: bearer(owner),
+      payload: { projectId },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().summary).toMatchObject({ headline: 'Project is early but on track.' })
+    expect(Array.isArray(res.json().summary.bullets)).toBe(true)
+  })
+
+  it('forbids a non-member with 403', async () => {
+    process.env.OLLAMA_BASE_URL = 'http://ollama:11434'
+    const owner = await tokenFor('ai-sum-owner2')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Summary Co 2')
+    const projectId = await makeProject(owner, orgId, 'Summary Proj 2')
+
+    const outsider = await tokenFor('ai-sum-outsider')
+    await provision(outsider)
+    stubOllama({ chat: ['{}'] })
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/project-summary',
+      headers: bearer(outsider),
+      payload: { projectId },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+})

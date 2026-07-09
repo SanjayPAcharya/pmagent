@@ -50,7 +50,7 @@
 - Body: `{ ticketId: uuid, prompt?: string ≤2000 }`. Auth via the `loadTicketAuthorized(request,'MEMBER')` helper pattern. Context fed to the model: ticket title + existing description/AC/goal/constraints (truncate to fit `num_ctx`), plus the user's optional steer.
 - Output schema `{ description, acceptanceCriteria: string[], goal, constraints }`. Returns a draft; the drawer fills editable fields, user saves normally (existing PATCH). Rate limit `10/min`. Test: happy + 404. **~api +1–2.**
 
-### - [ ] A4 — `POST /api/ai/project-summary` (M)
+### - [x] A4 — `POST /api/ai/project-summary` (M)
 - Body: `{ projectId: uuid }`, MEMBER. Context: reuse `overview.service.ts` data (counts by status, sprint state, blocked tickets, recent activity titles — cap the payload, no full descriptions). Output `{ headline: string, bullets: string[], risks: string[] }`. Rate limit `5/min` (heaviest context). Test: happy + non-member 403. **~api +1–2. Exit Part A: api ~94–97.**
 
 ## Part B — Web: bring the three buttons to life

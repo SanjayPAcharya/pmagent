@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
 import { aiHealth, requireProvider, type JsonSchema } from '../services/ai.service.js'
+import { projectOverview } from '../services/overview.service.js'
 
 // Phase 3.8 — self-hosted AI drafting. All endpoints sit behind requireAuth and
 // (for the generation routes) org-role checks; each generation is only ever a
@@ -78,6 +79,31 @@ const EXPAND_SYSTEM = [
 
 /** Cap a field so the whole context comfortably fits num_ctx (~4096 tokens). */
 const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
+
+// ── A4: project-summary ──────────────────────────────────────────────────────
+const projectSummaryBody = z.object({ projectId: z.string().uuid() })
+const projectSummarySchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    headline: { type: 'string' },
+    bullets: { type: 'array', items: { type: 'string' } },
+    risks: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['headline', 'bullets', 'risks'],
+}
+const projectSummaryZod = z.object({
+  headline: z.string(),
+  bullets: z.array(z.string()),
+  risks: z.array(z.string()),
+})
+const SUMMARY_SYSTEM = [
+  'You are a senior product manager writing a short status digest for a stakeholder.',
+  'Base everything ONLY on the metrics below — do not invent tickets, names, or dates.',
+  'headline: one sentence capturing overall project health.',
+  'bullets: 3–5 short strings of concrete progress/status (no leading dash).',
+  'risks: 1–4 short strings naming real risks visible in the metrics (blockers, slipping milestones, imbalance); empty array if none.',
+  'Return ONLY JSON matching the schema — no prose, no markdown.',
+].join('\n')
 
 const routes: FastifyPluginAsync = async (app) => {
   app.setValidatorCompiler(validatorCompiler)
@@ -152,6 +178,50 @@ const routes: FastifyPluginAsync = async (app) => {
         zod: expandTicketZod,
       })
       return { draft }
+    },
+  )
+
+  // ── A4: project status digest (ephemeral — not persisted) ──
+  r.post(
+    '/project-summary',
+    {
+      schema: { body: projectSummaryBody, tags: ['ai'] },
+      config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      const { projectId } = request.body
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { orgId: true, name: true },
+      })
+      if (!project) throw new ApiError(404, 'Project not found')
+      await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
+
+      // Reuse the overview aggregate — counts/sprint/blocker-titles/milestones only,
+      // no full ticket descriptions (keeps the payload small and PII-light).
+      const ov = await projectOverview(projectId)
+      const metrics = {
+        project: project.name,
+        statusCounts: ov.status.byStatus,
+        open: ov.status.open,
+        done: ov.status.done,
+        workstream: ov.status.byWorkstream,
+        activeSprint: ov.activeSprint
+          ? { name: ov.activeSprint.name, done: ov.activeSprint.done, total: ov.activeSprint.total, endDate: ov.activeSprint.endDate }
+          : null,
+        blockers: ov.blockers.map((b) => ({ key: b.key, title: cap(b.title, 120), openBlockers: b.openBlockerCount })),
+        milestones: ov.milestones.map((m) => ({ name: m.name, date: m.date, readiness: m.readiness })),
+        recentVelocityAvg: ov.capacity.recentVelocityAvg,
+      }
+
+      const provider = requireProvider(project.orgId)
+      const draft = await provider.generate({
+        system: SUMMARY_SYSTEM,
+        user: `Project metrics (JSON):\n\n${JSON.stringify(metrics)}`,
+        schema: projectSummarySchema,
+        zod: projectSummaryZod,
+      })
+      return { summary: draft }
     },
   )
 }
