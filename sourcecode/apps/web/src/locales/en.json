@@ -28,7 +28,7 @@
     "regenerate": "Regenerate",
     "checking": "Checking AI availability…",
     "generating": "Generating…",
-    "generatingHint": "Writing a draft — this can take 10–20 s",
+    "generatingHint": "Writing a draft — usually just a few seconds",
     "unavailable": "AI is not available right now",
     "modelLoading": "The AI model is still loading — try again shortly",
     "failed": "Couldn't generate — please try again",
@@ -40,7 +40,7 @@
     "notesEmpty": "Type a few notes first, then draft with AI",
     "promptPlaceholder": "Optional: steer the AI (e.g. focus on the API)",
     "overwriteConfirm": "This will replace the current field contents. Continue?",
-    "poweredBy": "Powered by {{provider}} (self-hosted)",
+    "poweredBy": "Powered by {{provider}}",
     "summaryEmpty": "Generate an AI status digest from this project's current metrics.",
     "risks": "Risks"
   },

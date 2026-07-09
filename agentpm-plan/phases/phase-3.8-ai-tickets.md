@@ -27,18 +27,18 @@
 
 ## Part D — Bedrock provider swap (all 🤖 Claude Opus 4.8 dev)
 
-### - [ ] D1 — 🤖 `BedrockProvider` + config swap (M)
+### - [x] D1 — 🤖 `BedrockProvider` + config swap (M)
 - `config.ts`: add `AI_PROVIDER`, `BEDROCK_MODEL_ID`, `AWS_REGION`; keep `AI_TIMEOUT_MS` (new default 30000); delete `OLLAMA_BASE_URL`/`OLLAMA_MODEL`.
 - `ai.service.ts`: `class BedrockProvider implements AIProvider` — Converse call per the design above, request timeout via the SDK's `requestTimeout`, map failures to the existing `ApiError` codes (`ThrottlingException`/connection → 503 `AI_UNAVAILABLE`; timeout → 504 `AI_TIMEOUT`; unparseable-after-retry → 502 `AI_BAD_OUTPUT`). `resolveProvider(orgId)` returns it iff `AI_PROVIDER === 'bedrock'`, else `null`.
 - Add the two `@aws-sdk` deps to `apps/api` (rebuild container). `.env.example`: replace the AI block (see checklist item 4 for the dev-credentials lines).
 
-### - [ ] D2 — 🤖 Hermetic test swap (M)
+### - [x] D2 — 🤖 Hermetic test swap (M)
 - Rework `src/test/ai.test.ts`: replace the fetch-stubbed Ollama mocks with mocked Converse responses (happy path per endpoint, malformed-once → retry → success, malformed-twice → 502, throttle → 503, disabled → health `{enabled:false}` + endpoints 503, auth/role cases unchanged). Test count stays ≈15; **api suite stays green with zero AWS access**.
 
-### - [ ] D3 — 🤖 Remove the local-model surface (S)
+### - [x] D3 — 🤖 Remove the local-model surface (S)
 - Delete `OllamaProvider`; remove the `ollama` service + `ollama_models` volume from `docker-compose.yml`; remove `OLLAMA_*` passthrough from the api service (add `AI_PROVIDER`/`BEDROCK_MODEL_ID`/`AWS_REGION` instead); scrub `OLLAMA_*` from `.env.example`; drop the stale `OLLAMA_*` lines from local `.env`. FEATURES.md: rewrite the "AI drafting (self-hosted)" section — remove "your text never leaves the server" claims, describe cloud AI plainly (drafts still user-reviewed, nothing auto-saved). i18n: no key changes needed (copy is provider-neutral); double-check hint strings.
 
-### - [ ] D4 — 🤖 Copy + docs touch-up (S)
+### - [x] D4 — 🤖 Copy + docs touch-up (S)
 - `ai.generatingHint` ("10–20 s") → Bedrock reality (~1–3 s; consider dropping the hint). PROGRESS/FEATURES dates. Typecheck + build + full `turbo test` green (api ≈104 · web 37).
 
 ### - [ ] D5 — 🤖 Live verify + prompt-tune (M) — **blocked on the AWS checklist below**
@@ -63,7 +63,7 @@
 2. **Verify the profile ID** — `aws bedrock list-inference-profiles --region ap-south-1` → confirm the exact Nova Micro APAC profile ID (expected `apac.amazon.nova-micro-v1:0`); note the Claude `global.*` IDs while you're there. *(Becomes 🤖 once dev credentials exist — I can run it.)*
 3. **IAM policy** — create policy `pmagent-bedrock-invoke`: actions `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream`, `bedrock:GetInferenceProfile`, `bedrock:ListInferenceProfiles`. Resource `*` is acceptable for MVP; tighten later to the inference-profile ARN **plus** the foundation-model ARNs in the profile's destination regions (cross-region profiles need both — known gotcha).
 4. **Attach credentials:**
-   - **Prod:** attach the policy to the EC2 instance role of the pmagent box (create + attach if none exists — no downtime).
+   - **Prod:** attach the policy to the EC2 instance role of the pmagent box (create + attach if none exists — no downtime). **IMDS gotcha:** the api runs in a Docker container, which adds a network hop — with the IMDSv2 default hop limit of **1**, containers **cannot** reach instance-role credentials. Fix once: `aws ec2 modify-instance-metadata-options --instance-id <id> --http-put-response-hop-limit 2 --http-tokens required`.
    - **Dev:** create IAM user `pmagent-dev-bedrock` with only that policy → access key → put the pair in `sourcecode/.env` (gitignored) as `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`. Rotate/delete the key when 3.8 ships.
 5. **Billing guardrail** — AWS Budgets: monthly cost budget (e.g. **$5**) with email alert at 80%; glance at Bedrock in Cost Explorer after week 1. At Nova Micro prices normal usage is ~$0.1–0.5/mo — the alert is purely a runaway-loop tripwire.
 6. **Nothing else changes** — no EC2 resize, no new security-group rules, no new ports; Bedrock is an outbound HTTPS call from the api.

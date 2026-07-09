@@ -9,9 +9,10 @@ export interface AppConfig {
   KEYCLOAK_INTERNAL_URL: string // API-reachable realm base for JWKS discovery (same keys, any host)
   KEYCLOAK_API_AUDIENCE: string
   RETENTION_NOTIFICATION_DAYS: number // 3.7.4 E2 — read notifications older than this are purged daily
-  // ── AI (optional, 3.8) — absent OLLAMA_BASE_URL = AI disabled (buttons show disabled-with-reason) ──
-  OLLAMA_BASE_URL: string // '' = disabled; e.g. http://ollama:11434 (compose) or http://localhost:11434 (host)
-  OLLAMA_MODEL: string
+  // ── AI (optional, 3.8) — empty AI_PROVIDER = AI disabled (buttons show disabled-with-reason) ──
+  AI_PROVIDER: string // '' = disabled | 'bedrock'
+  BEDROCK_MODEL_ID: string // inference-profile ID; Nova Micro (APAC) by default, flip to a Claude global.* profile for quality
+  AWS_REGION: string
   AI_TIMEOUT_MS: number
 }
 
@@ -35,8 +36,9 @@ export function loadConfig(): AppConfig {
       process.env.KEYCLOAK_INTERNAL_URL ?? process.env.KEYCLOAK_ISSUER_URL ?? '',
     KEYCLOAK_API_AUDIENCE: process.env.KEYCLOAK_API_AUDIENCE ?? 'agentpm-api',
     RETENTION_NOTIFICATION_DAYS: Number(process.env.RETENTION_NOTIFICATION_DAYS ?? 90),
-    OLLAMA_BASE_URL: (process.env.OLLAMA_BASE_URL ?? '').replace(/\/$/, ''),
-    OLLAMA_MODEL: process.env.OLLAMA_MODEL ?? 'qwen2.5:7b',
-    AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS ?? 120000),
+    AI_PROVIDER: (process.env.AI_PROVIDER ?? '').trim(),
+    BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID ?? 'apac.amazon.nova-micro-v1:0',
+    AWS_REGION: process.env.AWS_REGION ?? 'ap-south-1',
+    AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS ?? 30000),
   }
 }

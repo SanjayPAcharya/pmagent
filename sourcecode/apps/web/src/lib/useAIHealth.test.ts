@@ -8,7 +8,7 @@ const health = (over: Partial<AIHealth>): AIHealth => ({
   enabled: true,
   reachable: true,
   modelReady: true,
-  provider: 'ollama',
+  provider: 'bedrock',
   ...over,
 })
 

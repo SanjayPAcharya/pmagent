@@ -1,4 +1,11 @@
 import type { ZodType } from 'zod'
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  type ContentBlock,
+  type Message,
+} from '@aws-sdk/client-bedrock-runtime'
+import { BedrockClient, GetInferenceProfileCommand } from '@aws-sdk/client-bedrock'
 import { loadConfig } from '../config.js'
 import { ApiError } from '../lib/errors.js'
 
@@ -6,13 +13,15 @@ import { ApiError } from '../lib/errors.js'
 // Phase 3.8 — AI provider seam.
 //
 // This is the SINGLE future switch point for the product's AI tiers (owner
-// strategy, see agentpm-plan/phases/phase-3.8-local-ai-tickets.md):
-//   • v1  — self-hosted small model (OllamaProvider) = always-available baseline.
-//   • 3.8.1 — BYOK: an org's own cloud key routes the *same* features through a
-//             ClaudeProvider et al. Only `resolveProvider` changes; routes and UI
-//             depend on the `AIProvider` interface alone and never learn which ran.
-// AI is OPTIONAL infra (like REDIS_URL): no OLLAMA_BASE_URL → resolveProvider
-// returns null → endpoints answer 503 AI_UNAVAILABLE and the UI disables buttons.
+// strategy, see agentpm-plan/phases/phase-3.8-ai-tickets.md):
+//   • v1  — Amazon Bedrock (BedrockProvider). Model is config: Nova Micro by
+//           default; flip BEDROCK_MODEL_ID to a Claude global.* profile for
+//           higher quality without touching routes or UI.
+//   • 3.8.1 — BYOK: an org's own cloud key routes the *same* features. Only
+//             `resolveProvider` changes; routes and UI depend on the `AIProvider`
+//             interface alone and never learn which provider ran.
+// AI is OPTIONAL (like REDIS_URL): empty AI_PROVIDER → resolveProvider returns
+// null → endpoints answer 503 AI_UNAVAILABLE and the UI disables the buttons.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** A JSON Schema object handed to the model to constrain its output shape. */
@@ -21,7 +30,7 @@ export type JsonSchema = Record<string, unknown>
 export interface GenerateOptions<T> {
   system: string
   user: string
-  schema: JsonSchema // constrains the model (Ollama `format`)
+  schema: JsonSchema // constrains the model (Bedrock tool `inputSchema.json`)
   zod: ZodType<T> // validates + types the parsed result
 }
 
@@ -44,38 +53,39 @@ export interface AIHealth {
   provider: string | null
 }
 
-// ── Ollama implementation ────────────────────────────────────────────────────
+// ── Bedrock implementation ───────────────────────────────────────────────────
 
-interface OllamaChatResponse {
-  message?: { content?: string }
-}
+const TOOL_NAME = 'emit_result'
 
-class OllamaProvider implements AIProvider {
-  readonly name = 'ollama'
+class BedrockProvider implements AIProvider {
+  readonly name = 'bedrock'
+  private readonly runtime: BedrockRuntimeClient
+  private readonly control: BedrockClient
+
   constructor(
-    private readonly baseUrl: string,
-    private readonly model: string,
+    private readonly modelId: string,
+    region: string,
     private readonly timeoutMs: number,
-  ) {}
+  ) {
+    // Credentials come from the default AWS chain: env vars in dev
+    // (AWS_ACCESS_KEY_ID/SECRET), the EC2 instance role in prod. Never in code.
+    this.runtime = new BedrockRuntimeClient({ region })
+    this.control = new BedrockClient({ region })
+  }
 
   async generate<T>({ system, user, schema, zod }: GenerateOptions<T>): Promise<T> {
-    const messages = [
-      { role: 'system', content: system },
-      { role: 'user', content: user },
-    ]
-
-    // First attempt, then ONE corrective re-prompt if the output doesn't parse/validate.
     let lastError = ''
+    // First attempt, then ONE corrective re-prompt if the tool input doesn't validate.
+    // Each attempt is a fresh single-user-turn conversation (keeps role alternation
+    // trivially valid); the corrective nudge is folded into the user text.
     for (let attempt = 0; attempt < 2; attempt++) {
-      if (attempt === 1) {
-        messages.push({
-          role: 'user',
-          content: `Your previous reply was not valid: ${lastError}. Return ONLY valid JSON matching the schema, with no prose, no markdown fences.`,
-        })
-      }
-      const raw = await this.chat(messages, schema)
+      const text =
+        attempt === 0
+          ? user
+          : `${user}\n\n(Your previous attempt produced invalid arguments: ${lastError}. Call ${TOOL_NAME} again with valid arguments that match the schema exactly.)`
+      const input = await this.converse(system, text, schema)
       try {
-        return zod.parse(JSON.parse(raw))
+        return zod.parse(input)
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err)
       }
@@ -83,45 +93,67 @@ class OllamaProvider implements AIProvider {
     throw new ApiError(502, `AI returned invalid output: ${lastError}`, 'AI_BAD_OUTPUT')
   }
 
-  private async chat(messages: unknown[], schema: JsonSchema): Promise<string> {
-    let res: Response
+  /**
+   * One Converse call that forces the model to emit structured JSON via a single
+   * tool whose inputSchema IS the endpoint's JSON schema. Returns the tool input
+   * (already parsed) or null if no tool call came back (→ caller retries/502).
+   */
+  private async converse(system: string, userText: string, schema: JsonSchema): Promise<unknown> {
+    const messages: Message[] = [{ role: 'user', content: [{ text: userText }] }]
+    const command = new ConverseCommand({
+      modelId: this.modelId,
+      system: [{ text: system }],
+      messages,
+      toolConfig: {
+        tools: [
+          {
+            toolSpec: {
+              name: TOOL_NAME,
+              description: 'Return the result as structured data matching the schema.',
+              // Bedrock validates the model's arguments against this schema.
+              inputSchema: { json: schema as never },
+            },
+          },
+        ],
+        toolChoice: { tool: { name: TOOL_NAME } },
+      },
+      inferenceConfig: { temperature: 0.2 },
+    })
+
+    let output
     try {
-      res = await fetch(`${this.baseUrl}/api/chat`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          model: this.model,
-          stream: false,
-          format: schema,
-          options: { temperature: 0.2, num_ctx: 4096 },
-          messages,
-        }),
-        signal: AbortSignal.timeout(this.timeoutMs),
-      })
+      output = await this.runtime.send(command, { abortSignal: AbortSignal.timeout(this.timeoutMs) })
     } catch (err) {
-      if (err instanceof Error && err.name === 'TimeoutError') {
+      const name = err instanceof Error ? err.name : ''
+      if (name === 'TimeoutError' || name === 'AbortError') {
         throw new ApiError(504, 'AI request timed out', 'AI_TIMEOUT')
       }
-      throw new ApiError(503, 'AI provider unreachable', 'AI_UNAVAILABLE')
+      if (name === 'ThrottlingException') {
+        throw new ApiError(503, 'AI provider is throttling', 'AI_UNAVAILABLE')
+      }
+      throw new ApiError(503, 'AI provider unavailable', 'AI_UNAVAILABLE')
     }
-    if (!res.ok) throw new ApiError(503, `AI provider error (${res.status})`, 'AI_UNAVAILABLE')
-    const body = (await res.json()) as OllamaChatResponse
-    return body.message?.content ?? ''
+
+    const blocks: ContentBlock[] = output.output?.message?.content ?? []
+    const toolUse = blocks.find((b): b is ContentBlock.ToolUseMember => 'toolUse' in b && !!b.toolUse)?.toolUse
+    return toolUse?.input ?? null
   }
 
   async health(): Promise<ProviderHealth> {
+    // Cheap control-plane call: confirms credentials + profile access without
+    // spending tokens. Reachable-but-not-ready = AWS answered but the profile is
+    // missing/denied (model access not enabled, wrong ID); unreachable = no creds
+    // or network failure.
     try {
-      const res = await fetch(`${this.baseUrl}/api/tags`, {
-        signal: AbortSignal.timeout(5000),
+      await this.control.send(new GetInferenceProfileCommand({ inferenceProfileIdentifier: this.modelId }), {
+        abortSignal: AbortSignal.timeout(5000),
       })
-      if (!res.ok) return { reachable: false, modelReady: false }
-      const body = (await res.json()) as { models?: { name?: string }[] }
-      const wanted = this.model
-      const modelReady = (body.models ?? []).some(
-        (m) => m.name === wanted || m.name === `${wanted}:latest` || m.name?.split(':')[0] === wanted.split(':')[0],
-      )
-      return { reachable: true, modelReady }
-    } catch {
+      return { reachable: true, modelReady: true }
+    } catch (err) {
+      const name = err instanceof Error ? err.name : ''
+      if (name === 'ResourceNotFoundException' || name === 'AccessDeniedException' || name === 'ValidationException') {
+        return { reachable: true, modelReady: false }
+      }
       return { reachable: false, modelReady: false }
     }
   }
@@ -130,14 +162,14 @@ class OllamaProvider implements AIProvider {
 // ── Resolution ───────────────────────────────────────────────────────────────
 
 /**
- * The single BYOK switch point. v1: returns the Ollama provider iff
- * OLLAMA_BASE_URL is set, else null (= AI disabled). Takes org context now so the
- * 3.8.1 BYOK phase only edits this function (org key present → cloud provider).
+ * The single BYOK switch point. v1: returns the Bedrock provider iff
+ * AI_PROVIDER === 'bedrock', else null (= AI disabled). Takes org context now so
+ * the 3.8.1 BYOK phase only edits this function (org key present → their provider).
  */
 export function resolveProvider(_orgId?: string): AIProvider | null {
-  const { OLLAMA_BASE_URL, OLLAMA_MODEL, AI_TIMEOUT_MS } = loadConfig()
-  if (!OLLAMA_BASE_URL) return null
-  return new OllamaProvider(OLLAMA_BASE_URL, OLLAMA_MODEL, AI_TIMEOUT_MS)
+  const { AI_PROVIDER, BEDROCK_MODEL_ID, AWS_REGION, AI_TIMEOUT_MS } = loadConfig()
+  if (AI_PROVIDER === 'bedrock') return new BedrockProvider(BEDROCK_MODEL_ID, AWS_REGION, AI_TIMEOUT_MS)
+  return null
 }
 
 /** Resolve or throw 503 — the common path for the three generation endpoints. */

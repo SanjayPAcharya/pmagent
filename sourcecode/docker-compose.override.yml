@@ -82,6 +82,11 @@ services:
     command: pnpm --filter @agentpm/api dev    # tsx watch
     environment:
       NODE_ENV: development
+      # Dev-only AWS credentials for Bedrock (3.8) — scoped IAM-user key from .env.
+      # Prod gets credentials from the EC2 instance role instead (never keys).
+      # Empty values are ignored by the SDK's credential chain.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages

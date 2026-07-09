@@ -138,12 +138,13 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - **Spec** with Markdown + a **readiness ring** showing how complete the spec is (a ready ticket is one an AI agent could pick up); `- [ ]` acceptance-criteria checklists with progress.
 - **Templates:** org-wide presets; *Bug report* and *Feature* included, Admins manage them on the Members page ("Add starter templates" backfills older orgs).
 
-## AI drafting (self-hosted)
-- Three optional **AI helpers**, powered by a **self-hosted** model — your text never leaves the server, and no third-party AI keys are involved. Each one only ever produces a **draft you review and edit**; nothing is saved or created until you say so.
+## AI drafting
+- Three optional **AI helpers**, powered by a cloud AI service (Amazon Bedrock). Each one only ever produces a **draft you review and edit** — nothing is saved or created until you say so.
   - **Draft with AI** (board quick-add) — jot a few rough notes in the add-card box, click *Draft with AI*, and get a suggested title, description, acceptance criteria, and priority. Review it, then **Create** or **Discard**.
   - **Auto-fill from prompt** (ticket panel) — on a ticket's Spec, generate a fuller description, goal, acceptance criteria, and constraints; an optional one-line steer lets you point the AI at what matters. The fields fill in edit mode so you can adjust before saving.
   - **Generate summary** (Overview) — a short status digest (headline, key points, risks) built from the project's current numbers. Regenerate any time; it's not stored.
-- These buttons appear **enabled only when the server's AI is switched on and ready**; otherwise they show a short reason (unavailable, or the model is still warming up). Generations run on the server's CPU, so they can take a few seconds.
+- These buttons appear **enabled only when AI is configured on the server**; otherwise they show a short reason. Generations usually take just a few seconds.
+- Heads-up on privacy: the notes or ticket text you send through these helpers is processed by the cloud AI provider to generate the draft. Don't paste secrets (passwords, keys) into AI prompts.
 
 ## Comments & notifications
 - Markdown comments, **@mentions** with autocomplete (mentioned people are notified), **reactions** (👍 🎉 👀 ❤️).
