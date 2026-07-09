@@ -35,6 +35,10 @@ services:
       KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
       KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
       KEYCLOAK_API_AUDIENCE: ${KEYCLOAK_API_AUDIENCE:-agentpm-api}
+      # AI (3.8) — empty OLLAMA_BASE_URL disables AI (buttons show disabled-with-reason).
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-120000}
 
   web:
     image: ${REGISTRY:-ghcr.io/yourorg}/agentpm-web:${IMAGE_TAG:-dev}
@@ -77,6 +81,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Optional self-hosted AI (only with `--profile ai`) — Phase 3.8 ──
+  # Reachable only on the compose network (no `ports:`) — api → http://ollama:11434.
+  # Enable: `docker compose --profile ai up -d ollama`
+  #         `docker compose exec ollama ollama pull qwen2.5:7b`
+  #         then set OLLAMA_BASE_URL=http://ollama:11434 in .env and restart api.
+  ollama:
+    profiles: ["ai"]
+    image: ollama/ollama:latest   # needs >=0.5 — JSON-schema `format` (structured outputs) landed in 0.5.0
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+    deploy:
+      resources:
+        limits:
+          memory: 10g
+
 volumes:
   postgres_data:
   redis_data:
+  ollama_models:

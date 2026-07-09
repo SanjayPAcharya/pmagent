@@ -74,7 +74,7 @@
 
 > **C1 is free (a local container) and may be done any time — do it *before* Part B's browser verification** so the app can talk to a real local model via `docker compose --profile ai up`. (Alternative: host-installed Ollama at `http://localhost:11434`; on Apple Silicon that's actually faster than the EC2 CPU.) The **⛔ owner checkpoint gates C2 + C3 only** — those cost real money.
 
-### - [ ] C1 — Compose: `ollama` service under an `ai` profile (S)
+### - [x] C1 — Compose: `ollama` service under an `ai` profile (S)
 ```yaml
   ollama:
     image: ollama/ollama:latest   # needs ≥0.5 — JSON-schema `format` (structured outputs) landed in 0.5.0
