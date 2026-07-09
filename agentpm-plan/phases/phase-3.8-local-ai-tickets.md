@@ -40,7 +40,7 @@
 - `GET /api/ai/health` (new `routes/ai.ts`, `requireAuth`) returning that shape — drives the frontend's disabled-with-reason.
 - Tests (`src/test/ai.test.ts`, mock `fetch` via `vi.stubGlobal`): schema-valid pass-through; malformed → corrective retry → success; malformed twice → 502; timeout → 504; disabled → health `{enabled:false}` and endpoints 503. **api 89 → ~94.**
 
-### - [ ] A2 — `POST /api/ai/draft-ticket` (M)
+### - [x] A2 — `POST /api/ai/draft-ticket` (M)
 - Body (zod): `{ projectId: uuid, notes: string 1..4000 }`. Auth: resolve project → `assertOrgRole(MEMBER)` (same pattern as `routes/tickets.ts` create). Rate limit `10/min` per route (AI is expensive — D2 pattern).
 - Prompt (system): senior PM writing a work ticket; be concrete, no invented requirements; priority only from `URGENT|HIGH|MEDIUM|LOW`. Output schema `{ title: string, description: string, acceptanceCriteria: string[], priority: enum }` (JSON-schema for Ollama `format` + mirrored zod).
 - Response: `{ draft: {...} }` — **never creates the ticket**; the client composes it into the existing create flow.
