@@ -45,6 +45,40 @@ const DRAFT_SYSTEM = [
   'Return ONLY JSON matching the schema — no prose, no markdown.',
 ].join('\n')
 
+// ── A3: expand-ticket ────────────────────────────────────────────────────────
+const expandTicketBody = z.object({
+  ticketId: z.string().uuid(),
+  prompt: z.string().max(2000).optional(),
+})
+const expandTicketSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    description: { type: 'string' },
+    acceptanceCriteria: { type: 'array', items: { type: 'string' } },
+    goal: { type: 'string' },
+    constraints: { type: 'string' },
+  },
+  required: ['description', 'acceptanceCriteria', 'goal', 'constraints'],
+}
+const expandTicketZod = z.object({
+  description: z.string(),
+  acceptanceCriteria: z.array(z.string()),
+  goal: z.string(),
+  constraints: z.string(),
+})
+const EXPAND_SYSTEM = [
+  'You are a senior product manager fleshing out an existing work ticket.',
+  'Use the ticket context below; do NOT contradict its title or invent unrelated scope.',
+  'description: a clear 2–5 sentence problem/scope statement.',
+  'acceptanceCriteria: 2–6 short, testable bullet strings (no leading dash).',
+  'goal: one sentence — the outcome this ticket achieves.',
+  'constraints: one or two sentences — technical or scope limits (empty string if none).',
+  'Return ONLY JSON matching the schema — no prose, no markdown.',
+].join('\n')
+
+/** Cap a field so the whole context comfortably fits num_ctx (~4096 tokens). */
+const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
+
 const routes: FastifyPluginAsync = async (app) => {
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
@@ -73,6 +107,49 @@ const routes: FastifyPluginAsync = async (app) => {
         user: `Rough notes for the ticket:\n\n${notes}`,
         schema: draftTicketSchema,
         zod: draftTicketZod,
+      })
+      return { draft }
+    },
+  )
+
+  // ── A3: expand an existing ticket into fuller fields (draft only) ──
+  r.post(
+    '/expand-ticket',
+    {
+      schema: { body: expandTicketBody, tags: ['ai'] },
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      const { ticketId, prompt } = request.body
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        select: {
+          title: true,
+          description: true,
+          acceptanceCriteria: true,
+          goal: true,
+          constraints: true,
+          project: { select: { orgId: true } },
+        },
+      })
+      if (!ticket) throw new ApiError(404, 'Ticket not found')
+      await assertOrgRole(request.userId!, ticket.project.orgId, 'MEMBER')
+
+      const context = [
+        `Title: ${cap(ticket.title, 200)}`,
+        `Current description: ${cap(ticket.description, 2000) || '(none)'}`,
+        `Current acceptance criteria: ${cap(ticket.acceptanceCriteria, 1500) || '(none)'}`,
+        `Current goal: ${cap(ticket.goal, 500) || '(none)'}`,
+        `Current constraints: ${cap(ticket.constraints, 500) || '(none)'}`,
+        prompt ? `\nAdditional direction from the user: ${prompt}` : '',
+      ].join('\n')
+
+      const provider = requireProvider(ticket.project.orgId)
+      const draft = await provider.generate({
+        system: EXPAND_SYSTEM,
+        user: context,
+        schema: expandTicketSchema,
+        zod: expandTicketZod,
       })
       return { draft }
     },

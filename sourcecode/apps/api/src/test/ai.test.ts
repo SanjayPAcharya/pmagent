@@ -33,6 +33,10 @@ async function makeProject(token: string, orgId: string, name: string): Promise<
   const res = await app.inject({ method: 'POST', url: '/api/projects', headers: bearer(token), payload: { orgId, name } })
   return res.json().project.id as string
 }
+async function makeTicket(token: string, projectId: string, title: string): Promise<string> {
+  const res = await app.inject({ method: 'POST', url: '/api/tickets', headers: bearer(token), payload: { projectId, title } })
+  return res.json().ticket.id as string
+}
 
 /** Stub fetch: /api/tags returns the tag list; /api/chat returns queued content strings. */
 function stubOllama(opts: { tags?: unknown; chat?: string[]; tagsStatus?: number }) {
@@ -212,5 +216,49 @@ describe('AI draft-ticket (3.8 A2)', () => {
       payload: { projectId, notes: 'something' },
     })
     expect(res.statusCode).toBe(403)
+  })
+})
+
+describe('AI expand-ticket (3.8 A3)', () => {
+  it('returns an expanded draft for an existing ticket', async () => {
+    process.env.OLLAMA_BASE_URL = 'http://ollama:11434'
+    const owner = await tokenFor('ai-expand-owner')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Expand Co')
+    const projectId = await makeProject(owner, orgId, 'Expand Proj')
+    const ticketId = await makeTicket(owner, projectId, 'Rate limit the API')
+
+    stubOllama({
+      chat: [
+        JSON.stringify({
+          description: 'Add per-route rate limiting to protect abuse-prone endpoints.',
+          acceptanceCriteria: ['Limits are enforced', 'Exceeding returns 429'],
+          goal: 'Prevent endpoint abuse.',
+          constraints: 'Must use the existing Redis store.',
+        }),
+      ],
+    })
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/expand-ticket',
+      headers: bearer(owner),
+      payload: { ticketId, prompt: 'focus on Redis-backed limits' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().draft).toMatchObject({ goal: 'Prevent endpoint abuse.' })
+  })
+
+  it('returns 404 for an unknown ticket', async () => {
+    process.env.OLLAMA_BASE_URL = 'http://ollama:11434'
+    const owner = await tokenFor('ai-expand-404')
+    await provision(owner)
+    stubOllama({ chat: ['{}'] })
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/expand-ticket',
+      headers: bearer(owner),
+      payload: { ticketId: '00000000-0000-0000-0000-000000000000' },
+    })
+    expect(res.statusCode).toBe(404)
   })
 })

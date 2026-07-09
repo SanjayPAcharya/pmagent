@@ -46,7 +46,7 @@
 - Response: `{ draft: {...} }` — **never creates the ticket**; the client composes it into the existing create flow.
 - Test: mocked happy path + notes-too-long 400 + non-member 403. **~api +2.**
 
-### - [ ] A3 — `POST /api/ai/expand-ticket` (S)
+### - [x] A3 — `POST /api/ai/expand-ticket` (S)
 - Body: `{ ticketId: uuid, prompt?: string ≤2000 }`. Auth via the `loadTicketAuthorized(request,'MEMBER')` helper pattern. Context fed to the model: ticket title + existing description/AC/goal/constraints (truncate to fit `num_ctx`), plus the user's optional steer.
 - Output schema `{ description, acceptanceCriteria: string[], goal, constraints }`. Returns a draft; the drawer fills editable fields, user saves normally (existing PATCH). Rate limit `10/min`. Test: happy + 404. **~api +1–2.**
 
