@@ -53,14 +53,21 @@ export async function buildServer() {
   // user-facing HTML anyway.
   await app.register(helmet, { contentSecurityPolicy: false, hsts: false })
   // 3.7.4 D2 — Redis-backed rate limiting so limits hold across API replicas and
-  // survive restarts. Without REDIS_URL (tests, dev-without-redis) the plugin
-  // falls back to its in-process store, keeping those paths hermetic. Uses an
-  // ioredis client (the plugin's required shape); the app's node-redis event-bus
-  // client is a separate connection. Short timeouts so a Redis blip degrades to
-  // the local store rather than stalling requests.
-  const rlRedis = config.REDIS_URL
-    ? new Redis(config.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
-    : undefined
+  // survive restarts. Uses an ioredis client (the plugin's required shape); the
+  // app's node-redis event-bus client is a separate connection. Short timeouts so
+  // a Redis blip degrades to the local store rather than stalling requests.
+  //
+  // In test we deliberately NEVER use the Redis store — even when REDIS_URL is set
+  // (CI sets it for the realtime/event-bus tests). A shared Redis counter is keyed
+  // by client IP, so every test request (all from 127.0.0.1) shares one global
+  // 100/min budget across the whole suite; once exhausted, every subsequent request
+  // 429s — including /health. Per-app in-memory keeps each test file isolated and
+  // hermetic. Gated on NODE_ENV (not on REDIS_URL) so a dev with REDIS_URL exported
+  // still gets hermetic tests.
+  const rlRedis =
+    config.NODE_ENV !== 'test' && config.REDIS_URL
+      ? new Redis(config.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
+      : undefined
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute', redis: rlRedis })
   await app.register(websocket)
 
