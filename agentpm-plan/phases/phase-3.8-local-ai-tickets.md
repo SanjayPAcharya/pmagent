@@ -55,18 +55,18 @@
 
 ## Part B — Web: bring the three buttons to life
 
-### - [ ] B1 — api client + health hook + live `AIButton` (S)
+### - [x] B1 — api client + health hook + live `AIButton` (S)
 - `lib/api.ts`: `aiHealth()`, `aiDraftTicket(projectId, notes)`, `aiExpandTicket(ticketId, prompt?)`, `aiProjectSummary(projectId)`.
 - `useAIHealth` react-query hook (staleTime ~60 s). Extend `components/BetaBadge.tsx` with a live `AIButton` (Sparkles + label + spinner) that renders **enabled** when health is green, **disabled with reason tooltip** (`ai.unavailable` / `ai.modelLoading`) otherwise — the Beta badge drops once wired. Keep `BetaAIButton` for anything still inert.
 
-### - [ ] B2 — Board quick-add "Draft with AI" (M)
+### - [x] B2 — Board quick-add "Draft with AI" (M)
 - In `Column.tsx` quick-add: the composer's current text = the rough notes. Click → `aiDraftTicket` with a **visible progress state** (Loader2 + `ai.generating` hint "~10–20 s"). Result renders as a **draft preview card** (title, description excerpt, AC bullets, priority chip) with **Create** / **Discard** — create goes through the existing `createTicket` mutation (`acceptanceCriteria` array joined as `- ` lines). Errors inline (`ai.failed` + retry), never a silent toast-swallow.
 - i18n `ai.*` namespace; FEATURES.md "AI drafting (beta, self-hosted)" section.
 
-### - [ ] B3 — Drawer "Auto-fill from prompt" (M)
+### - [x] B3 — Drawer "Auto-fill from prompt" (M)
 - `TicketDrawer.tsx:782` → live: small inline prompt input (optional steer) + generate; on success **fill the editable fields** (description/AC/goal/constraints) marked dirty for review — user saves with the normal Save. Confirm-overwrite if a field already has content. Same loading/error patterns.
 
-### - [ ] B4 — Overview "Generate summary" (S)
+### - [x] B4 — Overview "Generate summary" (S)
 - `ProjectOverview.tsx` card: button live → renders `{headline, bullets, risks}` in the card (typography, not raw JSON), "Regenerate" after. Cache in react-query keyed `['ai-summary', projectId]` (no persistence — a digest is ephemeral by design). Update the card's hint copy.
 - **Exit Part B: web 32 → ~34** (AIButton + one flow test with mocked api), typecheck + build + browser-verify all three flows against local Ollama.
 

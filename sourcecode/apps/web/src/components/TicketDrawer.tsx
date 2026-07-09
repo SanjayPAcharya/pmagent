@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelationsSection } from '@/components/RelationsSection'
-import { BetaAIButton } from '@/components/BetaBadge'
+import { AIButton } from '@/components/BetaBadge'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
@@ -62,6 +62,12 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
   const [constraints, setConstraints] = useState('')
   const [editingDesc, setEditingDesc] = useState(false)
   const [comment, setComment] = useState('')
+  // 3.8 B3 — AI auto-fill: an optional steer prompt + generate; on success the
+  // editable spec fields are filled for the user to review and Save normally.
+  const [autoFillOpen, setAutoFillOpen] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [expanding, setExpanding] = useState(false)
+  const [expandError, setExpandError] = useState<string | null>(null)
   // Inline date-range validation: block the patch when start > due and flag the
   // offending field. The server's DATE_RANGE 400 (3.7 R1) stays as backstop only.
   const [dateError, setDateError] = useState<'start' | 'due' | null>(null)
@@ -90,6 +96,30 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
     qc.invalidateQueries({ queryKey: ['ticket', ticketId] })
     qc.invalidateQueries({ queryKey: ['activity', ticketId] })
     onChanged()
+  }
+
+  // 3.8 B3 — generate an expanded spec draft and fill the editable fields for
+  // review. Confirm before overwriting any field that already has content. The
+  // draft is never auto-saved — the user reviews in edit mode and Saves normally.
+  const runAutoFill = async () => {
+    const hasContent = Boolean(desc.trim() || ac.trim() || goal.trim() || constraints.trim())
+    if (hasContent && !window.confirm(t('ai.overwriteConfirm'))) return
+    setExpanding(true)
+    setExpandError(null)
+    try {
+      const { draft } = await api.aiExpandTicket(ticketId, aiPrompt.trim() || undefined)
+      setDesc(draft.description ?? '')
+      setAc(draft.acceptanceCriteria.length ? draft.acceptanceCriteria.map((x) => `- ${x}`).join('\n') : '')
+      setGoal(draft.goal ?? '')
+      setConstraints(draft.constraints ?? '')
+      setEditingDesc(true) // drop into edit mode so the user reviews before saving
+      setAutoFillOpen(false)
+      setAiPrompt('')
+    } catch {
+      setExpandError(t('ai.failed'))
+    } finally {
+      setExpanding(false)
+    }
   }
 
   // E2 — build the inverse of an update so the success toast can offer Undo.
@@ -779,12 +809,39 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <BetaAIButton label={t('beta.autoFill')} />
+                  <AIButton label={t('ai.autoFill')} onClick={() => setAutoFillOpen((v) => !v)} busy={expanding} />
                   <Button variant="ghost" size="sm" onClick={() => setEditingDesc((v) => !v)}>
                     {editingDesc ? t('common.preview') : t('common.edit')}
                   </Button>
                 </div>
               </div>
+              {autoFillOpen && (
+                <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2">
+                  <Textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    rows={2}
+                    placeholder={t('ai.promptPlaceholder')}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={runAutoFill} disabled={expanding}>
+                      {expanding ? t('ai.generating') : t('ai.autoFill')}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setAutoFillOpen(false)} disabled={expanding}>
+                      {t('common.cancel')}
+                    </Button>
+                    {expanding && <span className="text-[11px] text-muted-foreground">{t('ai.generatingHint')}</span>}
+                  </div>
+                  {expandError && (
+                    <div className="flex items-center gap-2 text-[11px] text-destructive">
+                      <span>{expandError}</span>
+                      <button type="button" onClick={runAutoFill} className="underline hover:no-underline">
+                        {t('ai.retry')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               {editingDesc ? (
                 <div className="mt-1 space-y-2">
                   <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} placeholder={t('drawer.descriptionPlaceholder')} />
