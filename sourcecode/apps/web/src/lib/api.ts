@@ -6,12 +6,13 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly code?: string,
   ) {
     super(message)
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function authedFetch(method: string, path: string, body?: unknown): Promise<Response> {
   // Keep the access token fresh (refresh if it expires within 30s).
   await keycloak.updateToken(30).catch(() => undefined)
 
@@ -33,13 +34,30 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     const refreshed = await keycloak.updateToken(-1).then(() => true).catch(() => false)
     if (refreshed) res = await doFetch()
   }
+  return res
+}
 
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await authedFetch(method, path, body)
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string }
-    throw new ApiError(res.status, err.error ?? 'Request failed')
+    const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string; code?: string }
+    throw new ApiError(res.status, err.error ?? 'Request failed', err.code)
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
+}
+
+// GDPR export — the response is a downloadable file, not JSON to parse; pull
+// the filename from Content-Disposition so the browser save-dialog matches
+// what the API named it.
+async function requestBlob(method: string, path: string): Promise<{ blob: Blob; filename: string }> {
+  const res = await authedFetch(method, path)
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string; code?: string }
+    throw new ApiError(res.status, err.error ?? 'Request failed', err.code)
+  }
+  const match = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')
+  return { blob: await res.blob(), filename: match?.[1] ?? 'export.json' }
 }
 
 // ── Types (subset of the API responses) ──
@@ -424,6 +442,8 @@ export interface UpdateTicketInput {
 export const api = {
   me: () => request<{ user: User }>('GET', '/api/me'),
   updateMe: (body: { name?: string; avatarUrl?: string | null }) => request<{ user: User }>('PATCH', '/api/me', body),
+  exportMyData: () => requestBlob('GET', '/api/me/export'),
+  deleteMyAccount: () => request<void>('DELETE', '/api/me'),
   listOrgs: () => request<{ organizations: Organization[] }>('GET', '/api/orgs'),
   getOrg: (slug: string) => request<{ org: OrgDetail }>('GET', `/api/orgs/${slug}`),
   createOrg: (name: string) => request<{ org: Organization }>('POST', '/api/orgs', { name }),

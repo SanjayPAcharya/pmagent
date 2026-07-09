@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-07**.)
+> (Kept up to date as features ship — last updated **2026-07-08**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -92,6 +92,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - **Project settings** (gear in the sidebar, or the project's ⋯ menu): rename, edit the description and default branch (the project key is fixed), plus an admin danger zone to **archive** the project (type-to-confirm) — archiving hides it from your workspace (and its tickets stop showing in search and My work) but is fully recoverable. Everything is role-gated — members see it read-only.
 - **Archived projects** ("Archived" link on an org's page): see everything you've archived, **Restore** a project back to your workspace, or **delete one permanently** (admins only) along with all its tickets. Individual archived **tickets** have the same place — the "Archived" link in a project's List toolbar.
 - **Your account** (click your email/avatar in the header): set your display name and a profile picture (paste an image link — leave it empty to use your initials), and pick your theme. Your sign-in email is shown read-only; it's managed where you log in.
+- **Your data & privacy** (in Account, below Appearance): **download a copy of your data** — profile, org memberships, tickets you created or are assigned, comments, and notifications — as a JSON file. Or **delete your account** (type your email to confirm): your name and email are removed and you're signed out; tickets and comments you wrote stay, now attributed to "Deleted user," since they're shared project history. If deleting you would leave an organization without an owner, you'll be asked to hand off ownership or delete that org first.
 
 ## Navigation
 - **Workspace sidebar** — collapsible org → project tree; star ⭐ projects to pin them on top; collapses to a slide-out menu on mobile.

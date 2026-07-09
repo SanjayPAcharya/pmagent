@@ -16,10 +16,16 @@
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* 3.7.4 E1 — darkened from 46.9% L: at 46.9% this secondary-text color hit
+       only 4.34:1 on the --muted background (role pills, key badges, filter
+       toggles), below WCAG AA 4.5:1. 40% L clears it on both white and muted. */
+    --muted-foreground: 215.4 16.3% 40%;
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    /* 3.7.4 E1 — darkened from 60.2% L so `text-destructive` clears WCAG AA
+       (4.5:1) on light backgrounds (danger-zone titles, BlockedBadge); still
+       reads as red. Mirrors the 3.7.2 P3 fix that brightened the dark token. */
+    --destructive: 0 72% 45%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;

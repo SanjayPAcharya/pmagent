@@ -4,6 +4,8 @@ import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { ticketIncludeWithOrg, serializeTicketWithOrg } from '../services/tickets.service.js'
 import { blockedByCounts } from '../services/relations.service.js'
+import { audit } from '../services/audit.service.js'
+import { ApiError } from '../lib/errors.js'
 
 const updateMeSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -31,6 +33,113 @@ const meRoutes: FastifyPluginAsync = async (app) => {
       data: parsed.data,
     })
     return { user }
+  })
+
+  // GET /api/me/export — GDPR Art. 20 data portability: a full JSON bundle of
+  // everything this account owns or is referenced by. Downloadable, not paginated
+  // — this is a one-shot personal-data export, not a list endpoint.
+  app.get('/export', async (request, reply) => {
+    const userId = request.userId!
+    const [user, memberships, createdTickets, assignedTickets, comments, watching, notifications] = await Promise.all([
+      prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { id: true, email: true, name: true, avatarUrl: true, createdAt: true },
+      }),
+      prisma.orgMember.findMany({
+        where: { userId },
+        select: { role: true, joinedAt: true, organization: { select: { name: true, slug: true } } },
+      }),
+      prisma.ticket.findMany({
+        where: { createdById: userId },
+        select: { title: true, status: true, createdAt: true, number: true, project: { select: { key: true } } },
+      }),
+      prisma.ticket.findMany({
+        where: { assignedToId: userId },
+        select: { title: true, status: true, createdAt: true, number: true, project: { select: { key: true } } },
+      }),
+      prisma.comment.findMany({
+        where: { authorId: userId },
+        select: { ticketId: true, body: true, createdAt: true },
+      }),
+      prisma.ticketWatcher.findMany({ where: { userId }, select: { ticketId: true } }),
+      prisma.notification.findMany({
+        where: { userId },
+        select: { type: true, subject: true, body: true, readAt: true, createdAt: true },
+      }),
+    ])
+    const keyOf = (t: { number: number; project: { key: string } }) => `${t.project.key}-${t.number}`
+    const bundle = {
+      exportedAt: new Date().toISOString(),
+      format: 'agentpm/v1',
+      data: {
+        profile: user,
+        memberships: memberships.map((m) => ({ org: m.organization, role: m.role, joinedAt: m.joinedAt })),
+        createdTickets: createdTickets.map((t) => ({ key: keyOf(t), title: t.title, status: t.status, createdAt: t.createdAt })),
+        assignedTickets: assignedTickets.map((t) => ({ key: keyOf(t), title: t.title, status: t.status, createdAt: t.createdAt })),
+        comments,
+        watchingTicketIds: watching.map((w) => w.ticketId),
+        notifications,
+      },
+    }
+    await audit({ actorId: userId, action: 'account.exported', targetType: 'account', targetId: userId })
+    reply.header('Content-Disposition', `attachment; filename="agentpm-export-${bundle.exportedAt.slice(0, 10)}.json"`)
+    return bundle
+  })
+
+  // DELETE /api/me — GDPR Art. 17 erasure. Ticket.createdBy is onDelete:Restrict
+  // (a ticket author can't be hard-deleted), so this ANONYMIZES the user row
+  // rather than removing it: memberships/watches/notifications/reactions are
+  // deleted, but tickets they created and comments they wrote remain, now
+  // attributed to "Deleted user". The Keycloak account itself is untouched (the
+  // API holds no IdP admin credentials) — signing in again JIT-provisions a
+  // fresh, unrelated account.
+  app.delete('/', async (request, reply) => {
+    const userId = request.userId!
+
+    // Block erasure if it would leave any org without an owner.
+    const ownerships = await prisma.orgMember.findMany({
+      where: { userId, role: 'OWNER' },
+      select: { orgId: true, organization: { select: { slug: true } } },
+    })
+    const soleOwnerOf: string[] = []
+    for (const m of ownerships) {
+      const owners = await prisma.orgMember.count({ where: { orgId: m.orgId, role: 'OWNER' } })
+      if (owners <= 1) soleOwnerOf.push(m.organization.slug)
+    }
+    if (soleOwnerOf.length > 0) {
+      throw new ApiError(
+        409,
+        `Transfer ownership or delete these organizations first: ${soleOwnerOf.join(', ')}`,
+        'SOLE_OWNER',
+      )
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Don't leave live work assigned to a tombstoned account.
+      await tx.ticket.updateMany({ where: { assignedToId: userId }, data: { assignedToId: null } })
+      await tx.orgMember.deleteMany({ where: { userId } })
+      // Re-verify the owner invariant INSIDE the transaction: the pre-check above
+      // races with a concurrent demotion of the org's other owner (TOCTOU). After
+      // our own membership rows are gone, any owned org counting zero owners means
+      // that race hit — throw so the whole erasure rolls back.
+      for (const m of ownerships) {
+        const owners = await tx.orgMember.count({ where: { orgId: m.orgId, role: 'OWNER' } })
+        if (owners === 0)
+          throw new ApiError(409, `Transfer ownership or delete these organizations first: ${m.organization.slug}`, 'SOLE_OWNER')
+      }
+      await tx.ticketWatcher.deleteMany({ where: { userId } })
+      await tx.notification.deleteMany({ where: { userId } })
+      await tx.commentReaction.deleteMany({ where: { userId } })
+      // Anonymize rather than delete — createdTickets is Restrict, and comments/
+      // activity attributed to this user should read "Deleted user", not vanish.
+      await tx.user.update({
+        where: { id: userId },
+        data: { email: `deleted-${userId}@anonymized.invalid`, name: 'Deleted user', avatarUrl: null, idpSub: null },
+      })
+    })
+
+    await audit({ actorId: userId, action: 'account.erased', targetType: 'account', targetId: userId })
+    return reply.code(204).send()
   })
 
   // GET /api/me/work — tickets assigned to or watched by me, across all my orgs

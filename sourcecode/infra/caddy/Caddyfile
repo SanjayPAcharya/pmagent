@@ -6,15 +6,40 @@
 
 # App (nginx-served SPA)
 {$APP_DOMAIN} {
+	# 3.7.4 A2 — baseline security headers, all three sites.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+	# SPA-only CSP. Report-Only until a prod deploy is checked for violations
+	# (DevTools console during login + board + WS) — then flip the header name
+	# below to `Content-Security-Policy` to enforce it.
+	# style-src 'unsafe-inline': Tailwind/inline styles. connect-src: REST + WS +
+	# Keycloak token calls. frame-src auth domain: keycloak-js check-sso iframe.
+	# frame-ancestors 'none': supersedes X-Frame-Options for the app.
+	header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://{$API_DOMAIN} wss://{$API_DOMAIN} https://{$AUTH_DOMAIN}; frame-src https://{$AUTH_DOMAIN}; frame-ancestors 'none'; base-uri 'self'"
 	reverse_proxy web:80
 }
 
 # API (Fastify) — WebSocket upgrades are proxied transparently by Caddy.
 {$API_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 	reverse_proxy api:3001
 }
 
-# Keycloak (identity provider)
+# Keycloak (identity provider) — no frame-ancestors restriction: the SPA
+# iframes this domain for keycloak-js's silent check-sso. Leave Keycloak's own
+# CSP alone; add only the baseline headers.
 {$AUTH_DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 	reverse_proxy keycloak:8080
 }

@@ -7,10 +7,17 @@ import { guardLastOwner, ROLE_ORDER } from '../services/authz.js'
 import { orgListStats } from '../services/stats.service.js'
 import { DEFAULT_TEMPLATES } from './templates.js'
 import { recentActivity } from '../services/activity.service.js'
+import { audit } from '../services/audit.service.js'
 import { ApiError } from '../lib/errors.js'
 import { slugify } from '../lib/slug.js'
+import { decodeCursor, paginate, DEFAULT_LIMIT, MAX_LIMIT } from '../lib/pagination.js'
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const auditQuerySchema = z.object({
+  action: z.string().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(MAX_LIMIT).default(DEFAULT_LIMIT),
+  cursor: z.string().optional(),
+})
 const createInviteSchema = z.object({
   email: z.string().email().optional(),
   role: z.enum(['ADMIN', 'MEMBER']).default('MEMBER'),
@@ -58,7 +65,8 @@ const routes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', requireAuth)
 
   // Create org — the creator becomes OWNER; seeded with the starter templates (3.4 W1)
-  app.post('/', async (request, reply) => {
+  // 3.7.4 D2 — tighter cap on this abuse-prone write (each call seeds templates).
+  app.post('/', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
     const body = createOrgSchema.parse(request.body)
     const slug = await uniqueOrgSlug(body.slug ?? slugify(body.name))
     const org = await prisma.organization.create({
@@ -69,6 +77,7 @@ const routes: FastifyPluginAsync = async (app) => {
         templates: { create: DEFAULT_TEMPLATES },
       },
     })
+    await audit({ orgId: org.id, actorId: request.userId, action: 'org.created', targetType: 'org', targetId: org.id })
     return reply.code(201).send({ org })
   })
 
@@ -139,6 +148,38 @@ const routes: FastifyPluginAsync = async (app) => {
     return { activity: await recentActivity({ ticket: { project: { orgId: org.id } } }) }
   })
 
+  // 3.7.4 — security audit trail (member/invite/project/ticket/account actions).
+  // ADMIN-only: this is a security surface, not a general activity feed.
+  app.get('/:slug/audit', { preHandler: requireOrgRole('ADMIN') }, async (request) => {
+    const { slug } = request.params as { slug: string }
+    const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
+    const q = auditQuerySchema.parse(request.query)
+    const rows = await prisma.auditLog.findMany({
+      where: { orgId: org.id, ...(q.action ? { action: { startsWith: q.action } } : {}) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: q.limit + 1,
+      ...(q.cursor ? { cursor: { id: decodeCursor(q.cursor) }, skip: 1 } : {}),
+    })
+    const { items, nextCursor } = paginate(rows, q.limit)
+    const actorIds = [...new Set(items.map((r) => r.actorId).filter((id): id is string => !!id))]
+    const actors = actorIds.length
+      ? await prisma.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true } })
+      : []
+    const actorNames = new Map(actors.map((a) => [a.id, a.name]))
+    return {
+      items: items.map((r) => ({
+        id: r.id,
+        action: r.action,
+        targetType: r.targetType,
+        targetId: r.targetId,
+        meta: r.meta,
+        createdAt: r.createdAt,
+        actor: r.actorId ? { name: actorNames.get(r.actorId) ?? null } : null,
+      })),
+      nextCursor,
+    }
+  })
+
   app.patch('/:slug', { preHandler: requireOrgRole('ADMIN') }, async (request) => {
     const { slug } = request.params as { slug: string }
     const body = updateOrgSchema.parse(request.body)
@@ -148,7 +189,9 @@ const routes: FastifyPluginAsync = async (app) => {
 
   app.delete('/:slug', { preHandler: requireOrgRole('OWNER') }, async (request, reply) => {
     const { slug } = request.params as { slug: string }
+    const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
     await prisma.organization.delete({ where: { slug } })
+    await audit({ orgId: org.id, actorId: request.userId, action: 'org.deleted', targetType: 'org', targetId: org.id })
     return reply.code(204).send()
   })
 
@@ -199,10 +242,19 @@ const routes: FastifyPluginAsync = async (app) => {
     const { slug, userId } = request.params as { slug: string; userId: string }
     const body = updateMemberSchema.parse(request.body)
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
+    const before = await prisma.orgMember.findUnique({ where: { orgId_userId: { orgId: org.id, userId } } })
     await guardLastOwner(org.id, userId, body.role)
     const member = await prisma.orgMember.update({
       where: { orgId_userId: { orgId: org.id, userId } },
       data: { role: body.role },
+    })
+    await audit({
+      orgId: org.id,
+      actorId: request.userId,
+      action: 'member.role_changed',
+      targetType: 'member',
+      targetId: userId,
+      meta: { from: before?.role, to: member.role },
     })
     return { member: { userId, role: member.role } }
   })
@@ -212,11 +264,12 @@ const routes: FastifyPluginAsync = async (app) => {
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
     await guardLastOwner(org.id, userId, null)
     await prisma.orgMember.delete({ where: { orgId_userId: { orgId: org.id, userId } } })
+    await audit({ orgId: org.id, actorId: request.userId, action: 'member.removed', targetType: 'member', targetId: userId })
     return reply.code(204).send()
   })
 
   // ── Invite links ── (accept lives at /api/invites/:token/accept)
-  app.post('/:slug/invites', { preHandler: requireOrgRole('ADMIN') }, async (request, reply) => {
+  app.post('/:slug/invites', { preHandler: requireOrgRole('ADMIN'), config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { slug } = request.params as { slug: string }
     const body = createInviteSchema.parse(request.body)
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
@@ -238,6 +291,14 @@ const routes: FastifyPluginAsync = async (app) => {
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
       },
     })
+    await audit({
+      orgId: org.id,
+      actorId: request.userId,
+      action: 'invite.created',
+      targetType: 'invite',
+      targetId: invite.id,
+      meta: { role: invite.role },
+    })
     return reply.code(201).send({
       invite: { id: invite.id, token, role: invite.role, email: invite.email, expiresAt: invite.expiresAt, url: `/invite/${token}` },
     })
@@ -257,6 +318,7 @@ const routes: FastifyPluginAsync = async (app) => {
     const { slug, id } = request.params as { slug: string; id: string }
     const org = await prisma.organization.findUniqueOrThrow({ where: { slug } })
     await prisma.orgInvite.deleteMany({ where: { id, orgId: org.id } })
+    await audit({ orgId: org.id, actorId: request.userId, action: 'invite.revoked', targetType: 'invite', targetId: id })
     return reply.code(204).send()
   })
 }

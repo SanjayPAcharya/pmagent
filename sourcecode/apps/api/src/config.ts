@@ -8,6 +8,7 @@ export interface AppConfig {
   KEYCLOAK_ISSUER_URL: string   // what tokens carry as `iss` (browser-facing); validated as allowedIss
   KEYCLOAK_INTERNAL_URL: string // API-reachable realm base for JWKS discovery (same keys, any host)
   KEYCLOAK_API_AUDIENCE: string
+  RETENTION_NOTIFICATION_DAYS: number // 3.7.4 E2 — read notifications older than this are purged daily
 }
 
 /**
@@ -29,5 +30,6 @@ export function loadConfig(): AppConfig {
     KEYCLOAK_INTERNAL_URL:
       process.env.KEYCLOAK_INTERNAL_URL ?? process.env.KEYCLOAK_ISSUER_URL ?? '',
     KEYCLOAK_API_AUDIENCE: process.env.KEYCLOAK_API_AUDIENCE ?? 'agentpm-api',
+    RETENTION_NOTIFICATION_DAYS: Number(process.env.RETENTION_NOTIFICATION_DAYS ?? 90),
   }
 }

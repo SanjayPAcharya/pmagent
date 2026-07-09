@@ -337,6 +337,23 @@ model Notification {
   @@index([userId, createdAt])
 }
 
+// ─── Audit (3.7.4) ───────────────────────────────────────────
+
+// Append-only security audit trail. Deliberately NO relations: rows must
+// survive org deletion and user erasure (plain uuid columns, no FK cascade).
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orgId      String?  @db.Uuid // null = account-level action (export/erasure)
+  actorId    String?  @db.Uuid
+  action     String   // dot-namespaced, e.g. "member.role_changed"
+  targetType String   // "org" | "member" | "invite" | "project" | "ticket" | "account"
+  targetId   String?
+  meta       Json?    // small diffs, e.g. { from: "MEMBER", to: "ADMIN" }
+  createdAt  DateTime @default(now())
+
+  @@index([orgId, createdAt])
+}
+
 // ─── Enums ───────────────────────────────────────────────────
 
 enum PlanType {

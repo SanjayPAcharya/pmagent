@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Moon, Sun, Monitor, Loader2 } from 'lucide-react'
-import { api } from '@/lib/api'
+import { Moon, Sun, Monitor, Loader2, Download } from 'lucide-react'
+import { api, ApiError } from '@/lib/api'
+import { logout } from '@/lib/auth'
 import { useTheme, type Theme } from '@/lib/theme'
 import { cn, initialsOf } from '@/lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { FieldError } from '@/components/ui/field-error'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DangerZone } from '@/components/DangerZone'
 
 // /account — the user's own profile. Email is owned by Keycloak (read-only
 // here); name + avatar URL live on our User row via PATCH /api/me. No upload
@@ -32,6 +34,8 @@ export default function AccountSettings() {
   const [name, setName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [busy, setBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   useEffect(() => {
     if (user) {
       setName(user.name)
@@ -58,6 +62,24 @@ export default function AccountSettings() {
     }
   }
 
+  const downloadExport = async () => {
+    setExporting(true)
+    try {
+      const { blob, filename } = await api.exportMyData()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(t('account.exportDownloaded'))
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <h2 className="text-xl font-semibold text-foreground">{t('account.title')}</h2>
@@ -81,8 +103,9 @@ export default function AccountSettings() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t('account.name')}</label>
+              <label htmlFor="account-name" className="text-xs text-muted-foreground">{t('account.name')}</label>
               <Input
+                id="account-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 aria-invalid={Boolean(user) && !name.trim()}
@@ -91,8 +114,9 @@ export default function AccountSettings() {
               <FieldError>{user && !name.trim() ? t('account.nameRequired') : null}</FieldError>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t('account.avatarUrl')}</label>
+              <label htmlFor="account-avatar" className="text-xs text-muted-foreground">{t('account.avatarUrl')}</label>
               <Input
+                id="account-avatar"
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
                 placeholder="https://…"
@@ -101,8 +125,8 @@ export default function AccountSettings() {
               <p className="mt-1 text-xs text-muted-foreground">{t('account.avatarHint')}</p>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t('account.email')}</label>
-              <Input value={user?.email ?? ''} disabled className="mt-1" />
+              <label htmlFor="account-email" className="text-xs text-muted-foreground">{t('account.email')}</label>
+              <Input id="account-email" value={user?.email ?? ''} disabled className="mt-1" />
               <p className="mt-1 text-xs text-muted-foreground">{t('account.emailHint')}</p>
             </div>
             <Button size="sm" onClick={() => void save()} disabled={!dirty || !name.trim() || busy}>
@@ -138,6 +162,45 @@ export default function AccountSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('account.privacyTitle')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">{t('account.exportHint')}</p>
+          <Button size="sm" variant="outline" onClick={() => void downloadExport()} disabled={exporting}>
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {t('account.exportData')}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {user && (
+        <>
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          <DangerZone
+            title={t('account.deleteTitle')}
+            description={t('account.deleteWarning')}
+            confirmLabel={user.email}
+            confirmHint={t('settings.typeToConfirm', { name: user.email })}
+            actionLabel={t('account.deleteAction')}
+            onDelete={async () => {
+              setDeleteError(null)
+              try {
+                await api.deleteMyAccount()
+                void logout()
+              } catch (e) {
+                if (e instanceof ApiError && e.code === 'SOLE_OWNER') {
+                  setDeleteError(e.message)
+                } else {
+                  toast.error((e as Error).message)
+                }
+              }
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }
