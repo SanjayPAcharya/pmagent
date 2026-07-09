@@ -29,7 +29,7 @@
 
 ## Part A — API: Ollama client + three endpoints (local, hermetic)
 
-### - [ ] A1 — `ai.service.ts`: `AIProvider` seam + Ollama impl + config + health (M)
+### - [x] A1 — `ai.service.ts`: `AIProvider` seam + Ollama impl + config + health (M)
 - `config.ts`: `OLLAMA_BASE_URL` (default `''` = disabled), `OLLAMA_MODEL` (default `qwen2.5:7b`), `AI_TIMEOUT_MS` (default `120000`). Add to `.env.example` under a new `# ── AI (optional, 3.8) ──` block.
 - New `services/ai.service.ts`, structured as the **permanent provider seam** (owner strategy above):
   - `interface AIProvider { generate<T>(opts: { system: string; user: string; schema: JSONSchema; zod: ZodType<T> }): Promise<T>; health(): Promise<{ reachable: boolean; modelReady: boolean }> }`.

@@ -9,6 +9,10 @@ export interface AppConfig {
   KEYCLOAK_INTERNAL_URL: string // API-reachable realm base for JWKS discovery (same keys, any host)
   KEYCLOAK_API_AUDIENCE: string
   RETENTION_NOTIFICATION_DAYS: number // 3.7.4 E2 — read notifications older than this are purged daily
+  // ── AI (optional, 3.8) — absent OLLAMA_BASE_URL = AI disabled (buttons show disabled-with-reason) ──
+  OLLAMA_BASE_URL: string // '' = disabled; e.g. http://ollama:11434 (compose) or http://localhost:11434 (host)
+  OLLAMA_MODEL: string
+  AI_TIMEOUT_MS: number
 }
 
 /**
@@ -31,5 +35,8 @@ export function loadConfig(): AppConfig {
       process.env.KEYCLOAK_INTERNAL_URL ?? process.env.KEYCLOAK_ISSUER_URL ?? '',
     KEYCLOAK_API_AUDIENCE: process.env.KEYCLOAK_API_AUDIENCE ?? 'agentpm-api',
     RETENTION_NOTIFICATION_DAYS: Number(process.env.RETENTION_NOTIFICATION_DAYS ?? 90),
+    OLLAMA_BASE_URL: (process.env.OLLAMA_BASE_URL ?? '').replace(/\/$/, ''),
+    OLLAMA_MODEL: process.env.OLLAMA_MODEL ?? 'qwen2.5:7b',
+    AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS ?? 120000),
   }
 }
