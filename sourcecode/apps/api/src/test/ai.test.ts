@@ -295,6 +295,39 @@ describe('AI expand-ticket (3.8 A3/D2)', () => {
     expect(res.json().draft).toMatchObject({ goal: 'Prevent endpoint abuse.' })
   })
 
+  it('re-prompts once when acceptanceCriteria comes back empty, then succeeds', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-expand-empty-ac')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'EmptyAC Co')
+    const projectId = await makeProject(owner, orgId, 'EmptyAC Proj')
+    const ticketId = await makeTicket(owner, projectId, 'Add keyboard shortcuts help modal')
+
+    // Nova Micro's observed thin-ticket failure: valid fields but empty AC. The
+    // zod .min(1) rejects it → one corrective re-prompt → the retry supplies AC.
+    runtimeSend
+      .mockResolvedValueOnce(
+        toolResponse({ description: 'D', acceptanceCriteria: [], goal: 'G', constraints: '' }),
+      )
+      .mockResolvedValueOnce(
+        toolResponse({
+          description: 'D',
+          acceptanceCriteria: ['Shortcuts are discoverable', 'Modal is keyboard-accessible'],
+          goal: 'G',
+          constraints: '',
+        }),
+      )
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/expand-ticket',
+      headers: bearer(owner),
+      payload: { ticketId },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().draft.acceptanceCriteria).toHaveLength(2)
+    expect(runtimeSend).toHaveBeenCalledTimes(2)
+  })
+
   it('returns 404 for an unknown ticket', async () => {
     process.env.AI_PROVIDER = 'bedrock'
     const owner = await tokenFor('ai-expand-404')

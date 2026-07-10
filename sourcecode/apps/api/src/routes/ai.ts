@@ -24,7 +24,7 @@ const draftTicketSchema: JsonSchema = {
   properties: {
     title: { type: 'string' },
     description: { type: 'string' },
-    acceptanceCriteria: { type: 'array', items: { type: 'string' } },
+    acceptanceCriteria: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
     priority: { type: 'string', enum: [...PRIORITIES] },
   },
   required: ['title', 'description', 'acceptanceCriteria', 'priority'],
@@ -32,7 +32,10 @@ const draftTicketSchema: JsonSchema = {
 const draftTicketZod = z.object({
   title: z.string().min(1).max(200),
   description: z.string(),
-  acceptanceCriteria: z.array(z.string()),
+  // .min(1): an empty list fails validation → the seam's one corrective re-prompt
+  // fires with an explicit message. Small models (Nova Micro) otherwise omit AC on
+  // thin input despite the prompt + schema minItems.
+  acceptanceCriteria: z.array(z.string()).min(1),
   priority: z.enum(PRIORITIES),
 })
 
@@ -55,7 +58,7 @@ const expandTicketSchema: JsonSchema = {
   type: 'object',
   properties: {
     description: { type: 'string' },
-    acceptanceCriteria: { type: 'array', items: { type: 'string' } },
+    acceptanceCriteria: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
     goal: { type: 'string' },
     constraints: { type: 'string' },
   },
@@ -63,7 +66,9 @@ const expandTicketSchema: JsonSchema = {
 }
 const expandTicketZod = z.object({
   description: z.string(),
-  acceptanceCriteria: z.array(z.string()),
+  // .min(1): see draftTicketZod — forces the corrective re-prompt if the model
+  // returns an empty acceptanceCriteria (observed with Nova Micro on thin tickets).
+  acceptanceCriteria: z.array(z.string()).min(1),
   goal: z.string(),
   constraints: z.string(),
 })
@@ -71,7 +76,7 @@ const EXPAND_SYSTEM = [
   'You are a senior product manager fleshing out an existing work ticket.',
   'Use the ticket context below; do NOT contradict its title or invent unrelated scope.',
   'description: a clear 2–5 sentence problem/scope statement.',
-  'acceptanceCriteria: 2–6 short, testable bullet strings (no leading dash).',
+  'acceptanceCriteria: REQUIRED — always 2 to 6 short, testable bullet strings (no leading dash). Never return an empty list; if the ticket has none yet, derive them from its title, description, and intent.',
   'goal: one sentence — the outcome this ticket achieves.',
   'constraints: one or two sentences — technical or scope limits (empty string if none).',
   'Return ONLY JSON matching the schema — no prose, no markdown.',

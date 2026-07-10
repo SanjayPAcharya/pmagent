@@ -41,9 +41,9 @@
 ### - [x] D4 — 🤖 Copy + docs touch-up (S)
 - `ai.generatingHint` ("10–20 s") → Bedrock reality (~1–3 s; consider dropping the hint). PROGRESS/FEATURES dates. Typecheck + build + full `turbo test` green (api ≈104 · web 37).
 
-### - [~] D5 — 🤖 Live verify + prompt-tune (M) — **AWS checklist done; live-verified 2026-07-10; owner quality judgment pending**
-- ✅ Dev credentials in `sourcecode/.env` (IAM user `pmagent-dev-bedrock`); profile `apac.amazon.nova-micro-v1:0` **ACTIVE**. `GET /api/ai/health` green through the running api. Drove all three flows end-to-end against real Nova Micro (samples + latency in the PROGRESS D5 row): draft-ticket 1.25s, project-summary 1.05s, expand-ticket 1.67s. Forced-tool Converse confirmed working.
-- ⛔ **Owner quality judgment outstanding.** Observed nit: expand-ticket returns `acceptanceCriteria: []` (prompt asks 2–6). Options: (a) accept Nova Micro as-is, (b) 1 prompt-tuning pass on the expand prompt (then re-run hermetic tests), (c) flip `BEDROCK_MODEL_ID` to Claude Haiku 4.5's global profile + re-verify (record cost delta ≈₹320/mo). Sanjay decides before D is called done.
+### - [x] D5 — 🤖 Live verify + prompt-tune (M) — **done 2026-07-10 (stays on Nova Micro)**
+- ✅ Dev credentials in `sourcecode/.env` (IAM user `pmagent-dev-bedrock`); profile `apac.amazon.nova-micro-v1:0` **ACTIVE**. `GET /api/ai/health` green through the running api. Drove all three flows end-to-end against real Nova Micro (samples + latency in the PROGRESS D5 rows): draft-ticket 1.25s, project-summary 1.05s, expand-ticket ~2s. Forced-tool Converse confirmed working.
+- ✅ **Prompt-tune (owner chose "one pass", stays on Nova Micro).** Bug: expand-ticket returned `acceptanceCriteria: []` on thin tickets. Fix that actually worked: **`.min(1)` on the AC zod** (draft + expand) so an empty list fails validation and fires the seam's one corrective re-prompt — the directive nudge small models respond to. (Prompt wording "never return an empty list" + JSON-schema `minItems: 2` alone did **not** move Nova Micro; kept them as belt-and-suspenders.) After the fix, 3/3 live runs returned 5 solid AC bullets (~2–2.6s; the retry adds ~1 round-trip). New hermetic test locks the empty→retry→success path. **api 106 → 107**, full suite green.
 
 ## Part E — Deploy (no EC2 resize — t3.medium stays; baseline bill unchanged)
 
