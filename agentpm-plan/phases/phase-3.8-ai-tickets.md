@@ -59,7 +59,7 @@
 
 ## 🧑 AWS checklist — owner actions (do before D5)
 
-1. **Enable model access** — Console → **Amazon Bedrock → Model access** (region **ap-south-1**): request/enable **Amazon Nova** models (instant). *Recommended now:* also enable **Anthropic Claude** models (short use-case form, one-time) so the quality escape hatch is a pure env flip later.
+1. **Model access — mostly automatic now.** AWS retired the Model access page (confirmed in-console 2026-07-10): serverless foundation models auto-enable on first invocation, gated by IAM only. **Nova Micro: nothing to do.** **Claude (escape hatch):** first use may prompt a one-time use-case form, and Marketplace-served models need one first invoke by a user with Marketplace permissions — pre-clear it as the **admin** user via Bedrock → Model catalog → Claude Haiku 4.5 → *Open in playground* → run one prompt (the scoped dev user can't do this).
 2. **Verify the profile ID** — `aws bedrock list-inference-profiles --region ap-south-1` → confirm the exact Nova Micro APAC profile ID (expected `apac.amazon.nova-micro-v1:0`); note the Claude `global.*` IDs while you're there. *(Becomes 🤖 once dev credentials exist — I can run it.)*
 3. **IAM policy** — create policy `pmagent-bedrock-invoke`: actions `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream`, `bedrock:GetInferenceProfile`, `bedrock:ListInferenceProfiles`. Resource `*` is acceptable for MVP; tighten later to the inference-profile ARN **plus** the foundation-model ARNs in the profile's destination regions (cross-region profiles need both — known gotcha).
 4. **Attach credentials:**
