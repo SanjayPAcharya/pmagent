@@ -108,30 +108,73 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-  # ── 3. Deploy to the EC2 box: pull the new SHA images, migrate, up ──
+  # ── 3. Deploy to the EC2 box: sync compose, write runtime env, pull images, migrate, up ──
   deploy:
     needs: build-push
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      # The pipeline ships container images, but compose/env-wiring changes don't
+      # reach the box on a plain image pull. Sync the compose files so new env
+      # passthrough (e.g. the Bedrock AI + AWS vars) actually takes effect.
+      - name: Sync compose files to the box
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "sourcecode/docker-compose.yml,sourcecode/docker-compose.prod.yml"
+          target: "/opt/pmagent/sourcecode"
+          strip_components: 1
+
       - name: SSH deploy
         uses: appleboy/ssh-action@v1
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
           IMAGE_TAG: ${{ github.sha }}
+          # AI (3.8 — Bedrock): config is plain; the credentials come from repo
+          # secrets and are written into the box's .env.prod below at deploy time.
+          # Secrets never live in git or the image — only on the box, read at start.
+          AI_PROVIDER: bedrock
+          BEDROCK_MODEL_ID: apac.amazon.nova-micro-v1:0
+          AWS_REGION: ap-south-1
+          AI_TIMEOUT_MS: "30000"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 15m
-          envs: GHCR_TOKEN,GHCR_USER,IMAGE_TAG
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_TAG,AI_PROVIDER,BEDROCK_MODEL_ID,AWS_REGION,AI_TIMEOUT_MS,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY
           script: |
             set -e
             cd /opt/pmagent/sourcecode
             # authenticate to GHCR with the run's token → pulls work whether the
             # packages are public or private.
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=$IMAGE_TAG|" .env.prod
+
+            # Idempotently upsert KEY=value into .env.prod (secrets stay off git/images,
+            # live only here on the box). Removes any existing line, then appends.
+            set_env() {
+              if grep -q "^$1=" .env.prod 2>/dev/null; then
+                { grep -v "^$1=" .env.prod || true; } > .env.prod.tmp
+                mv .env.prod.tmp .env.prod
+              fi
+              printf '%s=%s\n' "$1" "$2" >> .env.prod
+            }
+            set_env IMAGE_TAG "$IMAGE_TAG"
+            set_env AI_PROVIDER "$AI_PROVIDER"
+            set_env BEDROCK_MODEL_ID "$BEDROCK_MODEL_ID"
+            set_env AWS_REGION "$AWS_REGION"
+            set_env AI_TIMEOUT_MS "$AI_TIMEOUT_MS"
+            # Only write the keys if the secrets are set — never blank an existing value.
+            if [ -n "$AWS_ACCESS_KEY_ID" ]; then set_env AWS_ACCESS_KEY_ID "$AWS_ACCESS_KEY_ID"; fi
+            if [ -n "$AWS_SECRET_ACCESS_KEY" ]; then set_env AWS_SECRET_ACCESS_KEY "$AWS_SECRET_ACCESS_KEY"; fi
+            chmod 600 .env.prod
+
             PC="docker compose --profile selfhost-data --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml"
             $PC pull api web
             $PC run --rm api pnpm prisma migrate deploy
