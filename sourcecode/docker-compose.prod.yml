@@ -54,6 +54,14 @@ services:
 
   api:
     restart: unless-stopped
+    environment:
+      # 3.8 dev-deployment credential path: reuse a scoped Bedrock IAM-user key from
+      # .env.prod until the EC2 instance role (phase-3.8 E1) is set up. Empty values
+      # are ignored by the AWS SDK credential chain. Swap to the instance role later,
+      # then drop these two lines + the key from .env.prod. (Base compose already
+      # passes AI_PROVIDER / BEDROCK_MODEL_ID / AWS_REGION / AI_TIMEOUT_MS.)
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
   web:
     restart: unless-stopped
 

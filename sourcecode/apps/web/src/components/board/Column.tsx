@@ -3,10 +3,10 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { Plus, FilePlus2 } from 'lucide-react'
-import type { Member, Sprint, Ticket, TicketStatus, TicketTemplate } from '@/lib/api'
+import { api, type AITicketDraft, type Member, type Sprint, type Ticket, type TicketStatus, type TicketTemplate } from '@/lib/api'
 import { STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
 import { parseQuickCreate, type ParsedQuickCreate } from '@/lib/parseQuickCreate'
-import { BetaAIButton } from '@/components/BetaBadge'
+import { AIButton } from '@/components/BetaBadge'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -36,6 +36,9 @@ interface Props {
   sprints?: Sprint[]
   templates?: TicketTemplate[]
   onCreateFromTemplate?: (status: TicketStatus, tpl: TicketTemplate) => void
+  /** 3.8 B2 — project context for the AI draft call + the create handler for an accepted draft. */
+  projectId?: string
+  onCreateDraft?: (status: TicketStatus, draft: AITicketDraft) => Promise<void> | void
   onAddSubtask?: (t: Ticket) => void
   /** B4 focus mode: when set, cards not assigned to this user are dimmed. */
   focusUserId?: string | null
@@ -58,6 +61,8 @@ export function Column({
   sprints = [],
   templates = [],
   onCreateFromTemplate,
+  projectId,
+  onCreateDraft,
   onAddSubtask,
   focusUserId,
   viewers,
@@ -69,6 +74,40 @@ export function Column({
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
+
+  // 3.8 B2 — AI draft state: generate from the composer text, preview, then create.
+  const [drafting, setDrafting] = useState(false)
+  const [draft, setDraft] = useState<AITicketDraft | null>(null)
+  const [draftError, setDraftError] = useState<string | null>(null)
+  const [creatingDraft, setCreatingDraft] = useState(false)
+
+  const runDraft = async () => {
+    const notes = title.trim()
+    if (!projectId || !notes) return
+    setDrafting(true)
+    setDraftError(null)
+    try {
+      const { draft: d } = await api.aiDraftTicket(projectId, notes)
+      setDraft(d)
+    } catch {
+      setDraftError(t('ai.failed'))
+    } finally {
+      setDrafting(false)
+    }
+  }
+
+  const acceptDraft = async () => {
+    if (!draft || !onCreateDraft) return
+    setCreatingDraft(true)
+    try {
+      await onCreateDraft(status, draft)
+      setDraft(null)
+      setTitle('')
+      setAdding(false)
+    } finally {
+      setCreatingDraft(false)
+    }
+  }
 
   const wipLimit = WIP_LIMITS[status]
   const overWip = wipLimit != null && tickets.length > wipLimit
@@ -167,9 +206,64 @@ export function Column({
                 )}
               </div>
             )}
-            <div className="flex px-0.5">
-              <BetaAIButton label={t('beta.draftWithAI')} />
-            </div>
+            {onCreateDraft && projectId && (
+              <div className="px-0.5">
+                {!draft && (
+                  <div className="flex flex-col gap-1">
+                    <AIButton
+                      label={t('ai.draftWithAI')}
+                      onClick={runDraft}
+                      busy={drafting}
+                      disabled={!title.trim()}
+                    />
+                    {drafting && <span className="text-[10px] text-muted-foreground">{t('ai.generatingHint')}</span>}
+                    {draftError && (
+                      <div className="flex items-center gap-2 text-[11px] text-destructive">
+                        <span>{draftError}</span>
+                        <button type="button" onClick={runDraft} className="underline hover:no-underline">
+                          {t('ai.retry')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {draft && (
+                  <div className="mt-1 space-y-2 rounded-md border bg-background p-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.draftPreview')}</span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{draft.priority}</span>
+                    </div>
+                    <p className="font-medium text-foreground">{draft.title}</p>
+                    {draft.description && <p className="line-clamp-3 text-muted-foreground">{draft.description}</p>}
+                    {draft.acceptanceCriteria.length > 0 && (
+                      <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
+                        {draft.acceptanceCriteria.slice(0, 5).map((ac, i) => (
+                          <li key={i}>{ac}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={acceptDraft}
+                        disabled={creatingDraft}
+                        className="rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
+                      >
+                        {creatingDraft ? t('common.loading') : t('ai.create')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDraft(null)}
+                        disabled={creatingDraft}
+                        className="rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+                      >
+                        {t('ai.discard')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>

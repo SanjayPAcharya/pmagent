@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
-import { api, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
+import { api, type AITicketDraft, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
 import { MultiSelect } from '@/components/MultiSelect'
 import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
@@ -274,6 +274,31 @@ export default function Board() {
         // On the Ad-hoc tab, new work is ad-hoc and never joins a sprint.
         workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
         sprintId: wsTab === 'ADHOC' ? undefined : parsed.sprintId,
+      })
+      qc.invalidateQueries({ queryKey: ticketsPrefix })
+      toast.success(t('board.ticketCreated'))
+    } catch (err) {
+      toast.error(t('board.createFailed', { message: (err as Error).message }))
+    }
+  }
+
+  // 3.8 B2 — create a ticket from an accepted AI draft. The model returns an AC
+  // array; the Ticket field is a string, so join with `- ` bullets (matches how
+  // templates/markdown render). Never auto-created — this runs only on the user's
+  // explicit "Create" in the draft preview.
+  async function createFromDraft(status: TicketStatus, draft: AITicketDraft) {
+    if (!projectId) return
+    try {
+      await api.createTicket({
+        projectId,
+        status,
+        title: draft.title,
+        description: draft.description || undefined,
+        acceptanceCriteria: draft.acceptanceCriteria.length
+          ? draft.acceptanceCriteria.map((ac) => `- ${ac}`).join('\n')
+          : undefined,
+        priority: draft.priority,
+        workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       toast.success(t('board.ticketCreated'))
@@ -583,6 +608,8 @@ export default function Board() {
                 sprints={sprints.data?.sprints ?? []}
                 templates={templates.data?.templates ?? []}
                 onCreateFromTemplate={createFromTemplate}
+                projectId={projectId}
+                onCreateDraft={createFromDraft}
                 onAddSubtask={addSubtask}
                 focusUserId={focusMine ? myId : null}
                 viewers={viewersByTicket}

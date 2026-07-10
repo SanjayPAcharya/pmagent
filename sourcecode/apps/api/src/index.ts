@@ -165,6 +165,7 @@ export async function buildServer() {
   await app.register(import('./routes/invites.js'), { prefix: '/api/invites' })
   await app.register(import('./routes/search.js'), { prefix: '/api/search' })
   await app.register(import('./routes/templates.js'), { prefix: '/api/templates' })
+  await app.register(import('./routes/ai.js'), { prefix: '/api/ai' })
   return app
 }
 

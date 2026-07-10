@@ -35,6 +35,13 @@ services:
       KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
       KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL}
       KEYCLOAK_API_AUDIENCE: ${KEYCLOAK_API_AUDIENCE:-agentpm-api}
+      # AI (3.8, Amazon Bedrock) — empty AI_PROVIDER disables AI (buttons show
+      # disabled-with-reason). Credentials come from the default AWS chain:
+      # dev = AWS_* keys via the dev override, prod = the EC2 instance role.
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-apac.amazon.nova-micro-v1:0}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-30000}
 
   web:
     image: ${REGISTRY:-ghcr.io/yourorg}/agentpm-web:${IMAGE_TAG:-dev}

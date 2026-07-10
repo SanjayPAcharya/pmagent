@@ -3,11 +3,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2 } from 'lucide-react'
+import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { BlockedBadge } from '@/components/BlockedBadge'
 import { api, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { BetaBadge } from '@/components/BetaBadge'
+import { useAIHealth, aiButtonState } from '@/lib/useAIHealth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -99,6 +99,18 @@ export default function ProjectOverview() {
     enabled: Boolean(projectId),
   })
   useProjectSync(projectId, [['overview', projectId], ['tickets', projectId]])
+
+  // 3.8 B4 — AI status digest. Cached in react-query keyed by project (ephemeral —
+  // never persisted); generated only on demand via refetch, gated on AI health.
+  const aiHealth = useAIHealth()
+  const aiState = aiButtonState(aiHealth.data)
+  const summary = useQuery({
+    queryKey: ['ai-summary', projectId],
+    queryFn: () => api.aiProjectSummary(projectId!),
+    enabled: false,
+    staleTime: Infinity,
+    retry: false,
+  })
 
   const isAdmin = org.data?.org.role === 'OWNER' || org.data?.org.role === 'ADMIN'
   const [managing, setManaging] = useState(false)
@@ -417,20 +429,61 @@ export default function ProjectOverview() {
             </CardContent>
           </Card>
 
-          {/* AI summary (Beta placeholder — no network) */}
+          {/* AI summary (3.8 B4 — self-hosted, on-demand digest) */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Sparkles className="h-4 w-4 text-primary" />
                 {t('overview.aiSummaryTitle')}
-                <BetaBadge />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">{t('overview.aiSummaryHint')}</p>
-              <Button size="sm" variant="outline" disabled title={t('common.betaTooltip')}>
-                {t('overview.generateSummary')}
+              {summary.data ? (
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium text-foreground">{summary.data.summary.headline}</p>
+                  {summary.data.summary.bullets.length > 0 && (
+                    <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
+                      {summary.data.summary.bullets.map((b, i) => (
+                        <li key={i}>{b}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {summary.data.summary.risks.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.risks')}</p>
+                      <ul className="list-disc space-y-0.5 pl-5 text-destructive">
+                        {summary.data.summary.risks.map((r, i) => (
+                          <li key={i}>{r}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {aiState.reasonKey ? t(aiState.reasonKey) : t('ai.summaryEmpty')}
+                </p>
+              )}
+              {summary.isError && (
+                <p className="text-xs text-destructive">{t('ai.failed')}</p>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => summary.refetch()}
+                disabled={!aiState.ready || summary.isFetching}
+                title={aiState.reasonKey ? t(aiState.reasonKey) : undefined}
+              >
+                {summary.isFetching ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    {t('ai.generating')}
+                  </>
+                ) : (
+                  t(summary.data ? 'ai.regenerate' : 'ai.generateSummary')
+                )}
               </Button>
+              {summary.isFetching && <p className="text-xs text-muted-foreground">{t('ai.generatingHint')}</p>}
             </CardContent>
           </Card>
         </div>

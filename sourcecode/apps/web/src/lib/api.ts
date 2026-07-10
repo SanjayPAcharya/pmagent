@@ -439,6 +439,31 @@ export interface UpdateTicketInput {
   parentId?: string | null
 }
 
+// ── AI (3.8) — self-hosted drafting ──
+export interface AIHealth {
+  enabled: boolean
+  reachable: boolean
+  modelReady: boolean
+  provider: string | null
+}
+export interface AITicketDraft {
+  title: string
+  description: string
+  acceptanceCriteria: string[]
+  priority: Priority
+}
+export interface AIExpandDraft {
+  description: string
+  acceptanceCriteria: string[]
+  goal: string
+  constraints: string
+}
+export interface AIProjectSummary {
+  headline: string
+  bullets: string[]
+  risks: string[]
+}
+
 export const api = {
   me: () => request<{ user: User }>('GET', '/api/me'),
   updateMe: (body: { name?: string; avatarUrl?: string | null }) => request<{ user: User }>('PATCH', '/api/me', body),
@@ -578,4 +603,13 @@ export const api = {
   unreadCount: () => request<{ count: number }>('GET', '/api/notifications/unread-count'),
   markNotificationRead: (id: string) => request<{ ok: true }>('POST', `/api/notifications/${id}/read`),
   markAllNotificationsRead: () => request<{ updated: number }>('POST', '/api/notifications/read-all'),
+
+  // AI (3.8) — self-hosted drafting; all return a draft the user reviews (never auto-saves)
+  aiHealth: () => request<AIHealth>('GET', '/api/ai/health'),
+  aiDraftTicket: (projectId: string, notes: string) =>
+    request<{ draft: AITicketDraft }>('POST', '/api/ai/draft-ticket', { projectId, notes }),
+  aiExpandTicket: (ticketId: string, prompt?: string) =>
+    request<{ draft: AIExpandDraft }>('POST', '/api/ai/expand-ticket', { ticketId, ...(prompt ? { prompt } : {}) }),
+  aiProjectSummary: (projectId: string) =>
+    request<{ summary: AIProjectSummary }>('POST', '/api/ai/project-summary', { projectId }),
 }
