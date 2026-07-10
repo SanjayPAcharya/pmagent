@@ -41,9 +41,9 @@
 ### - [x] D4 — 🤖 Copy + docs touch-up (S)
 - `ai.generatingHint` ("10–20 s") → Bedrock reality (~1–3 s; consider dropping the hint). PROGRESS/FEATURES dates. Typecheck + build + full `turbo test` green (api ≈104 · web 37).
 
-### - [ ] D5 — 🤖 Live verify + prompt-tune (M) — **blocked on the AWS checklist below**
-- With dev credentials in `.env`: `GET /api/ai/health` green → drive all three flows in the browser against real Nova Micro; capture one sample output per feature in the PROGRESS row; measure latency.
-- Expect 1–2 prompt-tuning passes: Nova Micro needs shorter, more directive prompts than a frontier model — **owner judges output quality** before D is called done. If quality is unacceptable after tuning → flip `BEDROCK_MODEL_ID` to Claude Haiku 4.5's global profile and re-verify (that's the designed escape hatch; record the cost delta ≈₹320/mo).
+### - [~] D5 — 🤖 Live verify + prompt-tune (M) — **AWS checklist done; live-verified 2026-07-10; owner quality judgment pending**
+- ✅ Dev credentials in `sourcecode/.env` (IAM user `pmagent-dev-bedrock`); profile `apac.amazon.nova-micro-v1:0` **ACTIVE**. `GET /api/ai/health` green through the running api. Drove all three flows end-to-end against real Nova Micro (samples + latency in the PROGRESS D5 row): draft-ticket 1.25s, project-summary 1.05s, expand-ticket 1.67s. Forced-tool Converse confirmed working.
+- ⛔ **Owner quality judgment outstanding.** Observed nit: expand-ticket returns `acceptanceCriteria: []` (prompt asks 2–6). Options: (a) accept Nova Micro as-is, (b) 1 prompt-tuning pass on the expand prompt (then re-run hermetic tests), (c) flip `BEDROCK_MODEL_ID` to Claude Haiku 4.5's global profile + re-verify (record cost delta ≈₹320/mo). Sanjay decides before D is called done.
 
 ## Part E — Deploy (no EC2 resize — t3.medium stays; baseline bill unchanged)
 
