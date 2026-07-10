@@ -107,7 +107,7 @@
     "capacityEmpty": "No open tickets — nothing on anyone's plate.",
     "recentVelocity": "Recent velocity ≈ {{count}} pts/sprint",
     "recentVelocityNone": "No completed sprints yet",
-    "aiSummaryTitle": "Project summary",
+    "aiSummaryTitle": "Project summary.",
     "aiSummaryHint": "An AI-written status digest will land here.",
     "generateSummary": "Generate summary"
   },
