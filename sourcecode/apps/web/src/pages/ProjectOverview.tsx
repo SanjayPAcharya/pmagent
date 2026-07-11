@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +7,7 @@ import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2, Loader2 } fr
 import { BlockedBadge } from '@/components/BlockedBadge'
 import { api, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { useAIHealth, aiButtonState } from '@/lib/useAIHealth'
+import { useAIHealth, aiButtonState, aiErrorKey } from '@/lib/useAIHealth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -111,6 +111,13 @@ export default function ProjectOverview() {
     staleTime: Infinity,
     retry: false,
   })
+  // Re-gate the AI buttons immediately when a summary attempt reveals the server
+  // is down, rather than waiting out the 60s health staleTime.
+  useEffect(() => {
+    if (summary.isError && aiErrorKey(summary.error) === 'ai.error.unavailable') {
+      qc.invalidateQueries({ queryKey: ['ai-health'] })
+    }
+  }, [summary.isError, summary.error, qc])
 
   const isAdmin = org.data?.org.role === 'OWNER' || org.data?.org.role === 'ADMIN'
   const [managing, setManaging] = useState(false)
@@ -465,7 +472,7 @@ export default function ProjectOverview() {
                 </p>
               )}
               {summary.isError && (
-                <p className="text-xs text-destructive">{t('ai.failed')}</p>
+                <p className="text-xs text-destructive">{t(aiErrorKey(summary.error))}</p>
               )}
               <Button
                 size="sm"

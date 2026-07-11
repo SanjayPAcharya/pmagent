@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelationsSection } from '@/components/RelationsSection'
 import { AIButton } from '@/components/BetaBadge'
+import { aiErrorKey } from '@/lib/useAIHealth'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
@@ -115,8 +116,10 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
       setEditingDesc(true) // drop into edit mode so the user reviews before saving
       setAutoFillOpen(false)
       setAiPrompt('')
-    } catch {
-      setExpandError(t('ai.failed'))
+    } catch (e) {
+      const key = aiErrorKey(e)
+      setExpandError(t(key))
+      if (key === 'ai.error.unavailable') qc.invalidateQueries({ queryKey: ['ai-health'] })
     } finally {
       setExpanding(false)
     }

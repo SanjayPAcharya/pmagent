@@ -74,7 +74,7 @@
 
 *Principle: at 1–2.6s real latency, honest fast feedback beats fake streaming. Fix error truthfulness first (cheapest trust win), then perceived latency, then the two review flows.*
 
-### - [ ] B1 — 🤖 Error copy per failure code + retry semantics (S) — *ships alone, first*
+### - [x] B1 — 🤖 Error copy per failure code + retry semantics (S) — *ships alone, first* ✅ DONE 2026-07-11 (web 37→43)
 - New pure helper in `lib/useAIHealth.ts`: `aiErrorKey(err: unknown): string`. **Keying rule (verified shape):** check `err instanceof ApiError`, then **`status === 429` FIRST** (rate-limit body has no `code` — comes from `@fastify/rate-limit`, not `ApiError`), then `code`: `AI_UNAVAILABLE`→`ai.error.unavailable`, `AI_TIMEOUT`→`ai.error.timeout`, `AI_BAD_OUTPUT`→`ai.error.badOutput`, else→`ai.failed`.
 - Copy (new `ai.error.*` i18n keys): unavailable → "AI is temporarily unavailable — your work is untouched. Try again in a minute." · timeout → "The AI took too long. Usually transient — try again." · badOutput → "The AI returned something unusable. Regenerate, or write it manually." · rateLimit → "Too many AI requests — give it a moment." (limits: 10/min draft & expand, 5/min summary).
 - Wire all three sites: `Column.tsx:92` and `TicketDrawer.tsx:118` replace `catch {}` with `catch (e) { set…Error(t(aiErrorKey(e))) }`; `ProjectOverview.tsx:468` maps `summary.error` through it. **On `AI_UNAVAILABLE` also `qc.invalidateQueries({queryKey:['ai-health']})`** so buttons re-gate without waiting out the 60s staleTime.

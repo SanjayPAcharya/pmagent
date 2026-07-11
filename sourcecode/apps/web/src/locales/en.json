@@ -32,6 +32,12 @@
     "unavailable": "AI is not available right now",
     "modelLoading": "The AI model is still loading — try again shortly",
     "failed": "Couldn't generate — please try again",
+    "error": {
+      "unavailable": "AI is temporarily unavailable — your work is untouched. Try again in a minute.",
+      "timeout": "The AI took too long. Usually transient — try again.",
+      "badOutput": "The AI returned something unusable. Regenerate, or write it manually.",
+      "rateLimit": "Too many AI requests — give it a moment."
+    },
     "retry": "Retry",
     "create": "Create ticket",
     "discard": "Discard",

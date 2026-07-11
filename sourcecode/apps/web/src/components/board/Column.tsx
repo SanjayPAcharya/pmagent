@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +8,7 @@ import { api, type AITicketDraft, type Member, type Sprint, type Ticket, type Ti
 import { STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
 import { parseQuickCreate, type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { AIButton } from '@/components/BetaBadge'
+import { aiErrorKey } from '@/lib/useAIHealth'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -71,6 +73,7 @@ export function Column({
   onToggleSelect,
 }: Props) {
   const { t } = useTranslation()
+  const qc = useQueryClient()
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -89,8 +92,12 @@ export function Column({
     try {
       const { draft: d } = await api.aiDraftTicket(projectId, notes)
       setDraft(d)
-    } catch {
-      setDraftError(t('ai.failed'))
+    } catch (e) {
+      const key = aiErrorKey(e)
+      setDraftError(t(key))
+      // Re-gate the AI buttons immediately when the server reports it's down,
+      // rather than waiting out the 60s health staleTime.
+      if (key === 'ai.error.unavailable') qc.invalidateQueries({ queryKey: ['ai-health'] })
     } finally {
       setDrafting(false)
     }
