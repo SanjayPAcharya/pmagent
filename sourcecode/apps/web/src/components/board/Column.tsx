@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -75,6 +75,10 @@ export function Column({
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { setNodeRef, isOver } = useDroppable({ id: status })
+  // Wraps the quick-add composer so onBlur can tell "clicked away" (submit the
+  // raw title) from "clicked another composer control" like Draft with AI — the
+  // latter must NOT submit, or it tears the composer down before runDraft runs.
+  const composerRef = useRef<HTMLDivElement>(null)
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
 
@@ -179,12 +183,16 @@ export function Column({
         )}
       >
         {adding && (
-          <div className="space-y-1.5">
+          <div ref={composerRef} className="space-y-1.5">
             <Input
               autoFocus
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              onBlur={submit}
+              // Only "click away" submits the raw title; moving focus to another
+              // composer control (Draft with AI, preview buttons) must not.
+              onBlur={(e) => {
+                if (!composerRef.current?.contains(e.relatedTarget as Node | null)) submit()
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submit()
                 if (e.key === 'Escape') {
