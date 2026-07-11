@@ -5,110 +5,39 @@ import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
-import { aiHealth, requireProvider, type JsonSchema } from '../services/ai.service.js'
+import { aiHealth, requireProvider } from '../services/ai.service.js'
+import {
+  DRAFT_SYSTEM,
+  EXPAND_SYSTEM,
+  SUMMARY_SYSTEM,
+  draftTicketSchema,
+  draftTicketZod,
+  expandTicketSchema,
+  expandTicketZod,
+  projectSummarySchema,
+  projectSummaryZod,
+} from '../services/ai.prompts.js'
 import { projectOverview } from '../services/overview.service.js'
 
 // Phase 3.8 — self-hosted AI drafting. All endpoints sit behind requireAuth and
 // (for the generation routes) org-role checks; each generation is only ever a
 // draft the same user reviews — no tool use, no auto-save (see phase spec §Prompt hygiene).
+// 3.8.1 A1: the prompts/schemas/zod live in ../services/ai.prompts.ts (shared with
+// the offline eval harness); this file only assembles per-request context + wiring.
 
-const PRIORITIES = ['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const
-
-// ── A2: draft-ticket ─────────────────────────────────────────────────────────
+// ── request-body validators (route input, not model prompts) ──────────────────
 const draftTicketBody = z.object({
   projectId: z.string().uuid(),
   notes: z.string().min(1).max(4000),
 })
-const draftTicketSchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    description: { type: 'string' },
-    acceptanceCriteria: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
-    priority: { type: 'string', enum: [...PRIORITIES] },
-  },
-  required: ['title', 'description', 'acceptanceCriteria', 'priority'],
-}
-const draftTicketZod = z.object({
-  title: z.string().min(1).max(200),
-  description: z.string(),
-  // .min(1): an empty list fails validation → the seam's one corrective re-prompt
-  // fires with an explicit message. Small models (Nova Micro) otherwise omit AC on
-  // thin input despite the prompt + schema minItems.
-  acceptanceCriteria: z.array(z.string()).min(1),
-  priority: z.enum(PRIORITIES),
-})
-
-const DRAFT_SYSTEM = [
-  'You are a senior product manager writing a single work ticket from rough notes.',
-  'Be concrete and concise. Do NOT invent requirements the notes do not support.',
-  'title: a short imperative summary (max ~12 words).',
-  'description: 2–5 sentences of context and scope.',
-  'acceptanceCriteria: 2–6 short, testable, outcome-focused bullet strings (no leading dash).',
-  `priority: choose exactly one of ${PRIORITIES.join(', ')} based only on urgency implied by the notes.`,
-  'Return ONLY JSON matching the schema — no prose, no markdown.',
-].join('\n')
-
-// ── A3: expand-ticket ────────────────────────────────────────────────────────
 const expandTicketBody = z.object({
   ticketId: z.string().uuid(),
   prompt: z.string().max(2000).optional(),
 })
-const expandTicketSchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    description: { type: 'string' },
-    acceptanceCriteria: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
-    goal: { type: 'string' },
-    constraints: { type: 'string' },
-  },
-  required: ['description', 'acceptanceCriteria', 'goal', 'constraints'],
-}
-const expandTicketZod = z.object({
-  description: z.string(),
-  // .min(1): see draftTicketZod — forces the corrective re-prompt if the model
-  // returns an empty acceptanceCriteria (observed with Nova Micro on thin tickets).
-  acceptanceCriteria: z.array(z.string()).min(1),
-  goal: z.string(),
-  constraints: z.string(),
-})
-const EXPAND_SYSTEM = [
-  'You are a senior product manager fleshing out an existing work ticket.',
-  'Use the ticket context below; do NOT contradict its title or invent unrelated scope.',
-  'description: a clear 2–5 sentence problem/scope statement.',
-  'acceptanceCriteria: REQUIRED — always 2 to 6 short, testable bullet strings (no leading dash). Never return an empty list; if the ticket has none yet, derive them from its title, description, and intent.',
-  'goal: one sentence — the outcome this ticket achieves.',
-  'constraints: one or two sentences — technical or scope limits (empty string if none).',
-  'Return ONLY JSON matching the schema — no prose, no markdown.',
-].join('\n')
+const projectSummaryBody = z.object({ projectId: z.string().uuid() })
 
 /** Cap a field so the whole context comfortably fits num_ctx (~4096 tokens). */
 const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
-
-// ── A4: project-summary ──────────────────────────────────────────────────────
-const projectSummaryBody = z.object({ projectId: z.string().uuid() })
-const projectSummarySchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    headline: { type: 'string' },
-    bullets: { type: 'array', items: { type: 'string' } },
-    risks: { type: 'array', items: { type: 'string' } },
-  },
-  required: ['headline', 'bullets', 'risks'],
-}
-const projectSummaryZod = z.object({
-  headline: z.string(),
-  bullets: z.array(z.string()),
-  risks: z.array(z.string()),
-})
-const SUMMARY_SYSTEM = [
-  'You are a senior product manager writing a short status digest for a stakeholder.',
-  'Base everything ONLY on the metrics below — do not invent tickets, names, or dates.',
-  'headline: one sentence capturing overall project health.',
-  'bullets: 3–5 short strings of concrete progress/status (no leading dash).',
-  'risks: 1–4 short strings naming real risks visible in the metrics (blockers, slipping milestones, imbalance); empty array if none.',
-  'Return ONLY JSON matching the schema — no prose, no markdown.',
-].join('\n')
 
 const routes: FastifyPluginAsync = async (app) => {
   app.setValidatorCompiler(validatorCompiler)

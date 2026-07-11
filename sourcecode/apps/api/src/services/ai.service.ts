@@ -45,6 +45,22 @@ export interface AIProvider {
   health(): Promise<ProviderHealth>
 }
 
+/**
+ * Per-generation metadata — surfaced to the offline eval harness (A1) and the
+ * seed for the A6 telemetry line. Not part of the request path: routes call
+ * `generate()` and never see this.
+ */
+export interface GenerateMeta {
+  attempts: number // 1 = valid first try; 2 = one corrective re-prompt fired
+  ms: number
+  inputTokens?: number
+  outputTokens?: number
+}
+export interface GenerateResult<T> {
+  value: T
+  meta: GenerateMeta
+}
+
 /** Shape returned by GET /api/ai/health — drives the frontend's enabled/disabled state. */
 export interface AIHealth {
   enabled: boolean
@@ -73,8 +89,20 @@ class BedrockProvider implements AIProvider {
     this.control = new BedrockClient({ region })
   }
 
-  async generate<T>({ system, user, schema, zod }: GenerateOptions<T>): Promise<T> {
+  async generate<T>(opts: GenerateOptions<T>): Promise<T> {
+    return (await this.generateDetailed(opts)).value
+  }
+
+  /**
+   * Same generation path as `generate`, but returns attempts / latency / token
+   * usage alongside the value. Used by the offline eval harness (A1) and seeds
+   * A6 telemetry; the request path stays on the plain `generate`.
+   */
+  async generateDetailed<T>({ system, user, schema, zod }: GenerateOptions<T>): Promise<GenerateResult<T>> {
+    const started = Date.now()
     let lastError = ''
+    let inputTokens: number | undefined
+    let outputTokens: number | undefined
     // First attempt, then ONE corrective re-prompt if the tool input doesn't validate.
     // Each attempt is a fresh single-user-turn conversation (keeps role alternation
     // trivially valid); the corrective nudge is folded into the user text.
@@ -83,9 +111,15 @@ class BedrockProvider implements AIProvider {
         attempt === 0
           ? user
           : `${user}\n\n(Your previous attempt produced invalid arguments: ${lastError}. Call ${TOOL_NAME} again with valid arguments that match the schema exactly.)`
-      const input = await this.converse(system, text, schema)
+      const { input, usage } = await this.converse(system, text, schema)
+      // Accumulate tokens across attempts so the retry cost is visible.
+      if (usage) {
+        inputTokens = (inputTokens ?? 0) + (usage.inputTokens ?? 0)
+        outputTokens = (outputTokens ?? 0) + (usage.outputTokens ?? 0)
+      }
       try {
-        return zod.parse(input)
+        const value = zod.parse(input)
+        return { value, meta: { attempts: attempt + 1, ms: Date.now() - started, inputTokens, outputTokens } }
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err)
       }
@@ -96,9 +130,14 @@ class BedrockProvider implements AIProvider {
   /**
    * One Converse call that forces the model to emit structured JSON via a single
    * tool whose inputSchema IS the endpoint's JSON schema. Returns the tool input
-   * (already parsed) or null if no tool call came back (→ caller retries/502).
+   * (already parsed, or null if no tool call came back → caller retries/502) plus
+   * the response's token usage when the model reports it.
    */
-  private async converse(system: string, userText: string, schema: JsonSchema): Promise<unknown> {
+  private async converse(
+    system: string,
+    userText: string,
+    schema: JsonSchema,
+  ): Promise<{ input: unknown; usage?: { inputTokens?: number; outputTokens?: number } }> {
     const messages: Message[] = [{ role: 'user', content: [{ text: userText }] }]
     const command = new ConverseCommand({
       modelId: this.modelId,
@@ -136,7 +175,12 @@ class BedrockProvider implements AIProvider {
 
     const blocks: ContentBlock[] = output.output?.message?.content ?? []
     const toolUse = blocks.find((b): b is ContentBlock.ToolUseMember => 'toolUse' in b && !!b.toolUse)?.toolUse
-    return toolUse?.input ?? null
+    return {
+      input: toolUse?.input ?? null,
+      usage: output.usage
+        ? { inputTokens: output.usage.inputTokens, outputTokens: output.usage.outputTokens }
+        : undefined,
+    }
   }
 
   async health(): Promise<ProviderHealth> {
@@ -157,6 +201,17 @@ class BedrockProvider implements AIProvider {
       return { reachable: false, modelReady: false }
     }
   }
+}
+
+/**
+ * Construct a Bedrock provider directly (region + timeout from config, model
+ * overridable). Lets the offline eval harness (A1/A4 `--model`) build one without
+ * the AI_PROVIDER gate or the Fastify plugin. Not used by the request path — that
+ * goes through resolveProvider so BYOK stays the single switch point.
+ */
+export function createBedrockProvider(modelId?: string): BedrockProvider {
+  const { BEDROCK_MODEL_ID, AWS_REGION, AI_TIMEOUT_MS } = loadConfig()
+  return new BedrockProvider(modelId ?? BEDROCK_MODEL_ID, AWS_REGION, AI_TIMEOUT_MS)
 }
 
 // ── Resolution ───────────────────────────────────────────────────────────────
