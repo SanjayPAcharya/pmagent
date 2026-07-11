@@ -1,12 +1,12 @@
-import type { FastifyPluginAsync } from 'fastify'
+import type { FastifyPluginAsync, FastifyBaseLogger } from 'fastify'
 import { z } from 'zod'
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod'
 import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
-import { aiHealth, requireProvider } from '../services/ai.service.js'
-import { PROMPTS, buildDraftUser, buildExpandUser, buildSummaryUser } from '../services/ai.prompts.js'
+import { aiHealth, requireProvider, type AIProvider, type GenerateOptions } from '../services/ai.service.js'
+import { PROMPTS, PROMPT_VERSION, buildDraftUser, buildExpandUser, buildSummaryUser } from '../services/ai.prompts.js'
 import { projectOverview } from '../services/overview.service.js'
 
 // Phase 3.8 — self-hosted AI drafting. All endpoints sit behind requireAuth and
@@ -28,6 +28,41 @@ const projectSummaryBody = z.object({ projectId: z.string().uuid() })
 
 /** Cap a field so the whole context comfortably fits num_ctx (~4096 tokens). */
 const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
+
+/**
+ * 3.8.1 A6 — run a generation through the seam and emit exactly ONE structured
+ * telemetry line per attempt-set (no request-body logging). Gives A5 prod
+ * evidence and makes Cost Explorer anomalies attributable to an endpoint/model/
+ * prompt version. `outcome`: ok | retry_ok on success; bad_output | timeout |
+ * unavailable | error on the mapped ApiError code.
+ */
+async function generateLogged<T>(
+  log: FastifyBaseLogger,
+  endpoint: 'draft' | 'expand' | 'summary',
+  provider: AIProvider,
+  opts: GenerateOptions<T>,
+): Promise<T> {
+  const started = Date.now()
+  const base = { evt: 'ai.generate', endpoint, model: provider.model, promptVersion: PROMPT_VERSION }
+  try {
+    const { value, meta } = await provider.generateDetailed(opts)
+    log.info({
+      ...base,
+      attempts: meta.attempts,
+      ms: meta.ms,
+      outcome: meta.attempts === 1 ? 'ok' : 'retry_ok',
+      inputTokens: meta.inputTokens,
+      outputTokens: meta.outputTokens,
+    })
+    return value
+  } catch (err) {
+    const code = err instanceof ApiError ? err.code : undefined
+    const outcome =
+      code === 'AI_BAD_OUTPUT' ? 'bad_output' : code === 'AI_TIMEOUT' ? 'timeout' : code === 'AI_UNAVAILABLE' ? 'unavailable' : 'error'
+    log.warn({ ...base, ms: Date.now() - started, outcome })
+    throw err
+  }
+}
 
 const routes: FastifyPluginAsync = async (app) => {
   app.setValidatorCompiler(validatorCompiler)
@@ -64,7 +99,7 @@ const routes: FastifyPluginAsync = async (app) => {
       ])
 
       const provider = requireProvider(project.orgId)
-      const draft = await provider.generate({
+      const draft = await generateLogged(request.log, 'draft', provider, {
         ...PROMPTS.draft,
         user: buildDraftUser({
           notes,
@@ -118,7 +153,7 @@ const routes: FastifyPluginAsync = async (app) => {
       })
 
       const provider = requireProvider(ticket.project.orgId)
-      const draft = await provider.generate({
+      const draft = await generateLogged(request.log, 'expand', provider, {
         ...PROMPTS.expand,
         user: buildExpandUser({
           title: ticket.title,
@@ -176,7 +211,7 @@ const routes: FastifyPluginAsync = async (app) => {
       })
 
       const provider = requireProvider(project.orgId)
-      const draft = await provider.generate({
+      const draft = await generateLogged(request.log, 'summary', provider, {
         ...PROMPTS.summary,
         user: buildSummaryUser({ metrics, sprintGoal: activeSprint?.goal ?? null }),
       })

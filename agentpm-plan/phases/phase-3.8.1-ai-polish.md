@@ -65,7 +65,7 @@
 ### - [ ] A5 — ⛔ 🧑 `[MANUAL — owner]` quality judgment + model decision
 - Owner reads A4, picks the prod model. Switch = edit `BEDROCK_MODEL_ID` in `.github/workflows/deploy.yml` env (or the box's `.env.prod`) + redeploy — **no code**. Record decision + cost delta in PROGRESS.
 
-### - [ ] A6 — 🤖 Generation telemetry line (S) — *new in the verified plan*
+### - [x] A6 — 🤖 Generation telemetry line (S) — *new in the verified plan* ✅ DONE 2026-07-11 (one structured line/generation; api 113→114)
 - One structured log per generation through the seam: `{endpoint, model, promptVersion, attempts, ms, outcome: ok|retry_ok|bad_output|timeout|throttle|error, inputTokens?, outputTokens?}` via the existing Fastify/pino logger (no new infra, no request-body logging). Gives A5 prod evidence and makes Cost Explorer anomalies attributable.
 - Hermetic test: happy path emits exactly one line with `outcome:'ok'` (+1).
 - **DoD:** visible in `docker compose logs api` during a dev generation; suite green.

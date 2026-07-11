@@ -19,15 +19,19 @@ import { wsServer } from './websocket/ws-server.js'
 import { initNotificationService } from './services/notifications.service.js'
 import { purgeExpired } from './services/retention.service.js'
 
-export async function buildServer() {
+export async function buildServer(opts: { loggerStream?: NodeJS.WritableStream } = {}) {
   const config = loadConfig()
 
   const app = Fastify({
-    logger: {
-      level: config.LOG_LEVEL,
-      transport:
-        config.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
-    },
+    // `loggerStream` is a test-only seam (3.8.1 A6) so a spec can capture the
+    // structured log lines the app emits; prod/dev are unaffected.
+    logger: opts.loggerStream
+      ? { level: config.LOG_LEVEL, stream: opts.loggerStream }
+      : {
+          level: config.LOG_LEVEL,
+          transport:
+            config.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
+        },
   })
 
   // Tolerate an empty body on `Content-Type: application/json` requests. Browsers

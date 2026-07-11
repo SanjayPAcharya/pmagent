@@ -45,14 +45,16 @@ export interface ProviderHealth {
 
 export interface AIProvider {
   readonly name: string
+  readonly model: string // the concrete model/profile id — for the A6 telemetry line
   generate<T>(opts: GenerateOptions<T>): Promise<T>
+  generateDetailed<T>(opts: GenerateOptions<T>): Promise<GenerateResult<T>>
   health(): Promise<ProviderHealth>
 }
 
 /**
  * Per-generation metadata — surfaced to the offline eval harness (A1) and the
- * seed for the A6 telemetry line. Not part of the request path: routes call
- * `generate()` and never see this.
+ * A6 telemetry line. Routes call `generateDetailed()` to log it, then return
+ * `.value`.
  */
 export interface GenerateMeta {
   attempts: number // 1 = valid first try; 2 = one corrective re-prompt fired
@@ -79,6 +81,9 @@ const TOOL_NAME = 'emit_result'
 
 class BedrockProvider implements AIProvider {
   readonly name = 'bedrock'
+  get model(): string {
+    return this.modelId
+  }
   private readonly runtime: BedrockRuntimeClient
   private readonly control: BedrockClient
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
+import { Writable } from 'node:stream'
 import type { FastifyInstance } from 'fastify'
 
 // Phase 3.8 D2 — hermetic AI tests. The AWS SDK is mocked at module level; no
@@ -519,5 +520,49 @@ describe('AI context enrichment (3.8.1 A3)', () => {
     const user = buildDraftUser({ notes: 'x', projectName: 'P', recentTitles, labels: ['a', 'b'] })
     const enrichment = user.split('\n\n').slice(2).join('\n\n')
     expect(enrichment.length).toBeLessThanOrEqual(1500)
+  })
+})
+
+describe('AI telemetry (3.8.1 A6)', () => {
+  it('emits exactly one structured ai.generate line with outcome ok on the happy path', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-a6')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Telem Co')
+    const projectId = await makeProject(owner, orgId, 'Telem Proj')
+
+    // A second app whose logger writes to a capturable stream (shares the same DB,
+    // so the org/project above are visible). Only the measured request runs here.
+    const chunks: string[] = []
+    const stream = new Writable({
+      write(chunk, _enc, cb) {
+        chunks.push(chunk.toString())
+        cb()
+      },
+    })
+    const capApp = await buildServer({ loggerStream: stream })
+    try {
+      runtimeSend.mockResolvedValueOnce(
+        toolResponse({ title: 'T', description: 'D', acceptanceCriteria: ['a'], priority: 'LOW' }),
+      )
+      const res = await capApp.inject({
+        method: 'POST',
+        url: '/api/ai/draft-ticket',
+        headers: bearer(owner),
+        payload: { projectId, notes: 'add a thing' },
+      })
+      expect(res.statusCode).toBe(200)
+    } finally {
+      await capApp.close()
+    }
+
+    const lines = chunks
+      .join('')
+      .split('\n')
+      .filter((l) => l.includes('"evt":"ai.generate"'))
+    expect(lines).toHaveLength(1)
+    const entry = JSON.parse(lines[0])
+    expect(entry).toMatchObject({ evt: 'ai.generate', endpoint: 'draft', outcome: 'ok', attempts: 1, promptVersion: 2 })
+    expect(entry.model).toBeTruthy()
   })
 })
