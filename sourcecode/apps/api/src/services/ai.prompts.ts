@@ -107,6 +107,74 @@ export const SUMMARY_SYSTEM = [
   'Return ONLY JSON matching the schema — no prose, no markdown.',
 ].join('\n')
 
+// ── User-text builders (3.8.1 A3) ────────────────────────────────────────────
+// Shared by routes/ai.ts and the eval harness so the harness measures the EXACT
+// text production sees, enrichment included. Enrichment = titles/labels/goal only
+// (never other tickets' descriptions — PII posture unchanged from 3.8).
+
+const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
+/** Cap the whole enrichment block so draft context stays well under num_ctx. */
+const DRAFT_ENRICH_CAP = 1500
+
+export interface DraftContext {
+  notes: string
+  projectName?: string | null
+  recentTitles?: string[] // style anchor — the model mimics the project's naming register
+  labels?: string[] // team vocabulary
+}
+export function buildDraftUser(ctx: DraftContext): string {
+  const base = `Rough notes for the ticket:\n\n${ctx.notes}`
+  const extra: string[] = []
+  if (ctx.projectName) extra.push(`Project: ${cap(ctx.projectName, 200)}`)
+  if (ctx.recentTitles?.length) {
+    extra.push(
+      'Recent ticket titles in this project (naming-style reference — match their register; do NOT copy their content):',
+      ...ctx.recentTitles.slice(0, 10).map((t) => `- ${cap(t, 200)}`),
+    )
+  }
+  if (ctx.labels?.length) extra.push(`Existing labels: ${ctx.labels.map((l) => cap(l, 60)).join(', ')}`)
+  if (!extra.length) return base
+  return `${base}\n\n${cap(extra.join('\n'), DRAFT_ENRICH_CAP)}`
+}
+
+export interface ExpandContext {
+  title: string
+  description?: string | null
+  acceptanceCriteria?: string | null
+  goal?: string | null
+  constraints?: string | null
+  prompt?: string | null
+  parentTitle?: string | null
+  siblingTitles?: string[]
+}
+export function buildExpandUser(ctx: ExpandContext): string {
+  const lines = [
+    `Title: ${cap(ctx.title, 200)}`,
+    `Current description: ${cap(ctx.description, 2000) || '(none)'}`,
+    `Current acceptance criteria: ${cap(ctx.acceptanceCriteria, 1500) || '(none)'}`,
+    `Current goal: ${cap(ctx.goal, 500) || '(none)'}`,
+    `Current constraints: ${cap(ctx.constraints, 500) || '(none)'}`,
+  ]
+  if (ctx.parentTitle) lines.push(`Parent ticket: ${cap(ctx.parentTitle, 200)}`)
+  if (ctx.siblingTitles?.length) {
+    lines.push(
+      'Related ticket titles (context only — do not merge their scope into this one):',
+      ...ctx.siblingTitles.slice(0, 5).map((t) => `- ${cap(t, 200)}`),
+    )
+  }
+  if (ctx.prompt) lines.push(`\nAdditional direction from the user: ${ctx.prompt}`)
+  return lines.join('\n')
+}
+
+export interface SummaryContext {
+  metrics: unknown
+  sprintGoal?: string | null
+}
+export function buildSummaryUser(ctx: SummaryContext): string {
+  const base = `Project metrics (JSON):\n\n${JSON.stringify(ctx.metrics)}`
+  return ctx.sprintGoal ? `${base}\n\nActive sprint goal: ${cap(ctx.sprintGoal, 300)}` : base
+}
+
 // ── Registry — one entry per endpoint, shared by the route and the eval harness.
 // temperature/maxTokens are the A2 per-endpoint sampling knobs: summary runs
 // cooler (more deterministic digests); caps are generous headroom over observed

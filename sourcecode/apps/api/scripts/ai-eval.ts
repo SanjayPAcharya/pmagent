@@ -19,7 +19,14 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { createBedrockProvider } from '../src/services/ai.service.js'
-import { PROMPTS, PROMPT_VERSION, type PromptEndpoint } from '../src/services/ai.prompts.js'
+import {
+  PROMPTS,
+  PROMPT_VERSION,
+  buildDraftUser,
+  buildExpandUser,
+  buildSummaryUser,
+  type PromptEndpoint,
+} from '../src/services/ai.prompts.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ENV_PATH = resolve(HERE, '../../../.env') // sourcecode/.env
@@ -86,29 +93,27 @@ function assertConfigured() {
   }
 }
 
-// ── faithful user-text assembly (mirrors routes/ai.ts) ──────────────────────────
-const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
-
+// ── fixture shapes + faithful user-text assembly ────────────────────────────────
+// The builders come from ai.prompts.ts — the SAME functions the routes call, so the
+// harness measures production's exact text (enrichment included). Fixtures carry
+// synthetic enrichment (applied from the top-level `enrichment` block for draft/
+// expand; per-fixture `sprintGoal` for summary) to measure the A3 lever.
 interface DraftFx { id: string; kind: string; notes: string }
 interface ExpandFx { id: string; kind: string; ticket: { title: string; description: string; acceptanceCriteria: string; goal: string; constraints: string }; prompt: string | null }
-interface SummaryFx { id: string; kind: string; metrics: unknown }
-
-function draftUser(fx: DraftFx): string {
-  return `Rough notes for the ticket:\n\n${fx.notes}`
+interface SummaryFx { id: string; kind: string; metrics: unknown; sprintGoal?: string | null }
+interface Enrichment {
+  draft?: { projectName?: string; recentTitles?: string[]; labels?: string[] }
+  expand?: { parentTitle?: string; siblingTitles?: string[] }
 }
-function expandUser(fx: ExpandFx): string {
-  const t = fx.ticket
-  return [
-    `Title: ${cap(t.title, 200)}`,
-    `Current description: ${cap(t.description, 2000) || '(none)'}`,
-    `Current acceptance criteria: ${cap(t.acceptanceCriteria, 1500) || '(none)'}`,
-    `Current goal: ${cap(t.goal, 500) || '(none)'}`,
-    `Current constraints: ${cap(t.constraints, 500) || '(none)'}`,
-    fx.prompt ? `\nAdditional direction from the user: ${fx.prompt}` : '',
-  ].join('\n')
+
+function draftUser(fx: DraftFx, e: Enrichment): string {
+  return buildDraftUser({ notes: fx.notes, ...e.draft })
+}
+function expandUser(fx: ExpandFx, e: Enrichment): string {
+  return buildExpandUser({ ...fx.ticket, prompt: fx.prompt, ...e.expand })
 }
 function summaryUser(fx: SummaryFx): string {
-  return `Project metrics (JSON):\n\n${JSON.stringify(fx.metrics)}`
+  return buildSummaryUser({ metrics: fx.metrics, sprintGoal: fx.sprintGoal ?? null })
 }
 
 // ── scoring heuristics ──────────────────────────────────────────────────────────
@@ -305,7 +310,9 @@ async function main() {
     draft: DraftFx[]
     expand: ExpandFx[]
     summary: SummaryFx[]
+    enrichment?: Enrichment
   }
+  const enrichment: Enrichment = fixtures.enrichment ?? {}
   const endpoints: PromptEndpoint[] = endpoint ? [endpoint] : ['draft', 'expand', 'summary']
 
   const totalGenerations = endpoints.reduce((a, ep) => a + fixtures[ep].length * runs, 0)
@@ -320,9 +327,13 @@ async function main() {
 
   const aggs: FixtureAgg[] = []
   for (const ep of endpoints) {
-    const build = ep === 'draft' ? draftUser : ep === 'expand' ? expandUser : summaryUser
     for (const fx of fixtures[ep] as Array<DraftFx & ExpandFx & SummaryFx>) {
-      const user = build(fx as never)
+      const user =
+        ep === 'draft'
+          ? draftUser(fx, enrichment)
+          : ep === 'expand'
+            ? expandUser(fx, enrichment)
+            : summaryUser(fx)
       const scores: RunScore[] = []
       for (let i = 0; i < runs; i++) {
         const s = await scoreOne(provider, ep, user)

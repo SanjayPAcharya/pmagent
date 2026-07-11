@@ -49,7 +49,7 @@
 - Hermetic test delta: assert `inferenceConfig` passthrough lands in the Converse command (+1–2 tests).
 - **DoD:** scorecard delta vs A1 baseline recorded in the eval report; suite green.
 
-### - [ ] A3 — 🤖 Context enrichment (M) — *biggest quality lever*
+### - [x] A3 — 🤖 Context enrichment (M) — *biggest quality lever* ✅ DONE 2026-07-11 (100% first-try + invention down; api 109→113)
 - **draft-ticket:** add project name + up to 10 recent ticket titles (style anchor — the model mimics the project's naming register) + the org's label names (team vocabulary). Queries: `ticket.findMany({where:{projectId, archivedAt:null}, orderBy:{updatedAt:'desc'}, take:10, select:{title:true}})`, `label.findMany({where:{orgId}, select:{name:true}})`. Total added context capped < ~1.5k chars.
 - **expand-ticket:** add parent title (when `parentId` set) + up to 5 sibling/nearest ticket titles.
 - **project-summary:** add the active sprint's `goal` (one extra select — `OverviewActiveSprint` doesn't carry it; query the sprint directly in the route rather than widening the overview type).

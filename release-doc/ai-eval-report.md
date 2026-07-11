@@ -1,52 +1,56 @@
 # AI eval report
 
-- **Generated:** 2026-07-11T04:18:27.146Z
+- **Generated:** 2026-07-11T04:27:55.663Z
 - **Model:** `apac.amazon.nova-micro-v1:0`
 - **Prompt version:** 2
 - **Runs per fixture:** 3
 - **Fixtures:** 16 (48 generations)
-- **Tokens:** 33209 in / 6348 out · **est. cost this run:** $0.0021 (≈₹0.17)
+- **Tokens:** 35319 in / 6489 out · **est. cost this run:** $0.0021 (≈₹0.18)
 
 > Heuristic scores, not ground truth. **valid-1st** = passed zod on the first attempt (no corrective re-prompt). **retry** = one re-prompt fired. **AC-test** = fraction of acceptance criteria that look testable (verb-led or measurable). **invent** = fraction of output content-words absent from the input (a hallucination smell — high is bad on thin inputs). Prices in PRICES[] are approximate; refresh before quoting.
 
-## Prompt change log (A2, vs v1 baseline)
+> ⚠️ The harness overwrites this file on every run. The change log below is re-appended by hand after each kept change — if a run has just regenerated the tables, re-add it from PROGRESS.md.
 
-**Tried & DROPPED — one few-shot exemplar per endpoint.** Measured on Nova Micro: **+23% input tokens** (30.7k → 37.8k) for **no scorecard gain**, plus two regressions (an added expand retry; empty-project summary lost its bullets). Consistent with "small models degrade with long prompts" — removed.
+## Change log (Nova Micro, 3 runs/fixture)
 
-**Tried & KEPT (v2, ~token-neutral at 33.2k in):**
-- Per-endpoint sampling — draft/expand `temperature 0.2`, **summary `temperature 0.1`** (more deterministic digests); `maxTokens` caps 400/500/350 as anti-rambling rails (well above observed output sizes, never truncating). Structural; asserted by hermetic tests.
-- Directive tightening — "write in your own words / don't echo verbatim", explicit anti-thin-input rule (stay minimal on vague input rather than invent scope), AC phrased as verb-led observable/measurable outcomes.
-- Clearest measured win: **empty-project summary risks 3 → 1.3** (v1 over-flagged risks on a project with no data); bullets restored to ≥3.
+**Baseline v1 (A1):** 30.7k in / 5.2k out. 100% schema-valid first-try, zero retries. AC-testability low, invention high on thin inputs — the two levers.
 
-**Signal quality note:** the AC-testability heuristic is noisy at 3 runs/fixture — treat it as directional, not a gate. Schema compliance stayed ~100% first-try across both versions.
+**A2 — prompt tightening (v2):**
+- Tried & **DROPPED** one few-shot exemplar per endpoint: **+23% input tokens (→37.8k) for no scorecard gain + two regressions** (an added expand retry; empty-project summary lost bullets). Confirms small models degrade with long prompts.
+- **Kept** (≈token-neutral 33.2k in): summary `temperature 0.1` (vs draft/expand 0.2); `maxTokens` caps 400/500/350; don't-echo / anti-thin-input / verb-led-measurable-AC directives. Win: empty-project summary risks 3 → 1.3.
+
+**A3 — context enrichment (biggest lever, current tables above):** draft gets project name + up to 10 recent titles (style anchor) + org labels; expand gets parent + up to 5 sibling titles; summary gets the active sprint goal.
+- **100% valid-first-try across ALL 16 fixtures, zero retries** — enrichment removed the v2 flaky-retry noise entirely.
+- **Invention fell** on thin inputs (terse 93→77, rambling 79→69, bug 53→41). Partly a metric artifact (more input words) but also real grounding.
+- Cost: 35.3k in (+~2k vs v2) — enrichment is capped < ~1.5k chars/call. Net: clearly worth it.
 
 ## draft
 
 | fixture | kind | valid-1st | retry | AC | AC-test | invent | title-words | ms | in-tok | out-tok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| terse-oneliner | terse | 100% | 0% | 5.3 | 7% | 93% | 5 | 929 | 638 | 118 |
-| rambling-paragraph | rambling | 100% | 0% | 5 | 47% | 79% | 7.7 | 1125 | 717 | 124 |
-| typod-input | typod | 100% | 0% | 5 | 20% | 90% | 5 | 990 | 662 | 119 |
-| bug-report | bug | 100% | 0% | 4.7 | 0% | 53% | 7 | 921 | 664 | 125 |
-| feature-request | feature | 100% | 0% | 5.7 | 0% | 78% | 7 | 910 | 656 | 131 |
-| chore-maintenance | chore | 100% | 0% | 5.3 | 50% | 71% | 4.3 | 954 | 651 | 136 |
-| urgency-implying | urgent | 100% | 0% | 4.3 | 62% | 73% | 5.3 | 777 | 664 | 104 |
-| vague-thin | thin | 100% | 0% | 4.3 | 72% | 93% | 3 | 812 | 636 | 107 |
+| terse-oneliner | terse | 100% | 0% | 5.3 | 0% | 77% | 5 | 1002 | 728 | 121 |
+| rambling-paragraph | rambling | 100% | 0% | 5.3 | 0% | 69% | 7 | 1267 | 807 | 141 |
+| typod-input | typod | 100% | 0% | 4 | 58% | 88% | 5.7 | 1498 | 752 | 105 |
+| bug-report | bug | 100% | 0% | 5 | 13% | 41% | 8 | 997 | 753 | 143 |
+| feature-request | feature | 100% | 0% | 5.3 | 0% | 72% | 6.7 | 907 | 746 | 134 |
+| chore-maintenance | chore | 100% | 0% | 4.3 | 47% | 71% | 7.3 | 1108 | 741 | 139 |
+| urgency-implying | urgent | 100% | 0% | 4.3 | 68% | 71% | 5 | 1458 | 754 | 116 |
+| vague-thin | thin | 100% | 0% | 5 | 13% | 85% | 4 | 932 | 726 | 122 |
 
 ## expand
 
 | fixture | kind | valid-1st | retry | AC | AC-test | invent | ms | in-tok | out-tok |
 |---|---|---|---|---|---|---|---|---|---|
-| title-only-ratelimit | title-only | 67% | 33% | 6 | 50% | 96% | 1529 | 930 | 230 |
-| title-only-darkmode | title-only | 100% | 0% | 5.7 | 6% | 93% | 1093 | 667 | 175 |
-| thin-desc-search | thin-desc | 100% | 0% | 5 | 40% | 79% | 1001 | 671 | 147 |
-| bug-title-webhook | bug-title | 100% | 0% | 5 | 7% | 84% | 940 | 685 | 149 |
-| vague-title-onboarding | vague-title | 100% | 0% | 5 | 93% | 97% | 1906 | 667 | 144 |
+| title-only-ratelimit | title-only | 100% | 0% | 5.3 | 50% | 94% | 1252 | 711 | 177 |
+| title-only-darkmode | title-only | 100% | 0% | 5.3 | 12% | 93% | 1091 | 710 | 190 |
+| thin-desc-search | thin-desc | 100% | 0% | 5 | 53% | 86% | 1020 | 714 | 135 |
+| bug-title-webhook | bug-title | 100% | 0% | 5.7 | 11% | 81% | 1369 | 729 | 173 |
+| vague-title-onboarding | vague-title | 100% | 0% | 5.7 | 66% | 93% | 1389 | 710 | 171 |
 
 ## summary
 
 | fixture | kind | valid-1st | retry | bullets | risks | ms | in-tok | out-tok |
 |---|---|---|---|---|---|---|---|---|
-| empty-project | empty | 100% | 0% | 3.3 | 1.3 | 837 | 647 | 72 |
-| healthy-project | healthy | 100% | 0% | 3.7 | 1.3 | 834 | 708 | 109 |
-| blocker-heavy-project | blocker-heavy | 100% | 0% | 4.3 | 3.7 | 1240 | 807 | 127 |
+| empty-project | empty | 100% | 0% | 3 | 2.3 | 697 | 647 | 73 |
+| healthy-project | healthy | 100% | 0% | 4 | 0.7 | 1083 | 725 | 91 |
+| blocker-heavy-project | blocker-heavy | 100% | 0% | 4.3 | 4.3 | 892 | 820 | 132 |

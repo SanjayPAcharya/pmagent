@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
 import { aiHealth, requireProvider } from '../services/ai.service.js'
-import { PROMPTS } from '../services/ai.prompts.js'
+import { PROMPTS, buildDraftUser, buildExpandUser, buildSummaryUser } from '../services/ai.prompts.js'
 import { projectOverview } from '../services/overview.service.js'
 
 // Phase 3.8 — self-hosted AI drafting. All endpoints sit behind requireAuth and
@@ -47,14 +47,31 @@ const routes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const { projectId, notes } = request.body
-      const project = await prisma.project.findUnique({ where: { id: projectId }, select: { orgId: true } })
+      const project = await prisma.project.findUnique({ where: { id: projectId }, select: { orgId: true, name: true } })
       if (!project) throw new ApiError(404, 'Project not found')
       await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
+
+      // A3 enrichment: project name + up to 10 recent titles (naming-style anchor)
+      // + the org's label vocabulary. Same org-role gate covers these reads.
+      const [recent, labels] = await Promise.all([
+        prisma.ticket.findMany({
+          where: { projectId, archivedAt: null },
+          orderBy: { updatedAt: 'desc' },
+          take: 10,
+          select: { title: true },
+        }),
+        prisma.label.findMany({ where: { orgId: project.orgId }, select: { name: true } }),
+      ])
 
       const provider = requireProvider(project.orgId)
       const draft = await provider.generate({
         ...PROMPTS.draft,
-        user: `Rough notes for the ticket:\n\n${notes}`,
+        user: buildDraftUser({
+          notes,
+          projectName: project.name,
+          recentTitles: recent.map((t) => t.title),
+          labels: labels.map((l) => l.name),
+        }),
       })
       return { draft }
     },
@@ -77,25 +94,42 @@ const routes: FastifyPluginAsync = async (app) => {
           acceptanceCriteria: true,
           goal: true,
           constraints: true,
+          projectId: true,
+          parentId: true,
+          parent: { select: { title: true } },
           project: { select: { orgId: true } },
         },
       })
       if (!ticket) throw new ApiError(404, 'Ticket not found')
       await assertOrgRole(request.userId!, ticket.project.orgId, 'MEMBER')
 
-      const context = [
-        `Title: ${cap(ticket.title, 200)}`,
-        `Current description: ${cap(ticket.description, 2000) || '(none)'}`,
-        `Current acceptance criteria: ${cap(ticket.acceptanceCriteria, 1500) || '(none)'}`,
-        `Current goal: ${cap(ticket.goal, 500) || '(none)'}`,
-        `Current constraints: ${cap(ticket.constraints, 500) || '(none)'}`,
-        prompt ? `\nAdditional direction from the user: ${prompt}` : '',
-      ].join('\n')
+      // A3 enrichment: parent title + up to 5 sibling titles (same parent if this
+      // ticket is a subtask, else the nearest tickets in the project).
+      const siblings = await prisma.ticket.findMany({
+        where: {
+          projectId: ticket.projectId,
+          id: { not: ticketId },
+          archivedAt: null,
+          ...(ticket.parentId ? { parentId: ticket.parentId } : {}),
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: { title: true },
+      })
 
       const provider = requireProvider(ticket.project.orgId)
       const draft = await provider.generate({
         ...PROMPTS.expand,
-        user: context,
+        user: buildExpandUser({
+          title: ticket.title,
+          description: ticket.description,
+          acceptanceCriteria: ticket.acceptanceCriteria,
+          goal: ticket.goal,
+          constraints: ticket.constraints,
+          prompt,
+          parentTitle: ticket.parent?.title,
+          siblingTitles: siblings.map((s) => s.title),
+        }),
       })
       return { draft }
     },
@@ -134,10 +168,17 @@ const routes: FastifyPluginAsync = async (app) => {
         recentVelocityAvg: ov.capacity.recentVelocityAvg,
       }
 
+      // A3 enrichment: the active sprint's goal (OverviewActiveSprint doesn't carry
+      // it — query the sprint directly rather than widening the overview type).
+      const activeSprint = await prisma.sprint.findFirst({
+        where: { projectId, status: 'ACTIVE' },
+        select: { goal: true },
+      })
+
       const provider = requireProvider(project.orgId)
       const draft = await provider.generate({
         ...PROMPTS.summary,
-        user: `Project metrics (JSON):\n\n${JSON.stringify(metrics)}`,
+        user: buildSummaryUser({ metrics, sprintGoal: activeSprint?.goal ?? null }),
       })
       return { summary: draft }
     },

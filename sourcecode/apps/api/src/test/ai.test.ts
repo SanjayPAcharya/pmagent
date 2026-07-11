@@ -30,6 +30,7 @@ vi.mock('@aws-sdk/client-bedrock', () => {
 })
 
 import { buildServer } from '../index'
+import { buildDraftUser } from '../services/ai.prompts'
 import { signToken } from './auth-test-kit'
 
 let app: FastifyInstance
@@ -63,6 +64,19 @@ async function makeProject(token: string, orgId: string, name: string): Promise<
 async function makeTicket(token: string, projectId: string, title: string): Promise<string> {
   const res = await app.inject({ method: 'POST', url: '/api/tickets', headers: bearer(token), payload: { projectId, title } })
   return res.json().ticket.id as string
+}
+async function makeLabel(token: string, orgId: string, name: string): Promise<void> {
+  await app.inject({ method: 'POST', url: '/api/labels', headers: bearer(token), payload: { orgId, name, color: '#888888' } })
+}
+async function makeActiveSprint(token: string, projectId: string, name: string, goal: string): Promise<void> {
+  const res = await app.inject({ method: 'POST', url: '/api/sprints', headers: bearer(token), payload: { projectId, name, goal } })
+  const sprintId = res.json().sprint.id as string
+  await app.inject({ method: 'POST', url: `/api/sprints/${sprintId}/start`, headers: bearer(token) })
+}
+/** The user text of the first Converse call the seam issued. */
+function lastUserText(): string {
+  const cmd = runtimeSend.mock.calls[0][0] as { input: { messages: Array<{ content: Array<{ text: string }> }> } }
+  return cmd.input.messages[0].content[0].text
 }
 
 /** Build a Converse response whose forced tool call carries `input` as its arguments. */
@@ -426,5 +440,84 @@ describe('AI project-summary (3.8 A4/D2)', () => {
     })
     expect(res.statusCode).toBe(403)
     expect(runtimeSend).not.toHaveBeenCalled()
+  })
+})
+
+describe('AI context enrichment (3.8.1 A3)', () => {
+  it('draft context carries the project name, recent ticket titles, and org labels', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-a3-draft')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Enrich Co')
+    const projectId = await makeProject(owner, orgId, 'Enrichment Proj')
+    await makeTicket(owner, projectId, 'Alpha widget renders')
+    await makeTicket(owner, projectId, 'Beta gadget syncs')
+    await makeLabel(owner, orgId, 'needs-review')
+
+    runtimeSend.mockResolvedValueOnce(
+      toolResponse({ title: 'T', description: 'D', acceptanceCriteria: ['a'], priority: 'LOW' }),
+    )
+    await app.inject({
+      method: 'POST',
+      url: '/api/ai/draft-ticket',
+      headers: bearer(owner),
+      payload: { projectId, notes: 'add a thing' },
+    })
+    const text = lastUserText()
+    expect(text).toContain('Project: Enrichment Proj')
+    expect(text).toContain('Alpha widget renders')
+    expect(text).toContain('Beta gadget syncs')
+    expect(text).toContain('needs-review')
+  })
+
+  it('expand context carries sibling ticket titles from the same project', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-a3-expand')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Sibling Co')
+    const projectId = await makeProject(owner, orgId, 'Sibling Proj')
+    const ticketId = await makeTicket(owner, projectId, 'Rate limit the API')
+    await makeTicket(owner, projectId, 'Cache the results')
+    await makeTicket(owner, projectId, 'Add request logging')
+
+    runtimeSend.mockResolvedValueOnce(
+      toolResponse({ description: 'D', acceptanceCriteria: ['a'], goal: 'G', constraints: '' }),
+    )
+    await app.inject({
+      method: 'POST',
+      url: '/api/ai/expand-ticket',
+      headers: bearer(owner),
+      payload: { ticketId },
+    })
+    const text = lastUserText()
+    expect(text).toContain('Related ticket titles')
+    expect(text).toContain('Cache the results')
+    expect(text).toContain('Add request logging')
+  })
+
+  it('summary context carries the active sprint goal', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-a3-summary')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Goal Co')
+    const projectId = await makeProject(owner, orgId, 'Goal Proj')
+    await makeActiveSprint(owner, projectId, 'Sprint 1', 'Ship the onboarding flow')
+
+    runtimeSend.mockResolvedValueOnce(toolResponse({ headline: 'H', bullets: ['b', 'c', 'd'], risks: [] }))
+    await app.inject({
+      method: 'POST',
+      url: '/api/ai/project-summary',
+      headers: bearer(owner),
+      payload: { projectId },
+    })
+    expect(lastUserText()).toContain('Active sprint goal: Ship the onboarding flow')
+  })
+
+  it('caps the draft enrichment block near ~1.5k chars (pure builder)', () => {
+    // A flood of long titles must not blow past the cap that keeps context < num_ctx.
+    const recentTitles = Array.from({ length: 60 }, (_, i) => `Very long ticket title number ${i} `.repeat(6))
+    const user = buildDraftUser({ notes: 'x', projectName: 'P', recentTitles, labels: ['a', 'b'] })
+    const enrichment = user.split('\n\n').slice(2).join('\n\n')
+    expect(enrichment.length).toBeLessThanOrEqual(1500)
   })
 })

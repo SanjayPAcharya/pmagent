@@ -1,5 +1,22 @@
 {
-  "_note": "Phase 3.8.1 A1 — synthetic eval fixtures. NO real org data. Consumed by scripts/ai-eval.ts, which assembles the exact same user text the routes send (draft: 'Rough notes…'; expand: capped ticket-context block; summary: 'Project metrics (JSON)…'). Add cases freely; the harness iterates whatever is here.",
+  "_note": "Phase 3.8.1 A1/A3 — synthetic eval fixtures. NO real org data. Consumed by scripts/ai-eval.ts, which builds the exact same user text the routes send via the shared ai.prompts.ts builders (enrichment included). The `enrichment` block below is applied to every draft/expand fixture (A3 context lever); summary fixtures carry an optional per-fixture `sprintGoal`.",
+  "enrichment": {
+    "draft": {
+      "projectName": "Checkout Revamp",
+      "recentTitles": [
+        "Add Apple Pay to the checkout sheet",
+        "Fix tax rounding on multi-item invoices",
+        "Show saved cards on the payment step",
+        "Handle declined-card retry gracefully",
+        "Persist cart across guest sign-in"
+      ],
+      "labels": ["frontend", "backend", "payments", "bug", "a11y"]
+    },
+    "expand": {
+      "parentTitle": "Checkout hardening",
+      "siblingTitles": ["Handle expired card tokens", "Retry failed payment captures", "Log 3-D Secure failures"]
+    }
+  },
   "draft": [
     { "id": "terse-oneliner", "kind": "terse", "notes": "add csv export to reports" },
     { "id": "rambling-paragraph", "kind": "rambling", "notes": "so a few people mentioned in the retro that when they're looking at the board it's kind of hard to tell which tickets are actually blocked versus just sitting there, and someone said maybe we could show something visual, like a little badge or a color, and also it would be nice if hovering told you why it's blocked, anyway we should probably do something about surfacing blocked state more clearly on the cards" },
@@ -61,6 +78,7 @@
     {
       "id": "healthy-project",
       "kind": "healthy",
+      "sprintGoal": "Ship one-tap checkout to 100% of users",
       "metrics": {
         "project": "Checkout Revamp",
         "statusCounts": { "BACKLOG": 8, "TODO": 5, "IN_PROGRESS": 4, "IN_REVIEW": 2, "DONE": 21 },
@@ -76,6 +94,7 @@
     {
       "id": "blocker-heavy-project",
       "kind": "blocker-heavy",
+      "sprintGoal": "Migrate billing to the new ledger without downtime",
       "metrics": {
         "project": "Billing Migration",
         "statusCounts": { "BACKLOG": 12, "TODO": 9, "IN_PROGRESS": 7, "IN_REVIEW": 1, "DONE": 6 },
