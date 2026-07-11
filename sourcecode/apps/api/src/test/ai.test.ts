@@ -141,6 +141,27 @@ describe('AI draft-ticket (3.8 A2/D2)', () => {
     expect(list.json().items).toHaveLength(0)
   })
 
+  it('passes the endpoint inferenceConfig (temperature + maxTokens) into the Converse command', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-draft-infer')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Infer Co')
+    const projectId = await makeProject(owner, orgId, 'Infer Proj')
+
+    runtimeSend.mockResolvedValueOnce(
+      toolResponse({ title: 'T', description: 'D', acceptanceCriteria: ['a'], priority: 'LOW' }),
+    )
+    await app.inject({
+      method: 'POST',
+      url: '/api/ai/draft-ticket',
+      headers: bearer(owner),
+      payload: { projectId, notes: 'something' },
+    })
+    // 3.8.1 A2 — draft runs at temperature 0.2 with a 400-token cap.
+    const command = runtimeSend.mock.calls[0][0] as { input: { inferenceConfig?: unknown } }
+    expect(command.input.inferenceConfig).toEqual({ temperature: 0.2, maxTokens: 400 })
+  })
+
   it('re-prompts once on invalid tool arguments then succeeds', async () => {
     process.env.AI_PROVIDER = 'bedrock'
     const owner = await tokenFor('ai-draft-retry')
@@ -368,6 +389,24 @@ describe('AI project-summary (3.8 A4/D2)', () => {
     expect(res.statusCode).toBe(200)
     expect(res.json().summary).toMatchObject({ headline: 'Project is early but on track.' })
     expect(Array.isArray(res.json().summary.bullets)).toBe(true)
+  })
+
+  it('runs summary at a cooler temperature than draft (0.1) with its own token cap', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-sum-infer')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Sum Infer Co')
+    const projectId = await makeProject(owner, orgId, 'Sum Infer Proj')
+
+    runtimeSend.mockResolvedValueOnce(toolResponse({ headline: 'H', bullets: ['b'], risks: [] }))
+    await app.inject({
+      method: 'POST',
+      url: '/api/ai/project-summary',
+      headers: bearer(owner),
+      payload: { projectId },
+    })
+    const command = runtimeSend.mock.calls[0][0] as { input: { inferenceConfig?: unknown } }
+    expect(command.input.inferenceConfig).toEqual({ temperature: 0.1, maxTokens: 350 })
   })
 
   it('forbids a non-member with 403', async () => {

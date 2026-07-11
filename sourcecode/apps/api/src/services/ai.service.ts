@@ -32,6 +32,10 @@ export interface GenerateOptions<T> {
   user: string
   schema: JsonSchema // constrains the model (Bedrock tool `inputSchema.json`)
   zod: ZodType<T> // validates + types the parsed result
+  // 3.8.1 A2 — per-endpoint sampling. Defaults preserve 3.8 behaviour
+  // (temperature 0.2, maxTokens unset). Summary runs cooler; caps stop rambling.
+  temperature?: number
+  maxTokens?: number
 }
 
 export interface ProviderHealth {
@@ -98,7 +102,7 @@ class BedrockProvider implements AIProvider {
    * usage alongside the value. Used by the offline eval harness (A1) and seeds
    * A6 telemetry; the request path stays on the plain `generate`.
    */
-  async generateDetailed<T>({ system, user, schema, zod }: GenerateOptions<T>): Promise<GenerateResult<T>> {
+  async generateDetailed<T>({ system, user, schema, zod, temperature, maxTokens }: GenerateOptions<T>): Promise<GenerateResult<T>> {
     const started = Date.now()
     let lastError = ''
     let inputTokens: number | undefined
@@ -111,7 +115,7 @@ class BedrockProvider implements AIProvider {
         attempt === 0
           ? user
           : `${user}\n\n(Your previous attempt produced invalid arguments: ${lastError}. Call ${TOOL_NAME} again with valid arguments that match the schema exactly.)`
-      const { input, usage } = await this.converse(system, text, schema)
+      const { input, usage } = await this.converse(system, text, schema, temperature, maxTokens)
       // Accumulate tokens across attempts so the retry cost is visible.
       if (usage) {
         inputTokens = (inputTokens ?? 0) + (usage.inputTokens ?? 0)
@@ -137,6 +141,8 @@ class BedrockProvider implements AIProvider {
     system: string,
     userText: string,
     schema: JsonSchema,
+    temperature?: number,
+    maxTokens?: number,
   ): Promise<{ input: unknown; usage?: { inputTokens?: number; outputTokens?: number } }> {
     const messages: Message[] = [{ role: 'user', content: [{ text: userText }] }]
     const command = new ConverseCommand({
@@ -156,7 +162,10 @@ class BedrockProvider implements AIProvider {
         ],
         toolChoice: { tool: { name: TOOL_NAME } },
       },
-      inferenceConfig: { temperature: 0.2 },
+      inferenceConfig: {
+        temperature: temperature ?? 0.2,
+        ...(maxTokens != null ? { maxTokens } : {}),
+      },
     })
 
     let output

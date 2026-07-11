@@ -6,17 +6,7 @@ import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
 import { aiHealth, requireProvider } from '../services/ai.service.js'
-import {
-  DRAFT_SYSTEM,
-  EXPAND_SYSTEM,
-  SUMMARY_SYSTEM,
-  draftTicketSchema,
-  draftTicketZod,
-  expandTicketSchema,
-  expandTicketZod,
-  projectSummarySchema,
-  projectSummaryZod,
-} from '../services/ai.prompts.js'
+import { PROMPTS } from '../services/ai.prompts.js'
 import { projectOverview } from '../services/overview.service.js'
 
 // Phase 3.8 — self-hosted AI drafting. All endpoints sit behind requireAuth and
@@ -63,10 +53,8 @@ const routes: FastifyPluginAsync = async (app) => {
 
       const provider = requireProvider(project.orgId)
       const draft = await provider.generate({
-        system: DRAFT_SYSTEM,
+        ...PROMPTS.draft,
         user: `Rough notes for the ticket:\n\n${notes}`,
-        schema: draftTicketSchema,
-        zod: draftTicketZod,
       })
       return { draft }
     },
@@ -106,10 +94,8 @@ const routes: FastifyPluginAsync = async (app) => {
 
       const provider = requireProvider(ticket.project.orgId)
       const draft = await provider.generate({
-        system: EXPAND_SYSTEM,
+        ...PROMPTS.expand,
         user: context,
-        schema: expandTicketSchema,
-        zod: expandTicketZod,
       })
       return { draft }
     },
@@ -150,10 +136,8 @@ const routes: FastifyPluginAsync = async (app) => {
 
       const provider = requireProvider(project.orgId)
       const draft = await provider.generate({
-        system: SUMMARY_SYSTEM,
+        ...PROMPTS.summary,
         user: `Project metrics (JSON):\n\n${JSON.stringify(metrics)}`,
-        schema: projectSummarySchema,
-        zod: projectSummaryZod,
       })
       return { summary: draft }
     },

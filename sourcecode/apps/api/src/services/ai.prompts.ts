@@ -14,7 +14,11 @@ import type { JsonSchema } from './ai.service.js'
 // A6 telemetry line are attributable to a specific prompt revision.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const PROMPT_VERSION = 1
+// v2 (3.8.1 A2): testable-AC directive + anti-thin-input rule + "don't echo
+// verbatim"; per-endpoint temperature/maxTokens. A few-shot exemplar per endpoint
+// was measured and DROPPED — on Nova Micro it cost ~+23% input tokens with no
+// scorecard gain and two regressions (see release-doc/ai-eval-report.md).
+export const PROMPT_VERSION = 2
 
 export const PRIORITIES = ['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const
 
@@ -39,12 +43,13 @@ export const draftTicketZod = z.object({
   priority: z.enum(PRIORITIES),
 })
 export const DRAFT_SYSTEM = [
-  'You are a senior product manager writing a single work ticket from rough notes.',
-  'Be concrete and concise. Do NOT invent requirements the notes do not support.',
+  'You are a senior product manager writing ONE work ticket from rough notes.',
+  'Write in your own words; do NOT echo the notes back verbatim.',
+  'Do NOT invent requirements the notes do not support. If the notes are thin or vague, keep the ticket minimal instead of adding scope.',
   'title: a short imperative summary (max ~12 words).',
-  'description: 2–5 sentences of context and scope.',
-  'acceptanceCriteria: 2–6 short, testable, outcome-focused bullet strings (no leading dash).',
-  `priority: choose exactly one of ${PRIORITIES.join(', ')} based only on urgency implied by the notes.`,
+  'description: 2–5 sentences — context, then scope, then what is out of scope.',
+  'acceptanceCriteria: 2–6 testable outcomes. Each starts with a verb and states an observable or measurable result (no leading dash).',
+  `priority: exactly one of ${PRIORITIES.join(', ')}, from the urgency the notes imply.`,
   'Return ONLY JSON matching the schema — no prose, no markdown.',
 ].join('\n')
 
@@ -69,9 +74,10 @@ export const expandTicketZod = z.object({
 })
 export const EXPAND_SYSTEM = [
   'You are a senior product manager fleshing out an existing work ticket.',
-  'Use the ticket context below; do NOT contradict its title or invent unrelated scope.',
-  'description: a clear 2–5 sentence problem/scope statement.',
-  'acceptanceCriteria: REQUIRED — always 2 to 6 short, testable bullet strings (no leading dash). Never return an empty list; if the ticket has none yet, derive them from its title, description, and intent.',
+  'Use the ticket context below. Do NOT contradict its title or invent unrelated scope. Write in your own words; do NOT echo the fields back verbatim.',
+  'If the context is thin, derive only what the title reasonably implies — do not pad with unrelated features.',
+  'description: a clear 2–5 sentence problem, then scope, statement.',
+  'acceptanceCriteria: REQUIRED — 2 to 6 testable outcomes. Each starts with a verb and states an observable or measurable result (no leading dash). Never return an empty list; if the ticket has none yet, derive them from its title and intent.',
   'goal: one sentence — the outcome this ticket achieves.',
   'constraints: one or two sentences — technical or scope limits (empty string if none).',
   'Return ONLY JSON matching the schema — no prose, no markdown.',
@@ -94,18 +100,22 @@ export const projectSummaryZod = z.object({
 })
 export const SUMMARY_SYSTEM = [
   'You are a senior product manager writing a short status digest for a stakeholder.',
-  'Base everything ONLY on the metrics below — do not invent tickets, names, or dates.',
+  'Base everything ONLY on the metrics below — do not invent tickets, names, or dates. Interpret the numbers, do not just restate them.',
   'headline: one sentence capturing overall project health.',
-  'bullets: 3–5 short strings of concrete progress/status (no leading dash).',
-  'risks: 1–4 short strings naming real risks visible in the metrics (blockers, slipping milestones, imbalance); empty array if none.',
+  'bullets: 3–5 short strings of concrete progress/status, always at least 3 (no leading dash).',
+  'risks: 0–4 short strings naming real risks visible in the metrics (blockers, slipping milestones, imbalance). Empty array if the metrics show none.',
   'Return ONLY JSON matching the schema — no prose, no markdown.',
 ].join('\n')
 
-// ── Registry — one entry per endpoint, for the eval harness to iterate ─────────
+// ── Registry — one entry per endpoint, shared by the route and the eval harness.
+// temperature/maxTokens are the A2 per-endpoint sampling knobs: summary runs
+// cooler (more deterministic digests); caps are generous headroom over observed
+// output sizes (draft ≤~110, expand ≤~140, summary ≤~110 out-tok) to stop runaway
+// without ever truncating a valid result.
 export const PROMPTS = {
-  draft: { system: DRAFT_SYSTEM, schema: draftTicketSchema, zod: draftTicketZod },
-  expand: { system: EXPAND_SYSTEM, schema: expandTicketSchema, zod: expandTicketZod },
-  summary: { system: SUMMARY_SYSTEM, schema: projectSummarySchema, zod: projectSummaryZod },
+  draft: { system: DRAFT_SYSTEM, schema: draftTicketSchema, zod: draftTicketZod, temperature: 0.2, maxTokens: 400 },
+  expand: { system: EXPAND_SYSTEM, schema: expandTicketSchema, zod: expandTicketZod, temperature: 0.2, maxTokens: 500 },
+  summary: { system: SUMMARY_SYSTEM, schema: projectSummarySchema, zod: projectSummaryZod, temperature: 0.1, maxTokens: 350 },
 } as const
 
 export type PromptEndpoint = keyof typeof PROMPTS
