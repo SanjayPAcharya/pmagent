@@ -1,6 +1,6 @@
 # Phase 3.8 — AI ticket drafting via Amazon Bedrock (Nova Micro first)
 
-> **Status: 🔨 IN PROGRESS — strategy pivoted 2026-07-09 (owner decision).** v1 inference runs on **Amazon Bedrock from ap-south-1** with **Amazon Nova Micro** (cheapest viable model, ~₹10–40/mo at expected volume). If Nova Micro's output quality disappoints, switching to **Claude Haiku 4.5 / Sonnet** is an **env-var change** — same seam, same endpoints, same buttons. The original self-hosted local-model tier (Ollama + qwen2.5:7b) is **dropped**: no EC2 resize, no model ops, and the owner accepts ticket text leaving the product for the MVP ("will figure out later"). Cost/availability research (2026-07-09): Claude from Mumbai = `global.*` cross-region profiles (worldwide routing, source-region pricing); Nova = `apac.*` profiles (routing stays in APAC).
+> **Status: ✅ COMPLETE — live on prod 2026-07-11 (strategy pivoted 2026-07-09).** v1 inference runs on **Amazon Bedrock from ap-south-1** with **Amazon Nova Micro** (cheapest viable model, ~₹10–40/mo at expected volume). If Nova Micro's output quality disappoints, switching to **Claude Haiku 4.5 / Sonnet** is an **env-var change** — same seam, same endpoints, same buttons. The original self-hosted local-model tier (Ollama + qwen2.5:7b) is **dropped**: no EC2 resize, no model ops, and the owner accepts ticket text leaving the product for the MVP ("will figure out later"). Cost/availability research (2026-07-09): Claude from Mumbai = `global.*` cross-region profiles (worldwide routing, source-region pricing); Nova = `apac.*` profiles (routing stays in APAC).
 >
 > **Provider strategy (owner, updated 2026-07-09):** all AI flows through the **`AIProvider` seam** built in A1 — `resolveProvider(orgId)` remains the single switch point. Tier 1 (v1) = Bedrock Nova Micro. Tier 2 = better Bedrock model (Claude Haiku 4.5 ≈ ₹320/mo, Sonnet ≈ ₹950/mo at moderate volume) when quality demands it. Tier 3 = **BYOK** (org's own key; Phase 3.8.1, needs encrypted key storage + settings UI). Phases 5/6 dev agents on large LLMs are a separate track.
 >
@@ -47,13 +47,14 @@
 
 ## Part E — Deploy (no EC2 resize — t3.medium stays; baseline bill unchanged)
 
-### - [ ] E1 — 🧑 `[MANUAL — owner]` prod IAM + env (S)
-- Attach the Bedrock IAM policy to the pmagent EC2 **instance role** (create role + instance profile and attach to the instance if the box has none — checklist item 4; no downtime).
-- `.env.prod`: `AI_PROVIDER=bedrock`, `BEDROCK_MODEL_ID=...`, `AWS_REGION=ap-south-1` (no keys — the role provides credentials).
+### - [~] E1 — 🧑 prod IAM + env — **DEFERRED (hardening); shipped a simpler path instead**
+- Original plan: attach the Bedrock IAM policy to the pmagent EC2 **instance role** (no keys on the box). **Not done** — E2 instead reused the scoped `pmagent-dev-bedrock` IAM-user key delivered as GitHub Actions secrets (see E2). The instance role remains the clean follow-up (drop the key entirely) whenever we harden.
+- Still open as hardening: **instance role + IMDSv2 hop-limit 2**, the **$5 budget alert**, and **rotating** the current key (briefly exposed during setup — caught by GitHub push-protection, never reached the remote).
 
-### - [ ] E2 — 🤖 Ship + verify on prod (S)
-- Merge → images → deploy via the normal pipeline; restart. Verify health green on prod, one generation per feature, latency + first real cost numbers recorded in PROGRESS. Kill-switch check: unset `AI_PROVIDER` + restart api → buttons degrade to disabled-with-reason, no redeploy.
-- Ops notes live at the bottom of this file (no separate runbook — there's no infra): model switch = env var; disable = unset `AI_PROVIDER`; costs = Cost Explorer filtered to Bedrock + the budget alert (checklist 5).
+### - [x] E2 — 🤖 Ship + verify on prod (S) ✅ 2026-07-11
+- Shipped via the CI/CD pipeline, **credentials as GitHub Actions secrets written into the box's `.env.prod` at deploy time** (not the instance role). `deploy.yml` deploy job now: `actions/checkout` → **`appleboy/scp-action` syncs the compose files** to the box (the pipeline previously shipped images only, so the AI/AWS env passthrough never reached the box → `BEDROCK_MODEL_ID` empty, no creds) → idempotent `set_env` upsert of `AI_PROVIDER`/model/region/timeout + `AWS_ACCESS_KEY_ID`/`SECRET` (from secrets, non-empty only) into `.env.prod` (`chmod 600`) → `up -d`. Secrets never in git/images.
+- ✅ Prod `ai/health` green (`{enabled,reachable,modelReady,provider:bedrock}`); all three AI features working on `pmagent.sanjaykumarp.info`. Kill-switch: clear the `AI_PROVIDER` secret (or its `.env.prod` line) + redeploy/recreate → buttons degrade to disabled-with-reason. First real cost numbers: watch Cost Explorer (Bedrock) over week 1.
+- Ops notes: model switch = `BEDROCK_MODEL_ID` (secret or `.env.prod`); disable = unset `AI_PROVIDER`; **compose changes now reach the box automatically via the scp step** (they didn't before — that was the first-deploy gotcha).
 
 ---
 
