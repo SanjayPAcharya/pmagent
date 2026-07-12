@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -22,6 +22,8 @@ import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelationsSection } from '@/components/RelationsSection'
 import { AIButton } from '@/components/BetaBadge'
 import { aiErrorKey } from '@/lib/useAIHealth'
+import { useStagedHint } from '@/lib/aiReveal'
+import { Skeleton } from '@/components/ui/skeleton'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
@@ -102,13 +104,19 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
   // 3.8 B3 — generate an expanded spec draft and fill the editable fields for
   // review. Confirm before overwriting any field that already has content. The
   // draft is never auto-saved — the user reviews in edit mode and Saves normally.
+  const expandAbort = useRef<AbortController | null>(null)
+  const expandStageKey = useStagedHint(expanding)
+
   const runAutoFill = async () => {
     const hasContent = Boolean(desc.trim() || ac.trim() || goal.trim() || constraints.trim())
     if (hasContent && !window.confirm(t('ai.overwriteConfirm'))) return
+    expandAbort.current?.abort()
+    const ctrl = new AbortController()
+    expandAbort.current = ctrl
     setExpanding(true)
     setExpandError(null)
     try {
-      const { draft } = await api.aiExpandTicket(ticketId, aiPrompt.trim() || undefined)
+      const { draft } = await api.aiExpandTicket(ticketId, aiPrompt.trim() || undefined, ctrl.signal)
       setDesc(draft.description ?? '')
       setAc(draft.acceptanceCriteria.length ? draft.acceptanceCriteria.map((x) => `- ${x}`).join('\n') : '')
       setGoal(draft.goal ?? '')
@@ -118,12 +126,20 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
       setAiPrompt('')
     } catch (e) {
       const key = aiErrorKey(e)
-      setExpandError(t(key))
-      if (key === 'ai.error.unavailable') qc.invalidateQueries({ queryKey: ['ai-health'] })
+      // null = user cancelled — back to idle, no error shown.
+      if (key) {
+        setExpandError(t(key))
+        if (key === 'ai.error.unavailable') qc.invalidateQueries({ queryKey: ['ai-health'] })
+      }
     } finally {
-      setExpanding(false)
+      if (expandAbort.current === ctrl) {
+        expandAbort.current = null
+        setExpanding(false)
+      }
     }
   }
+
+  const cancelAutoFill = () => expandAbort.current?.abort()
 
   // E2 — build the inverse of an update so the success toast can offer Undo.
   // For labelIds (which has no scalar previous value) we restore the prior label set.
@@ -819,7 +835,20 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                 </div>
               </div>
               {autoFillOpen && (
-                <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2">
+                <div
+                  className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2"
+                  onKeyDown={(e) => {
+                    // Esc cancels an in-flight generation (panel stays open).
+                    if (e.key === 'Escape' && expanding) {
+                      e.stopPropagation()
+                      cancelAutoFill()
+                    }
+                  }}
+                >
+                  {/* Announce start + done only — the staged hint is not live. */}
+                  <span className="sr-only" aria-live="polite">
+                    {expanding ? t('ai.generating') : ''}
+                  </span>
                   <Textarea
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
@@ -830,10 +859,16 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                     <Button size="sm" onClick={runAutoFill} disabled={expanding}>
                       {expanding ? t('ai.generating') : t('ai.autoFill')}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setAutoFillOpen(false)} disabled={expanding}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => (expanding ? cancelAutoFill() : setAutoFillOpen(false))}
+                    >
                       {t('common.cancel')}
                     </Button>
-                    {expanding && <span className="text-[11px] text-muted-foreground">{t('ai.generatingHint')}</span>}
+                    {expanding && expandStageKey && (
+                      <span className="text-[11px] text-muted-foreground">{t(expandStageKey)}</span>
+                    )}
                   </div>
                   {expandError && (
                     <div className="flex items-center gap-2 text-[11px] text-destructive">
@@ -845,7 +880,16 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   )}
                 </div>
               )}
-              {editingDesc ? (
+              {expanding ? (
+                /* B2 — result-shaped shimmer over the four target fields while
+                   the auto-fill generation is in flight. */
+                <div aria-busy="true" className="mt-1 space-y-2">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : editingDesc ? (
                 <div className="mt-1 space-y-2">
                   <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} placeholder={t('drawer.descriptionPlaceholder')} />
                   <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2} placeholder={t('drawer.goalPlaceholder')} />

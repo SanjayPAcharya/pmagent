@@ -81,12 +81,13 @@
 - Tests: one per branch of `aiErrorKey` (+~5 web). Retry affordance stays on every error.
 - **DoD:** force each failure locally (unset `AI_PROVIDER` → 503; `AI_TIMEOUT_MS=1` → 504; 11 rapid drafts → 429) and see distinct copy; suite green.
 
-### - [ ] B2 — 🤖 Perceived latency: skeleton + staged hint + cancel (M)
+### - [x] B2 — 🤖 Perceived latency: skeleton + staged hint + cancel + staged reveal (M) ✅ DONE 2026-07-12 (web 43→48; browser-verified on live Nova Micro)
 - **Signal plumbing (verified missing):** `lib/api.ts` — add optional `signal?: AbortSignal` through `request()` → `authedFetch()` → `fetch()` (backward-compatible trailing param); expose it from `aiDraftTicket`/`aiExpandTicket`/`aiProjectSummary` only.
 - **Skeleton, not spinner:** while generating, render a shimmer shaped like the coming result via `ui/skeleton.tsx` — draft: title bar + 3 bullet lines + priority chip in the preview slot; summary: headline + 3 bullets in the card; auto-fill: shimmer over the 4 target fields. `aria-busy` on the container; respect `prefers-reduced-motion` (`motion-safe:` variants, house pattern).
 - **Staged hint:** one line advancing on a timer ("Reading your notes…" → 1.5s → "Drafting…" → 4s → "Almost there…"); `aria-live="polite"` announces start + done only (not each stage).
 - **Cancel:** Cancel button (and Esc) aborts via `AbortController`; UI returns to idle, no error toast (`aiErrorKey` must not classify `AbortError`/`DOMException` as failure — return a sentinel the caller drops silently). Server side finishes and is discarded — acceptable at these token sizes; note in code.
 - **Decision — no real token streaming:** forced-tool JSON arrives as one block and must zod-validate complete before display; `ConverseStream` + partial-JSON assembly is high effort for ~1–2s. Revisit only if a model switch pushes latency > ~5s.
+- **Owner addition (2026-07-12) — staged reveal ("streaming" feel, UI-only):** once the validated response arrives, reveal it progressively — draft/summary headline types in word-by-word (`useTextReveal`, whitespace-preserving segments), then description, then AC bullets / summary bullets / risks appear one by one (`useListReveal`); instant under `prefers-reduced-motion`; pure presentation in `lib/aiReveal.ts`, so Create/accept works mid-reveal and cancel semantics are untouched. Auto-fill fields fill instantly (animating text into editable textareas would fight the user's cursor).
 - Tests: abort → state resets, no error shown (+1–2 web).
 - **DoD:** all three flows show skeletons; Esc cancels cleanly; axe pass on the three surfaces.
 

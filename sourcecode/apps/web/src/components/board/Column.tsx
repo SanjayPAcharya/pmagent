@@ -9,8 +9,10 @@ import { STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
 import { parseQuickCreate, type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { AIButton } from '@/components/BetaBadge'
 import { aiErrorKey } from '@/lib/useAIHealth'
+import { useListReveal, useStagedHint, useTextReveal } from '@/lib/aiReveal'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -87,25 +89,38 @@ export function Column({
   const [draft, setDraft] = useState<AITicketDraft | null>(null)
   const [draftError, setDraftError] = useState<string | null>(null)
   const [creatingDraft, setCreatingDraft] = useState(false)
+  const draftAbort = useRef<AbortController | null>(null)
+  const stageKey = useStagedHint(drafting)
 
   const runDraft = async () => {
     const notes = title.trim()
     if (!projectId || !notes) return
+    draftAbort.current?.abort()
+    const ctrl = new AbortController()
+    draftAbort.current = ctrl
     setDrafting(true)
     setDraftError(null)
     try {
-      const { draft: d } = await api.aiDraftTicket(projectId, notes)
+      const { draft: d } = await api.aiDraftTicket(projectId, notes, ctrl.signal)
       setDraft(d)
     } catch (e) {
       const key = aiErrorKey(e)
-      setDraftError(t(key))
-      // Re-gate the AI buttons immediately when the server reports it's down,
-      // rather than waiting out the 60s health staleTime.
-      if (key === 'ai.error.unavailable') qc.invalidateQueries({ queryKey: ['ai-health'] })
+      // null = user cancelled — return to idle with no error shown.
+      if (key) {
+        setDraftError(t(key))
+        // Re-gate the AI buttons immediately when the server reports it's down,
+        // rather than waiting out the 60s health staleTime.
+        if (key === 'ai.error.unavailable') qc.invalidateQueries({ queryKey: ['ai-health'] })
+      }
     } finally {
-      setDrafting(false)
+      if (draftAbort.current === ctrl) {
+        draftAbort.current = null
+        setDrafting(false)
+      }
     }
   }
+
+  const cancelDraft = () => draftAbort.current?.abort()
 
   const acceptDraft = async () => {
     if (!draft || !onCreateDraft) return
@@ -196,6 +211,11 @@ export function Column({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submit()
                 if (e.key === 'Escape') {
+                  // While a generation is in flight, Esc cancels it (composer stays).
+                  if (drafting) {
+                    cancelDraft()
+                    return
+                  }
                   setTitle('')
                   setAdding(false)
                 }
@@ -223,6 +243,11 @@ export function Column({
             )}
             {onCreateDraft && projectId && (
               <div className="px-0.5">
+                {/* Announce start + done only — the staged hint line is NOT live
+                    (it would announce every stage change). */}
+                <span className="sr-only" aria-live="polite">
+                  {drafting ? t('ai.generating') : draft ? t('ai.readyAnnounce') : ''}
+                </span>
                 {!draft && (
                   <div className="flex flex-col gap-1">
                     <AIButton
@@ -231,7 +256,30 @@ export function Column({
                       busy={drafting}
                       disabled={!title.trim()}
                     />
-                    {drafting && <span className="text-[10px] text-muted-foreground">{t('ai.generatingHint')}</span>}
+                    {drafting && (
+                      <div aria-busy="true" className="mt-1 space-y-2 rounded-md border bg-background p-2">
+                        <div className="flex items-center justify-between">
+                          <Skeleton className="h-3 w-14" />
+                          <Skeleton className="h-4 w-12" />
+                        </div>
+                        <Skeleton className="h-4 w-3/4" />
+                        <div className="space-y-1.5">
+                          <Skeleton className="h-3 w-full" />
+                          <Skeleton className="h-3 w-5/6" />
+                          <Skeleton className="h-3 w-2/3" />
+                        </div>
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="text-[10px] text-muted-foreground">{stageKey && t(stageKey)}</span>
+                          <button
+                            type="button"
+                            onClick={cancelDraft}
+                            className="rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+                          >
+                            {t('common.cancel')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {draftError && (
                       <div className="flex items-center gap-2 text-[11px] text-destructive">
                         <span>{draftError}</span>
@@ -243,39 +291,12 @@ export function Column({
                   </div>
                 )}
                 {draft && (
-                  <div className="mt-1 space-y-2 rounded-md border bg-background p-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.draftPreview')}</span>
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{draft.priority}</span>
-                    </div>
-                    <p className="font-medium text-foreground">{draft.title}</p>
-                    {draft.description && <p className="line-clamp-3 text-muted-foreground">{draft.description}</p>}
-                    {draft.acceptanceCriteria.length > 0 && (
-                      <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
-                        {draft.acceptanceCriteria.slice(0, 5).map((ac, i) => (
-                          <li key={i}>{ac}</li>
-                        ))}
-                      </ul>
-                    )}
-                    <div className="flex items-center gap-2 pt-0.5">
-                      <button
-                        type="button"
-                        onClick={acceptDraft}
-                        disabled={creatingDraft}
-                        className="rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
-                      >
-                        {creatingDraft ? t('common.loading') : t('ai.create')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDraft(null)}
-                        disabled={creatingDraft}
-                        className="rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-                      >
-                        {t('ai.discard')}
-                      </button>
-                    </div>
-                  </div>
+                  <DraftPreview
+                    draft={draft}
+                    creating={creatingDraft}
+                    onCreate={acceptDraft}
+                    onDiscard={() => setDraft(null)}
+                  />
                 )}
               </div>
             )}
@@ -311,6 +332,66 @@ export function Column({
         {tickets.length === 0 && !adding && (ghosts?.length ?? 0) === 0 && (
           <p className="px-1 py-6 text-center text-xs text-muted-foreground">{t('board.noTickets')}</p>
         )}
+      </div>
+    </div>
+  )
+}
+
+// 3.8.1 B2 — draft preview with a staged "streaming" reveal: title types in
+// word-by-word, then the description, then AC bullets appear one by one. Pure
+// presentation — the full validated draft is already here, so Create works
+// immediately regardless of how far the reveal has gotten.
+function DraftPreview({
+  draft,
+  creating,
+  onCreate,
+  onDiscard,
+}: {
+  draft: AITicketDraft
+  creating: boolean
+  onCreate: () => void
+  onDiscard: () => void
+}) {
+  const { t } = useTranslation()
+  const titleReveal = useTextReveal(draft.title)
+  const descReveal = useTextReveal(draft.description, { enabled: titleReveal.done })
+  const acCount = Math.min(draft.acceptanceCriteria.length, 5)
+  const acVisible = useListReveal(acCount, descReveal.done)
+
+  return (
+    <div className="mt-1 space-y-2 rounded-md border bg-background p-2 text-xs">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.draftPreview')}</span>
+        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{draft.priority}</span>
+      </div>
+      <p className="font-medium text-foreground">{titleReveal.shown}</p>
+      {draft.description && descReveal.shown && <p className="line-clamp-3 text-muted-foreground">{descReveal.shown}</p>}
+      {acVisible > 0 && (
+        <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
+          {draft.acceptanceCriteria.slice(0, acVisible).map((ac, i) => (
+            <li key={i} className="motion-safe:animate-in motion-safe:fade-in">
+              {ac}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex items-center gap-2 pt-0.5">
+        <button
+          type="button"
+          onClick={onCreate}
+          disabled={creating}
+          className="rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
+        >
+          {creating ? t('common.loading') : t('ai.create')}
+        </button>
+        <button
+          type="button"
+          onClick={onDiscard}
+          disabled={creating}
+          className="rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          {t('ai.discard')}
+        </button>
       </div>
     </div>
   )

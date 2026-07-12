@@ -71,4 +71,14 @@ describe('aiErrorKey', () => {
     expect(aiErrorKey(new Error('network'))).toBe('ai.failed')
     expect(aiErrorKey(undefined)).toBe('ai.failed')
   })
+
+  // B2 — a user-initiated cancel surfaces as an AbortError; callers must get a
+  // null sentinel (drop silently), never error copy. fetch throws a DOMException
+  // in browsers but some environments throw a plain Error — key on the name.
+  it('returns null (silent) for an aborted request', () => {
+    expect(aiErrorKey(new DOMException('The user aborted a request.', 'AbortError'))).toBeNull()
+    const plain = new Error('aborted')
+    plain.name = 'AbortError'
+    expect(aiErrorKey(plain)).toBeNull()
+  })
 })

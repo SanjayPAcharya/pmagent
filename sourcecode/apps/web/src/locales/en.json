@@ -28,7 +28,6 @@
     "regenerate": "Regenerate",
     "checking": "Checking AI availability…",
     "generating": "Generating…",
-    "generatingHint": "Writing a draft — usually just a few seconds",
     "unavailable": "AI is not available right now",
     "modelLoading": "The AI model is still loading — try again shortly",
     "failed": "Couldn't generate — please try again",
@@ -39,6 +38,12 @@
       "rateLimit": "Too many AI requests — give it a moment."
     },
     "retry": "Retry",
+    "stage": {
+      "reading": "Reading context…",
+      "drafting": "Writing…",
+      "almost": "Almost there…"
+    },
+    "readyAnnounce": "AI result ready",
     "create": "Create ticket",
     "discard": "Discard",
     "apply": "Apply to fields",

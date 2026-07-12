@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-11**.)
+> (Kept up to date as features ship — last updated **2026-07-12**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -144,6 +144,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
   - **Auto-fill from prompt** (ticket panel) — on a ticket's Spec, generate a fuller description, goal, acceptance criteria, and constraints; an optional one-line steer lets you point the AI at what matters. The fields fill in edit mode so you can adjust before saving.
   - **Generate summary** (Overview) — a short status digest (headline, key points, risks) built from the project's current numbers. Regenerate any time; it's not stored.
 - These buttons appear **enabled only when AI is configured on the server**; otherwise they show a short reason. Generations usually take just a few seconds.
+- While the AI works you'll see a **placeholder shaped like the coming result** with a progress hint ("Reading context…", "Writing…"), and a **Cancel** button (Esc works too) if you change your mind — cancelling never shows an error. When the draft or summary arrives it **types itself onto the screen** — title first, then the details line by line, like watching it being written. You don't have to wait for the animation: Create/apply works the moment the result appears, and it's skipped entirely if your system prefers reduced motion.
 - Heads-up on privacy: the notes or ticket text you send through these helpers is processed by the cloud AI provider to generate the draft. Don't paste secrets (passwords, keys) into AI prompts.
 
 ## Comments & notifications

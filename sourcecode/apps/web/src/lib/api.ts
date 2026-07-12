@@ -12,7 +12,7 @@ export class ApiError extends Error {
   }
 }
 
-async function authedFetch(method: string, path: string, body?: unknown): Promise<Response> {
+async function authedFetch(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
   // Keep the access token fresh (refresh if it expires within 30s).
   await keycloak.updateToken(30).catch(() => undefined)
 
@@ -27,6 +27,7 @@ async function authedFetch(method: string, path: string, body?: unknown): Promis
         ...(keycloak.token ? { Authorization: `Bearer ${keycloak.token}` } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
     })
 
   let res = await doFetch()
@@ -37,8 +38,8 @@ async function authedFetch(method: string, path: string, body?: unknown): Promis
   return res
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await authedFetch(method, path, body)
+async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const res = await authedFetch(method, path, body, signal)
   if (!res.ok) {
     const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string; code?: string }
     throw new ApiError(res.status, err.error ?? 'Request failed', err.code)
@@ -604,12 +605,14 @@ export const api = {
   markNotificationRead: (id: string) => request<{ ok: true }>('POST', `/api/notifications/${id}/read`),
   markAllNotificationsRead: () => request<{ updated: number }>('POST', '/api/notifications/read-all'),
 
-  // AI (3.8) — self-hosted drafting; all return a draft the user reviews (never auto-saves)
+  // AI (3.8) — cloud drafting; all return a draft the user reviews (never auto-saves).
+  // The generation calls take an AbortSignal (3.8.1 B2 cancel) — the server-side
+  // call still completes and is discarded, acceptable at these token sizes.
   aiHealth: () => request<AIHealth>('GET', '/api/ai/health'),
-  aiDraftTicket: (projectId: string, notes: string) =>
-    request<{ draft: AITicketDraft }>('POST', '/api/ai/draft-ticket', { projectId, notes }),
-  aiExpandTicket: (ticketId: string, prompt?: string) =>
-    request<{ draft: AIExpandDraft }>('POST', '/api/ai/expand-ticket', { ticketId, ...(prompt ? { prompt } : {}) }),
-  aiProjectSummary: (projectId: string) =>
-    request<{ summary: AIProjectSummary }>('POST', '/api/ai/project-summary', { projectId }),
+  aiDraftTicket: (projectId: string, notes: string, signal?: AbortSignal) =>
+    request<{ draft: AITicketDraft }>('POST', '/api/ai/draft-ticket', { projectId, notes }, signal),
+  aiExpandTicket: (ticketId: string, prompt?: string, signal?: AbortSignal) =>
+    request<{ draft: AIExpandDraft }>('POST', '/api/ai/expand-ticket', { ticketId, ...(prompt ? { prompt } : {}) }, signal),
+  aiProjectSummary: (projectId: string, signal?: AbortSignal) =>
+    request<{ summary: AIProjectSummary }>('POST', '/api/ai/project-summary', { projectId }, signal),
 }
