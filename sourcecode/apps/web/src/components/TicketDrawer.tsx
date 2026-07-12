@@ -22,7 +22,7 @@ import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelationsSection } from '@/components/RelationsSection'
 import { AIButton } from '@/components/BetaBadge'
 import { aiErrorKey } from '@/lib/useAIHealth'
-import { useStagedHint } from '@/lib/aiReveal'
+import { countSegments, prefersReducedMotion, sliceSequential, useStagedHint } from '@/lib/aiReveal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
@@ -106,6 +106,34 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
   // draft is never auto-saved — the user reviews in edit mode and Saves normally.
   const expandAbort = useRef<AbortController | null>(null)
   const expandStageKey = useStagedHint(expanding)
+  // Streaming fill: the generated values type into the four edit fields in
+  // visual order (description → goal → AC → constraints). While it runs the
+  // fields are readOnly and Save is disabled so a partial value can't be
+  // edited into or persisted; the full validated draft is already in hand.
+  const [fillReveal, setFillReveal] = useState<string[] | null>(null)
+
+  // Switching tickets mid-stream must not type the old ticket's draft into the
+  // new one's fields.
+  useEffect(() => setFillReveal(null), [ticketId])
+
+  useEffect(() => {
+    if (!fillReveal) return
+    const total = countSegments(fillReveal)
+    let n = 0
+    const id = setInterval(() => {
+      n += 6
+      const [d, g, a, c] = sliceSequential(fillReveal, n)
+      setDesc(d)
+      setGoal(g)
+      setAc(a)
+      setConstraints(c)
+      if (n >= total) {
+        clearInterval(id)
+        setFillReveal(null)
+      }
+    }, 40)
+    return () => clearInterval(id)
+  }, [fillReveal])
 
   const runAutoFill = async () => {
     const hasContent = Boolean(desc.trim() || ac.trim() || goal.trim() || constraints.trim())
@@ -117,13 +145,27 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
     setExpandError(null)
     try {
       const { draft } = await api.aiExpandTicket(ticketId, aiPrompt.trim() || undefined, ctrl.signal)
-      setDesc(draft.description ?? '')
-      setAc(draft.acceptanceCriteria.length ? draft.acceptanceCriteria.map((x) => `- ${x}`).join('\n') : '')
-      setGoal(draft.goal ?? '')
-      setConstraints(draft.constraints ?? '')
+      const targets = [
+        draft.description ?? '',
+        draft.goal ?? '',
+        draft.acceptanceCriteria.length ? draft.acceptanceCriteria.map((x) => `- ${x}`).join('\n') : '',
+        draft.constraints ?? '',
+      ]
       setEditingDesc(true) // drop into edit mode so the user reviews before saving
       setAutoFillOpen(false)
       setAiPrompt('')
+      if (prefersReducedMotion()) {
+        setDesc(targets[0])
+        setGoal(targets[1])
+        setAc(targets[2])
+        setConstraints(targets[3])
+      } else {
+        setDesc('')
+        setGoal('')
+        setAc('')
+        setConstraints('')
+        setFillReveal(targets)
+      }
     } catch (e) {
       const key = aiErrorKey(e)
       // null = user cancelled — back to idle, no error shown.
@@ -890,13 +932,14 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   <Skeleton className="h-12 w-full" />
                 </div>
               ) : editingDesc ? (
-                <div className="mt-1 space-y-2">
-                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} placeholder={t('drawer.descriptionPlaceholder')} />
-                  <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2} placeholder={t('drawer.goalPlaceholder')} />
-                  <Textarea value={ac} onChange={(e) => setAc(e.target.value)} rows={3} placeholder={t('drawer.acPlaceholder')} />
-                  <Textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} placeholder={t('drawer.constraintsPlaceholder')} />
+                <div className="mt-1 space-y-2" aria-busy={fillReveal ? 'true' : undefined}>
+                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} placeholder={t('drawer.descriptionPlaceholder')} readOnly={Boolean(fillReveal)} />
+                  <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2} placeholder={t('drawer.goalPlaceholder')} readOnly={Boolean(fillReveal)} />
+                  <Textarea value={ac} onChange={(e) => setAc(e.target.value)} rows={3} placeholder={t('drawer.acPlaceholder')} readOnly={Boolean(fillReveal)} />
+                  <Textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} placeholder={t('drawer.constraintsPlaceholder')} readOnly={Boolean(fillReveal)} />
                   <Button
                     size="sm"
+                    disabled={Boolean(fillReveal)}
                     onClick={() => {
                       patch({ description: desc, acceptanceCriteria: ac, goal, constraints })
                       setEditingDesc(false)

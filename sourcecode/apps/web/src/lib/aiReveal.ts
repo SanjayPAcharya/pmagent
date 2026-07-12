@@ -65,6 +65,28 @@ export function useListReveal(total: number, start: boolean, intervalMs = 200): 
   return start ? n : 0
 }
 
+/**
+ * Prefixes of each text after revealing `n` segments across all of them in
+ * order — field 1 finishes before field 2 starts (the drawer auto-fill streams
+ * description → goal → AC → constraints through this).
+ */
+export function sliceSequential(texts: string[], n: number): string[] {
+  const out: string[] = []
+  let remaining = Math.max(0, n)
+  for (const text of texts) {
+    const segments = segmentText(text)
+    const take = Math.min(segments.length, remaining)
+    out.push(segments.slice(0, take).join(''))
+    remaining -= take
+  }
+  return out
+}
+
+/** Total reveal steps for a sliceSequential run over these texts. */
+export function countSegments(texts: string[]): number {
+  return texts.reduce((sum, t) => sum + segmentText(t).length, 0)
+}
+
 export const HINT_STAGES = ['ai.stage.reading', 'ai.stage.drafting', 'ai.stage.almost'] as const
 
 /** Which staged hint applies after `elapsedMs` of generation (pure, testable). */

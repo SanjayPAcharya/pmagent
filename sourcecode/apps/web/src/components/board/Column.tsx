@@ -1,17 +1,19 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { Plus, FilePlus2 } from 'lucide-react'
 import { api, type AITicketDraft, type Member, type Sprint, type Ticket, type TicketStatus, type TicketTemplate } from '@/lib/api'
-import { STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
+import { PRIORITIES, STATUS_LABEL, WIP_LIMITS } from '@/lib/board'
 import { parseQuickCreate, type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { AIButton } from '@/components/BetaBadge'
 import { aiErrorKey } from '@/lib/useAIHealth'
 import { useListReveal, useStagedHint, useTextReveal } from '@/lib/aiReveal'
+import { composeEditedDraft, isDraftEdited, type DraftEdits } from '@/lib/aiDraftEdit'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -122,11 +124,13 @@ export function Column({
 
   const cancelDraft = () => draftAbort.current?.abort()
 
-  const acceptDraft = async () => {
-    if (!draft || !onCreateDraft) return
+  // B3 — the preview is editable; Create receives the edited draft (unchecked
+  // AC already dropped), not the raw generation.
+  const acceptDraft = async (edited: AITicketDraft) => {
+    if (!onCreateDraft) return
     setCreatingDraft(true)
     try {
-      await onCreateDraft(status, draft)
+      await onCreateDraft(status, edited)
       setDraft(null)
       setTitle('')
       setAdding(false)
@@ -294,8 +298,10 @@ export function Column({
                   <DraftPreview
                     draft={draft}
                     creating={creatingDraft}
+                    regenerating={drafting}
                     onCreate={acceptDraft}
                     onDiscard={() => setDraft(null)}
+                    onRegenerate={runDraft}
                   />
                 )}
               </div>
@@ -337,61 +343,146 @@ export function Column({
   )
 }
 
-// 3.8.1 B2 — draft preview with a staged "streaming" reveal: title types in
-// word-by-word, then the description, then AC bullets appear one by one. Pure
-// presentation — the full validated draft is already here, so Create works
-// immediately regardless of how far the reveal has gotten.
+// 3.8.1 B2+B3 — draft preview: streams in first (title word-by-word, then the
+// description, then AC bullets one by one — pure presentation, the validated
+// draft is already complete), then becomes editable: title/description/priority
+// plus per-AC-bullet checkboxes. What you edit is what Create submits;
+// Regenerate confirms only when the working copy is dirty.
 function DraftPreview({
   draft,
   creating,
+  regenerating,
   onCreate,
   onDiscard,
+  onRegenerate,
 }: {
   draft: AITicketDraft
   creating: boolean
-  onCreate: () => void
+  regenerating: boolean
+  onCreate: (edited: AITicketDraft) => void
   onDiscard: () => void
+  onRegenerate: () => void
 }) {
   const { t } = useTranslation()
+  const [edits, setEdits] = useState<DraftEdits>({ title: draft.title, description: draft.description, priority: draft.priority })
+  const [checks, setChecks] = useState<boolean[]>(draft.acceptanceCriteria.map(() => true))
+  // A regenerate swaps the draft — reset the working copy and replay the reveal.
+  useEffect(() => {
+    setEdits({ title: draft.title, description: draft.description, priority: draft.priority })
+    setChecks(draft.acceptanceCriteria.map(() => true))
+  }, [draft])
+
   const titleReveal = useTextReveal(draft.title)
   const descReveal = useTextReveal(draft.description, { enabled: titleReveal.done })
-  const acCount = Math.min(draft.acceptanceCriteria.length, 5)
-  const acVisible = useListReveal(acCount, descReveal.done)
+  const acVisible = useListReveal(draft.acceptanceCriteria.length, descReveal.done)
+  const revealing = !descReveal.done || acVisible < draft.acceptanceCriteria.length
+  const stageKey = useStagedHint(regenerating)
+  const busy = creating || regenerating
+
+  const regenerate = () => {
+    if (isDraftEdited(draft, edits, checks) && !window.confirm(t('ai.regenerateConfirm'))) return
+    onRegenerate()
+  }
 
   return (
-    <div className="mt-1 space-y-2 rounded-md border bg-background p-2 text-xs">
+    <div className="mt-1 space-y-2 rounded-md border bg-background p-2 text-xs" aria-busy={regenerating ? 'true' : undefined}>
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.draftPreview')}</span>
-        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{draft.priority}</span>
+        {revealing ? (
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{draft.priority}</span>
+        ) : (
+          <select
+            value={edits.priority}
+            onChange={(e) => setEdits((v) => ({ ...v, priority: e.target.value as AITicketDraft['priority'] }))}
+            disabled={busy}
+            aria-label={t('ai.editPriority')}
+            className="rounded border bg-muted px-1 py-0.5 text-[10px] font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
-      <p className="font-medium text-foreground">{titleReveal.shown}</p>
-      {draft.description && descReveal.shown && <p className="line-clamp-3 text-muted-foreground">{descReveal.shown}</p>}
-      {acVisible > 0 && (
-        <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
-          {draft.acceptanceCriteria.slice(0, acVisible).map((ac, i) => (
-            <li key={i} className="motion-safe:animate-in motion-safe:fade-in">
-              {ac}
-            </li>
-          ))}
-        </ul>
+      {revealing ? (
+        <>
+          <p className="font-medium text-foreground">{titleReveal.shown}</p>
+          {draft.description && descReveal.shown && <p className="line-clamp-3 text-muted-foreground">{descReveal.shown}</p>}
+          {acVisible > 0 && (
+            <ul className="list-disc space-y-0.5 pl-4 text-muted-foreground">
+              {draft.acceptanceCriteria.slice(0, acVisible).map((ac, i) => (
+                <li key={i} className="motion-safe:animate-in motion-safe:fade-in">
+                  {ac}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <>
+          <Input
+            value={edits.title}
+            onChange={(e) => setEdits((v) => ({ ...v, title: e.target.value }))}
+            disabled={busy}
+            aria-label={t('ai.editTitle')}
+            className="h-7 bg-background text-xs font-medium"
+          />
+          <Textarea
+            value={edits.description}
+            onChange={(e) => setEdits((v) => ({ ...v, description: e.target.value }))}
+            disabled={busy}
+            aria-label={t('ai.editDescription')}
+            rows={3}
+            className="bg-background text-xs"
+          />
+          {draft.acceptanceCriteria.length > 0 && (
+            <ul className="space-y-1">
+              {draft.acceptanceCriteria.map((ac, i) => (
+                <li key={i}>
+                  <label className="flex cursor-pointer items-start gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={checks[i] ?? true}
+                      onChange={() => setChecks((cs) => cs.map((c, j) => (j === i ? !c : c)))}
+                      disabled={busy}
+                      className="mt-0.5 accent-primary"
+                    />
+                    <span className={checks[i] ?? true ? 'text-muted-foreground' : 'text-muted-foreground/50 line-through'}>{ac}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
-      <div className="flex items-center gap-2 pt-0.5">
+      <div className="flex flex-wrap items-center gap-2 pt-0.5">
         <button
           type="button"
-          onClick={onCreate}
-          disabled={creating}
+          onClick={() => onCreate(composeEditedDraft(draft, edits, checks))}
+          disabled={busy}
           className="rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
         >
           {creating ? t('common.loading') : t('ai.create')}
         </button>
         <button
           type="button"
+          onClick={regenerate}
+          disabled={busy}
+          className="rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-70"
+        >
+          {regenerating ? t('ai.generating') : t('ai.regenerate')}
+        </button>
+        <button
+          type="button"
           onClick={onDiscard}
-          disabled={creating}
+          disabled={busy}
           className="rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
         >
           {t('ai.discard')}
         </button>
+        {regenerating && stageKey && <span className="text-[10px] text-muted-foreground">{t(stageKey)}</span>}
       </div>
     </div>
   )

@@ -44,6 +44,10 @@
       "almost": "Almost there…"
     },
     "readyAnnounce": "AI result ready",
+    "regenerateConfirm": "Regenerate and replace your edits to this draft?",
+    "editTitle": "Draft title",
+    "editDescription": "Draft description",
+    "editPriority": "Draft priority",
     "create": "Create ticket",
     "discard": "Discard",
     "apply": "Apply to fields",
