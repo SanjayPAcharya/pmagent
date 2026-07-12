@@ -39,22 +39,31 @@
     },
     "retry": "Retry",
     "stage": {
-      "reading": "Reading context…",
-      "drafting": "Writing…",
-      "almost": "Almost there…"
+      "thinking": "Thinking",
+      "cooking": "Cooking",
+      "finishing": "Finishing"
     },
     "readyAnnounce": "AI result ready",
     "regenerateConfirm": "Regenerate and replace your edits to this draft?",
     "editTitle": "Draft title",
     "editDescription": "Draft description",
     "editPriority": "Draft priority",
+    "review": {
+      "title": "Review AI suggestions",
+      "current": "Current",
+      "proposed": "Proposed",
+      "overwrite": "Replaces existing",
+      "acceptAll": "Accept all",
+      "keepAll": "Keep all current",
+      "apply": "Apply selected",
+      "ready": "AI suggestions ready to review",
+      "empty": "The AI didn't return anything to add here."
+    },
     "create": "Create ticket",
     "discard": "Discard",
-    "apply": "Apply to fields",
     "draftPreview": "AI draft",
     "notesEmpty": "Type a few notes first, then draft with AI",
     "promptPlaceholder": "Optional: steer the AI (e.g. focus on the API)",
-    "overwriteConfirm": "This will replace the current field contents. Continue?",
     "poweredBy": "Powered by {{provider}}",
     "summaryEmpty": "Generate an AI status digest from this project's current metrics.",
     "risks": "Risks"
@@ -436,6 +445,7 @@
   "drawer": {
     "noDescription": "No description",
     "descriptionPlaceholder": "Markdown supported…",
+    "description": "Description",
     "spec": "Spec",
     "goal": "Goal",
     "acceptanceCriteria": "Acceptance criteria",

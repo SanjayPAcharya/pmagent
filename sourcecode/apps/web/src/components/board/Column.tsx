@@ -10,11 +10,12 @@ import { parseQuickCreate, type ParsedQuickCreate } from '@/lib/parseQuickCreate
 import { AIButton } from '@/components/BetaBadge'
 import { aiErrorKey } from '@/lib/useAIHealth'
 import { useListReveal, useStagedHint, useTextReveal } from '@/lib/aiReveal'
+// useStagedHint still drives the regenerate hint inside DraftPreview.
 import { composeEditedDraft, isDraftEdited, type DraftEdits } from '@/lib/aiDraftEdit'
+import { AIThinkingIndicator } from '@/components/AIThinkingIndicator'
 import { TicketCard } from './TicketCard'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -92,7 +93,6 @@ export function Column({
   const [draftError, setDraftError] = useState<string | null>(null)
   const [creatingDraft, setCreatingDraft] = useState(false)
   const draftAbort = useRef<AbortController | null>(null)
-  const stageKey = useStagedHint(drafting)
 
   const runDraft = async () => {
     const notes = title.trim()
@@ -260,30 +260,7 @@ export function Column({
                       busy={drafting}
                       disabled={!title.trim()}
                     />
-                    {drafting && (
-                      <div aria-busy="true" className="mt-1 space-y-2 rounded-md border bg-background p-2">
-                        <div className="flex items-center justify-between">
-                          <Skeleton className="h-3 w-14" />
-                          <Skeleton className="h-4 w-12" />
-                        </div>
-                        <Skeleton className="h-4 w-3/4" />
-                        <div className="space-y-1.5">
-                          <Skeleton className="h-3 w-full" />
-                          <Skeleton className="h-3 w-5/6" />
-                          <Skeleton className="h-3 w-2/3" />
-                        </div>
-                        <div className="flex items-center justify-between pt-0.5">
-                          <span className="text-[10px] text-muted-foreground">{stageKey && t(stageKey)}</span>
-                          <button
-                            type="button"
-                            onClick={cancelDraft}
-                            className="rounded-md border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-                          >
-                            {t('common.cancel')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {drafting && <AIThinkingIndicator active onCancel={cancelDraft} className="mt-1" />}
                     {draftError && (
                       <div className="flex items-center gap-2 text-[11px] text-destructive">
                         <span>{draftError}</span>

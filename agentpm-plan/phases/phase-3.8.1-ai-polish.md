@@ -99,7 +99,7 @@
 - Tests (+~3): edit-then-create composes edited values; unchecked AC dropped; regenerate confirms only when dirty.
 - **DoD:** browser-verified on dev stack; suite green.
 
-### - [ ] B4 — 🤖 Auto-fill: per-field diff/accept, confirm AFTER generation (M)
+### - [x] B4 — 🤖 Auto-fill: per-field diff/accept, confirm AFTER generation (M) ✅ DONE 2026-07-12 (web 54→60; browser-verified: empty ticket pre-accepts all/0 overwrite badges, filled ticket defaults all keep-current/4 badges+4 current blocks, accept-all/keep-all flip, apply lands values in edit mode)
 - **Behavior inversion (verified current flow):** today `TicketDrawer.tsx:106` `window.confirm`s BEFORE calling the API, then blind-overwrites all four fields. New flow: generate immediately (no upfront confirm) → show a **field-level review** for description/AC/goal/constraints: current vs proposed stacked per field, plain styling, **no diff library, no new deps**; proposed pre-selected only where current is empty; conflict fields default to **keep current**; per-field Accept toggles + "Accept all".
 - Accepted values land in the edit-mode fields; the normal Save persists (server contract unchanged — zero AI auto-save). AC keeps the `- `-bulleted textarea format on accept.
 - Keyboard accessible; focus moves to the review block on arrival; `aria-live` announcement; destructive token on overwrite-accepting toggles (house patterns).
@@ -107,7 +107,8 @@
 - Tests (+~3): empty-field default-accept, conflict default-keep, mixed accept composes correctly.
 - **DoD:** browser-verified (thin ticket + rich ticket); suite green.
 
-### - [ ] B5 — 🤖 Polish sweep + browser verify (S)
+### - [x] B5 — 🤖 Polish sweep + browser verify (S) ✅ DONE 2026-07-12 (i18n audit — removed dead `ai.overwriteConfirm` + `ai.apply`, renamed stage keys to thinking/cooking/finishing; a11y — aria-busy/aria-live/focus-to-review/Esc; modern loader replaces skeletons; FEATURES + date bump)
+- **Loader redesign (owner-requested, this step):** replaced the result-shaped skeletons on all three surfaces with a shared **`AIThinkingIndicator`** — sparkle + a gradient-shimmered stage word (**Thinking → Cooking → Finishing**, rising in on each change via `useStagedHint`) + bouncing dots + Cancel; CSS in `index.css` (`ai-shimmer`/`ai-dot`), instant/solid under `prefers-reduced-motion`.
 - `ai.*` i18n audit: add `ai.error.*`/B2–B4 keys, delete dead ones (`ai.overwriteConfirm`, `ai.modelLoading` if unreferenced after B1 — check `aiButtonState`'s `ai.modelLoading` branch first, it IS still used by health gating). Focus management; disabled-with-reason tooltips still correct; dark + light pass; axe pass on board/drawer/overview.
 - Optional (cheap, no AWS): one e2e spec asserting the disabled-with-reason state when `AI_PROVIDER=''` — extends the existing local-only playwright suite, not CI.
 - **DoD:** full suite green (est. **api ≈111–112 · web ≈47–48**, from 107/37); PROGRESS row with screenshots; FEATURES.md refresh ("clearer AI errors, editable previews, cancellable generation") + date bump.

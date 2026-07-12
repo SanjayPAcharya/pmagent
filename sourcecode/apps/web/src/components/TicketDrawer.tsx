@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronRight, Eye, Maximize2, Minimize2, Tag, X } from 'lucide-react'
-import { api, type Comment as CommentType, type Member, type Priority, type Ticket, type TicketStatus, type TicketType as TicketKind, type UpdateTicketInput, type Workstream } from '@/lib/api'
+import { api, type AIExpandDraft, type Comment as CommentType, type Member, type Priority, type Ticket, type TicketStatus, type TicketType as TicketKind, type UpdateTicketInput, type Workstream } from '@/lib/api'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { renderMarkdown } from '@/lib/markdown'
@@ -21,9 +21,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ReadinessRing, ticketReadiness } from '@/components/ReadinessRing'
 import { RelationsSection } from '@/components/RelationsSection'
 import { AIButton } from '@/components/BetaBadge'
+import { AIThinkingIndicator } from '@/components/AIThinkingIndicator'
 import { aiErrorKey } from '@/lib/useAIHealth'
-import { countSegments, prefersReducedMotion, sliceSequential, useStagedHint } from '@/lib/aiReveal'
-import { Skeleton } from '@/components/ui/skeleton'
+import { countSegments, prefersReducedMotion, sliceSequential } from '@/lib/aiReveal'
+import {
+  buildReviewFields,
+  composeAccepted,
+  defaultAccepts,
+  setAllAccepts,
+  type ExpandFieldKey,
+  type ExpandValues,
+} from '@/lib/aiExpandReview'
 import { RelativeTime } from '@/components/RelativeTime'
 import { parseChecklist, toggleChecklistItem } from '@/lib/checklist'
 import { fireConfetti } from '@/lib/confetti'
@@ -101,71 +109,29 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
     onChanged()
   }
 
-  // 3.8 B3 — generate an expanded spec draft and fill the editable fields for
-  // review. Confirm before overwriting any field that already has content. The
-  // draft is never auto-saved — the user reviews in edit mode and Saves normally.
+  // 3.8.1 B4 — auto-fill generates first, then shows a per-field review
+  // (current vs proposed) so the user accepts or keeps each field; nothing
+  // overwrites blindly and nothing auto-saves. `review` holds the generated
+  // draft until the user applies or discards it.
   const expandAbort = useRef<AbortController | null>(null)
-  const expandStageKey = useStagedHint(expanding)
-  // Streaming fill: the generated values type into the four edit fields in
-  // visual order (description → goal → AC → constraints). While it runs the
-  // fields are readOnly and Save is disabled so a partial value can't be
-  // edited into or persisted; the full validated draft is already in hand.
-  const [fillReveal, setFillReveal] = useState<string[] | null>(null)
+  const [review, setReview] = useState<AIExpandDraft | null>(null)
 
-  // Switching tickets mid-stream must not type the old ticket's draft into the
-  // new one's fields.
-  useEffect(() => setFillReveal(null), [ticketId])
-
-  useEffect(() => {
-    if (!fillReveal) return
-    const total = countSegments(fillReveal)
-    let n = 0
-    const id = setInterval(() => {
-      n += 6
-      const [d, g, a, c] = sliceSequential(fillReveal, n)
-      setDesc(d)
-      setGoal(g)
-      setAc(a)
-      setConstraints(c)
-      if (n >= total) {
-        clearInterval(id)
-        setFillReveal(null)
-      }
-    }, 40)
-    return () => clearInterval(id)
-  }, [fillReveal])
+  // Switching tickets must not carry the previous ticket's review across.
+  useEffect(() => setReview(null), [ticketId])
 
   const runAutoFill = async () => {
-    const hasContent = Boolean(desc.trim() || ac.trim() || goal.trim() || constraints.trim())
-    if (hasContent && !window.confirm(t('ai.overwriteConfirm'))) return
+    // No upfront overwrite confirm (B4) — generate, then review per field.
     expandAbort.current?.abort()
     const ctrl = new AbortController()
     expandAbort.current = ctrl
     setExpanding(true)
     setExpandError(null)
+    setReview(null)
     try {
       const { draft } = await api.aiExpandTicket(ticketId, aiPrompt.trim() || undefined, ctrl.signal)
-      const targets = [
-        draft.description ?? '',
-        draft.goal ?? '',
-        draft.acceptanceCriteria.length ? draft.acceptanceCriteria.map((x) => `- ${x}`).join('\n') : '',
-        draft.constraints ?? '',
-      ]
-      setEditingDesc(true) // drop into edit mode so the user reviews before saving
+      setReview(draft)
       setAutoFillOpen(false)
       setAiPrompt('')
-      if (prefersReducedMotion()) {
-        setDesc(targets[0])
-        setGoal(targets[1])
-        setAc(targets[2])
-        setConstraints(targets[3])
-      } else {
-        setDesc('')
-        setGoal('')
-        setAc('')
-        setConstraints('')
-        setFillReveal(targets)
-      }
     } catch (e) {
       const key = aiErrorKey(e)
       // null = user cancelled — back to idle, no error shown.
@@ -182,6 +148,16 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
   }
 
   const cancelAutoFill = () => expandAbort.current?.abort()
+
+  // Apply the reviewed values into the edit fields; the normal Save persists.
+  const applyReview = (values: ExpandValues) => {
+    setDesc(values.description)
+    setGoal(values.goal)
+    setAc(values.ac)
+    setConstraints(values.constraints)
+    setEditingDesc(true)
+    setReview(null)
+  }
 
   // E2 — build the inverse of an update so the success toast can offer Undo.
   // For labelIds (which has no scalar previous value) we restore the prior label set.
@@ -876,21 +852,8 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   </Button>
                 </div>
               </div>
-              {autoFillOpen && (
-                <div
-                  className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2"
-                  onKeyDown={(e) => {
-                    // Esc cancels an in-flight generation (panel stays open).
-                    if (e.key === 'Escape' && expanding) {
-                      e.stopPropagation()
-                      cancelAutoFill()
-                    }
-                  }}
-                >
-                  {/* Announce start + done only — the staged hint is not live. */}
-                  <span className="sr-only" aria-live="polite">
-                    {expanding ? t('ai.generating') : ''}
-                  </span>
+              {autoFillOpen && !expanding && !review && (
+                <div className="mt-2 space-y-2 rounded-md border bg-muted/30 p-2">
                   <Textarea
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
@@ -898,19 +861,12 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                     placeholder={t('ai.promptPlaceholder')}
                   />
                   <div className="flex items-center gap-2">
-                    <Button size="sm" onClick={runAutoFill} disabled={expanding}>
-                      {expanding ? t('ai.generating') : t('ai.autoFill')}
+                    <Button size="sm" onClick={runAutoFill}>
+                      {t('ai.autoFill')}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => (expanding ? cancelAutoFill() : setAutoFillOpen(false))}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setAutoFillOpen(false)}>
                       {t('common.cancel')}
                     </Button>
-                    {expanding && expandStageKey && (
-                      <span className="text-[11px] text-muted-foreground">{t(expandStageKey)}</span>
-                    )}
                   </div>
                   {expandError && (
                     <div className="flex items-center gap-2 text-[11px] text-destructive">
@@ -922,24 +878,48 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                   )}
                 </div>
               )}
-              {expanding ? (
-                /* B2 — result-shaped shimmer over the four target fields while
-                   the auto-fill generation is in flight. */
-                <div aria-busy="true" className="mt-1 space-y-2">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-12 w-full" />
+              {review ? (
+                <div
+                  className="mt-2"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.stopPropagation()
+                      setReview(null)
+                    }
+                  }}
+                >
+                  <AutoFillReview
+                    current={{ description: desc, goal, ac, constraints }}
+                    draft={review}
+                    onApply={applyReview}
+                    onDiscard={() => setReview(null)}
+                  />
+                </div>
+              ) : expanding ? (
+                <div
+                  className="mt-2"
+                  onKeyDown={(e) => {
+                    // Esc cancels the in-flight generation.
+                    if (e.key === 'Escape') {
+                      e.stopPropagation()
+                      cancelAutoFill()
+                    }
+                  }}
+                >
+                  {/* Announce start only — the staged word is not live. */}
+                  <span className="sr-only" aria-live="polite">
+                    {t('ai.generating')}
+                  </span>
+                  <AIThinkingIndicator active onCancel={cancelAutoFill} />
                 </div>
               ) : editingDesc ? (
-                <div className="mt-1 space-y-2" aria-busy={fillReveal ? 'true' : undefined}>
-                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} placeholder={t('drawer.descriptionPlaceholder')} readOnly={Boolean(fillReveal)} />
-                  <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2} placeholder={t('drawer.goalPlaceholder')} readOnly={Boolean(fillReveal)} />
-                  <Textarea value={ac} onChange={(e) => setAc(e.target.value)} rows={3} placeholder={t('drawer.acPlaceholder')} readOnly={Boolean(fillReveal)} />
-                  <Textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} placeholder={t('drawer.constraintsPlaceholder')} readOnly={Boolean(fillReveal)} />
+                <div className="mt-1 space-y-2">
+                  <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} placeholder={t('drawer.descriptionPlaceholder')} />
+                  <Textarea value={goal} onChange={(e) => setGoal(e.target.value)} rows={2} placeholder={t('drawer.goalPlaceholder')} />
+                  <Textarea value={ac} onChange={(e) => setAc(e.target.value)} rows={3} placeholder={t('drawer.acPlaceholder')} />
+                  <Textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} placeholder={t('drawer.constraintsPlaceholder')} />
                   <Button
                     size="sm"
-                    disabled={Boolean(fillReveal)}
                     onClick={() => {
                       patch({ description: desc, acceptanceCriteria: ac, goal, constraints })
                       setEditingDesc(false)
@@ -1090,5 +1070,124 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
         )}
       </SheetContent>
     </Sheet>
+  )
+}
+
+const EMPTY_VALUES: ExpandValues = { description: '', goal: '', ac: '', constraints: '' }
+
+// 3.8.1 B4 — auto-fill per-field review. Generation already returned the full
+// draft; this shows current-vs-proposed per field with accept toggles (empty
+// fields pre-accepted, conflicts default to keep-current), streams the proposed
+// text in for the same "typing" feel, and applies only on the user's confirm.
+function AutoFillReview({
+  current,
+  draft,
+  onApply,
+  onDiscard,
+}: {
+  current: ExpandValues
+  draft: AIExpandDraft
+  onApply: (values: ExpandValues) => void
+  onDiscard: () => void
+}) {
+  const { t } = useTranslation()
+  const fields = useMemo(() => buildReviewFields(current, draft), [current, draft])
+  const [accepted, setAccepted] = useState<Record<ExpandFieldKey, boolean>>(() => defaultAccepts(fields))
+  const ref = useRef<HTMLDivElement>(null)
+  // Focus the review block on arrival so keyboard users land on the decision.
+  useEffect(() => ref.current?.focus(), [])
+
+  // Stream the proposed values in sequentially (description → … ) for the same
+  // typing feel as the draft preview; the full text is already in hand. Keyed on
+  // `draft` only (which fields appear + their order is current-independent) so a
+  // parent re-render mid-stream — e.g. a websocket ticket sync — can't restart it.
+  const proposedTexts = useMemo(() => buildReviewFields(EMPTY_VALUES, draft).map((f) => f.proposed), [draft])
+  const [shown, setShown] = useState<string[]>(() => (prefersReducedMotion() ? proposedTexts : proposedTexts.map(() => '')))
+  useEffect(() => {
+    if (prefersReducedMotion()) {
+      setShown(proposedTexts)
+      return
+    }
+    setShown(proposedTexts.map(() => ''))
+    const total = countSegments(proposedTexts)
+    let n = 0
+    const id = setInterval(() => {
+      n += 6
+      setShown(sliceSequential(proposedTexts, n))
+      if (n >= total) clearInterval(id)
+    }, 40)
+    return () => clearInterval(id)
+  }, [proposedTexts])
+
+  if (fields.length === 0) {
+    return (
+      <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+        <p>{t('ai.review.empty')}</p>
+        <Button size="sm" variant="ghost" onClick={onDiscard}>
+          {t('common.close')}
+        </Button>
+      </div>
+    )
+  }
+
+  const allAccepted = fields.every((f) => accepted[f.key])
+
+  return (
+    <div ref={ref} tabIndex={-1} className="space-y-3 rounded-md border bg-muted/30 p-3 outline-none">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.review.title')}</p>
+        <button
+          type="button"
+          onClick={() => setAccepted(setAllAccepts(fields, !allAccepted))}
+          className="text-[11px] font-medium text-primary hover:underline"
+        >
+          {allAccepted ? t('ai.review.keepAll') : t('ai.review.acceptAll')}
+        </button>
+      </div>
+      <span className="sr-only" aria-live="polite">
+        {t('ai.review.ready')}
+      </span>
+      {fields.map((f, i) => (
+        <div key={f.key} className="space-y-1">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={accepted[f.key]}
+              onChange={() => setAccepted((a) => ({ ...a, [f.key]: !a[f.key] }))}
+              className={cn('mt-px', f.conflict ? 'accent-destructive' : 'accent-primary')}
+            />
+            <span className="text-xs font-medium text-foreground">{t(f.labelKey)}</span>
+            {f.conflict && (
+              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+                {t('ai.review.overwrite')}
+              </span>
+            )}
+          </label>
+          {f.conflict && (
+            <div className="rounded border bg-background/60 p-2 text-xs text-muted-foreground">
+              <span className="mb-0.5 block text-[10px] uppercase tracking-wide text-muted-foreground/70">{t('ai.review.current')}</span>
+              <span className="whitespace-pre-wrap">{f.current}</span>
+            </div>
+          )}
+          <div
+            className={cn(
+              'rounded border p-2 text-xs whitespace-pre-wrap',
+              accepted[f.key] ? 'border-primary/40 bg-primary/5 text-foreground' : 'bg-background/60 text-muted-foreground',
+            )}
+          >
+            <span className="mb-0.5 block text-[10px] uppercase tracking-wide text-muted-foreground/70">{t('ai.review.proposed')}</span>
+            {shown[i]}
+          </div>
+        </div>
+      ))}
+      <div className="flex items-center gap-2 pt-1">
+        <Button size="sm" onClick={() => onApply(composeAccepted(current, draft, accepted))}>
+          {t('ai.review.apply')}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDiscard}>
+          {t('ai.discard')}
+        </Button>
+      </div>
+    </div>
   )
 }

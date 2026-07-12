@@ -108,3 +108,41 @@
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
   50% { transform: translate3d(16px, 24px, 0) scale(1.05); }
 }
+
+/* 3.8.1 B4 — AI "thinking" loader: a gradient sweep across the current stage
+   word (Thinking → Cooking → Finishing) plus a trio of rising dots, shown while
+   a generation is in flight and before the result streams in. */
+@keyframes ai-shimmer {
+  0% { background-position: 150% 0; }
+  100% { background-position: -150% 0; }
+}
+.ai-shimmer-text {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--muted-foreground)) 30%,
+    hsl(var(--primary)) 50%,
+    hsl(var(--muted-foreground)) 70%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ai-shimmer 1.8s linear infinite;
+}
+@keyframes ai-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
+}
+.ai-dot {
+  animation: ai-dot 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-shimmer-text {
+    animation: none;
+    background: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    color: hsl(var(--muted-foreground));
+  }
+  .ai-dot { animation: none; opacity: 0.5; }
+}

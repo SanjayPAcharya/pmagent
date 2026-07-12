@@ -87,9 +87,9 @@ export function countSegments(texts: string[]): number {
   return texts.reduce((sum, t) => sum + segmentText(t).length, 0)
 }
 
-export const HINT_STAGES = ['ai.stage.reading', 'ai.stage.drafting', 'ai.stage.almost'] as const
+export const HINT_STAGES = ['ai.stage.thinking', 'ai.stage.cooking', 'ai.stage.finishing'] as const
 
-/** Which staged hint applies after `elapsedMs` of generation (pure, testable). */
+/** Which staged word applies after `elapsedMs` of generation (pure, testable). */
 export function stageAt(elapsedMs: number): (typeof HINT_STAGES)[number] {
   if (elapsedMs >= 4000) return HINT_STAGES[2]
   if (elapsedMs >= 1500) return HINT_STAGES[1]
@@ -97,10 +97,9 @@ export function stageAt(elapsedMs: number): (typeof HINT_STAGES)[number] {
 }
 
 /**
- * Staged hint line while a generation is in flight ("Reading context…" →
- * "Writing…" → "Almost there…"); null when idle. The visible line must NOT sit
- * in an aria-live region (it would announce every stage) — pair it with a
- * separate sr-only start/done announcement.
+ * Staged word while a generation is in flight ("Thinking" → "Cooking" →
+ * "Finishing"); null when idle. Must NOT sit in an aria-live region (it would
+ * announce every stage) — pair it with a separate sr-only start/done announce.
  */
 export function useStagedHint(active: boolean): (typeof HINT_STAGES)[number] | null {
   const [stage, setStage] = useState(0)

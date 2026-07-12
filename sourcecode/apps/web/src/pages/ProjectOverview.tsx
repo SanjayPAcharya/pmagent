@@ -8,7 +8,8 @@ import { BlockedBadge } from '@/components/BlockedBadge'
 import { api, type AIProjectSummary, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useAIHealth, aiButtonState, aiErrorKey } from '@/lib/useAIHealth'
-import { useListReveal, useStagedHint, useTextReveal } from '@/lib/aiReveal'
+import { useListReveal, useTextReveal } from '@/lib/aiReveal'
+import { AIThinkingIndicator } from '@/components/AIThinkingIndicator'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -152,7 +153,6 @@ export default function ProjectOverview() {
     staleTime: Infinity,
     retry: false,
   })
-  const summaryStageKey = useStagedHint(summary.isFetching)
   const summaryErrorKey = summary.isError ? aiErrorKey(summary.error) : null
   // Re-gate the AI buttons immediately when a summary attempt reveals the server
   // is down, rather than waiting out the 60s health staleTime.
@@ -493,16 +493,8 @@ export default function ProjectOverview() {
                 {summary.isFetching ? t('ai.generating') : summary.data ? t('ai.readyAnnounce') : ''}
               </span>
               {summary.isFetching ? (
-                /* B2 — result-shaped shimmer: headline + 3 bullets. */
-                <div aria-busy="true" className="space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <div className="space-y-1.5 pl-1">
-                    <Skeleton className="h-3 w-full" />
-                    <Skeleton className="h-3 w-5/6" />
-                    <Skeleton className="h-3 w-2/3" />
-                  </div>
-                  {summaryStageKey && <p className="text-xs text-muted-foreground">{t(summaryStageKey)}</p>}
-                </div>
+                /* B4 — modern "thinking" loader; the row's Cancel handles abort. */
+                <AIThinkingIndicator active />
               ) : summary.data ? (
                 <SummaryReveal summary={summary.data.summary} />
               ) : (
