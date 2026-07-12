@@ -57,7 +57,7 @@
 - Hermetic tests (+~3): seed titles/labels/goal, assert they appear in the Converse payload; assert the char cap.
 - **DoD:** A1 re-run shows the enrichment effect; suite green (api ≈111–112).
 
-### - [ ] A4 — 🤖 Model A/B + cost table (S)
+### - [x] A4 — 🤖 Model A/B + cost table (S) ✅ DONE 2026-07-12 (4 Nova models × 48 gen in `release-doc/ai-eval-report.md`; Claude skipped — Anthropic use-case form not submitted; finding: Nova Lite is the value upgrade, Pro not worth 21×, Nova 2 Lite worst value)
 - Run the full fixture set via A1's `--model` against: `apac.amazon.nova-micro-v1:0` (baseline) → Nova Lite/Nova 2 Lite (**verify exact APAC profile IDs at run time**; note: `list-inference-profiles` returned empty for the dev IAM user on 2026-07-10 — likely missing from the policy; use `get-inference-profile` per candidate ID, or the owner adds `ListInferenceProfiles` to `pmagent-bedrock-invoke`) → `global.anthropic.claude-haiku-*` **only if** the one-time Anthropic self-declaration form is done (owner said individual-developer details are accepted; **skip silently if not** — Nova Pro is the no-form fallback).
 - Output: side-by-side per-fixture outputs + scorecards + **₹/month projection at expected volume** per model (refresh per-token prices at run time; 2026-07 ballpark: Nova Micro ≈ ₹10–40 · Haiku ≈ ₹320).
 - **DoD:** `release-doc/ai-eval-report.md` gains the A/B section; no code changes.
