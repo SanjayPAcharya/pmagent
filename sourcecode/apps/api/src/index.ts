@@ -19,15 +19,27 @@ import { wsServer } from './websocket/ws-server.js'
 import { initNotificationService } from './services/notifications.service.js'
 import { purgeExpired } from './services/retention.service.js'
 
-export async function buildServer() {
+export async function buildServer(opts: { loggerStream?: NodeJS.WritableStream } = {}) {
   const config = loadConfig()
 
   const app = Fastify({
-    logger: {
-      level: config.LOG_LEVEL,
-      transport:
-        config.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
-    },
+    // Bugfix (2026-07-13): in prod ALL traffic arrives via Caddy (`reverse_proxy
+    // api:3001`), so without trustProxy `request.ip` was Caddy's container IP for
+    // every user — the per-IP rate limiter collapsed into ONE shared bucket for
+    // the whole deployment. trustProxy makes Fastify honor X-Forwarded-For, so
+    // `request.ip` is the real client. Safe: the api port is not published in
+    // docker-compose.prod.yml (only Caddy's 80/443), so the header can't be
+    // spoofed by connecting directly. Dev has no proxy → behavior unchanged.
+    trustProxy: true,
+    // `loggerStream` is a test-only seam (3.8.1 A6) so a spec can capture the
+    // structured log lines the app emits; prod/dev are unaffected.
+    logger: opts.loggerStream
+      ? { level: config.LOG_LEVEL, stream: opts.loggerStream }
+      : {
+          level: config.LOG_LEVEL,
+          transport:
+            config.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
+        },
   })
 
   // Tolerate an empty body on `Content-Type: application/json` requests. Browsers
@@ -68,7 +80,18 @@ export async function buildServer() {
     config.NODE_ENV !== 'test' && config.REDIS_URL
       ? new Redis(config.REDIS_URL, { connectTimeout: 500, maxRetriesPerRequest: 1 })
       : undefined
-  await app.register(rateLimit, { max: 100, timeWindow: '1 minute', redis: rlRedis })
+  // Config fix (2026-07-13): 100/min was sized as if per-person, but one List-page
+  // navigation fans out ~15 requests — with the shared-bucket bug above, normal
+  // clicking 429'd. Now per REAL client (trustProxy) and env-tunable
+  // (RATE_LIMIT_MAX, default 400/min) as an abuse backstop; the tighter per-route
+  // AI limits (5–10/min) are unchanged. /health + /ready are exempt so uptime
+  // monitors and container healthchecks never eat budget or false-alarm on 429.
+  await app.register(rateLimit, {
+    max: config.RATE_LIMIT_MAX,
+    timeWindow: '1 minute',
+    redis: rlRedis,
+    allowList: (request) => request.url === '/health' || request.url === '/ready',
+  })
   await app.register(websocket)
 
   // Real-time: connect the Redis bus (no-op without REDIS_URL → tests stay

@@ -1,0 +1,118 @@
+{
+  "_note": "Phase 3.8.1 A1/A3 — synthetic eval fixtures. NO real org data. Consumed by scripts/ai-eval.ts, which builds the exact same user text the routes send via the shared ai.prompts.ts builders (enrichment included). The `enrichment` block below is applied to every draft/expand fixture (A3 context lever); summary fixtures carry an optional per-fixture `sprintGoal`.",
+  "enrichment": {
+    "draft": {
+      "projectName": "Checkout Revamp",
+      "recentTitles": [
+        "Add Apple Pay to the checkout sheet",
+        "Fix tax rounding on multi-item invoices",
+        "Show saved cards on the payment step",
+        "Handle declined-card retry gracefully",
+        "Persist cart across guest sign-in"
+      ],
+      "labels": ["frontend", "backend", "payments", "bug", "a11y"]
+    },
+    "expand": {
+      "parentTitle": "Checkout hardening",
+      "siblingTitles": ["Handle expired card tokens", "Retry failed payment captures", "Log 3-D Secure failures"]
+    }
+  },
+  "draft": [
+    { "id": "terse-oneliner", "kind": "terse", "notes": "add csv export to reports" },
+    { "id": "rambling-paragraph", "kind": "rambling", "notes": "so a few people mentioned in the retro that when they're looking at the board it's kind of hard to tell which tickets are actually blocked versus just sitting there, and someone said maybe we could show something visual, like a little badge or a color, and also it would be nice if hovering told you why it's blocked, anyway we should probably do something about surfacing blocked state more clearly on the cards" },
+    { "id": "typod-input", "kind": "typod", "notes": "usres cant reset there pasword the emial never arrivs, prbly the queu is stuck, need to fix teh reset flow" },
+    { "id": "bug-report", "kind": "bug", "notes": "login button does nothing on Safari when clicked twice quickly; console shows 'Cannot read properties of null'. Works on Chrome. Started after the last deploy." },
+    { "id": "feature-request", "kind": "feature", "notes": "let people @mention teammates in ticket comments so they get notified, with an autocomplete picker as you type @" },
+    { "id": "chore-maintenance", "kind": "chore", "notes": "upgrade Node 18 to 20 across all services and update the CI base image" },
+    { "id": "urgency-implying", "kind": "urgent", "notes": "prod is down — payments have been failing for every user since about 2pm, checkout returns 500, we're losing revenue right now" },
+    { "id": "vague-thin", "kind": "thin", "notes": "make onboarding better" }
+  ],
+  "expand": [
+    {
+      "id": "title-only-ratelimit",
+      "kind": "title-only",
+      "ticket": { "title": "Rate limit the API", "description": "", "acceptanceCriteria": "", "goal": "", "constraints": "" },
+      "prompt": null
+    },
+    {
+      "id": "title-only-darkmode",
+      "kind": "title-only",
+      "ticket": { "title": "Add dark mode", "description": "", "acceptanceCriteria": "", "goal": "", "constraints": "" },
+      "prompt": null
+    },
+    {
+      "id": "thin-desc-search",
+      "kind": "thin-desc",
+      "ticket": { "title": "Improve search", "description": "Search feels slow and misses obvious results.", "acceptanceCriteria": "", "goal": "", "constraints": "" },
+      "prompt": null
+    },
+    {
+      "id": "bug-title-webhook",
+      "kind": "bug-title",
+      "ticket": { "title": "Webhook retries fire twice", "description": "Some webhook deliveries are duplicated.", "acceptanceCriteria": "", "goal": "", "constraints": "" },
+      "prompt": "focus on idempotency"
+    },
+    {
+      "id": "vague-title-onboarding",
+      "kind": "vague-title",
+      "ticket": { "title": "Onboarding polish", "description": "", "acceptanceCriteria": "", "goal": "", "constraints": "" },
+      "prompt": null
+    }
+  ],
+  "summary": [
+    {
+      "id": "empty-project",
+      "kind": "empty",
+      "metrics": {
+        "project": "Fresh Start",
+        "statusCounts": { "BACKLOG": 0, "TODO": 0, "IN_PROGRESS": 0, "IN_REVIEW": 0, "DONE": 0 },
+        "open": 0,
+        "done": 0,
+        "workstream": { "SPRINT": 0, "ADHOC": 0 },
+        "activeSprint": null,
+        "blockers": [],
+        "milestones": [],
+        "recentVelocityAvg": 0
+      }
+    },
+    {
+      "id": "healthy-project",
+      "kind": "healthy",
+      "sprintGoal": "Ship one-tap checkout to 100% of users",
+      "metrics": {
+        "project": "Checkout Revamp",
+        "statusCounts": { "BACKLOG": 8, "TODO": 5, "IN_PROGRESS": 4, "IN_REVIEW": 2, "DONE": 21 },
+        "open": 19,
+        "done": 21,
+        "workstream": { "SPRINT": 15, "ADHOC": 4 },
+        "activeSprint": { "name": "Sprint 7", "done": 6, "total": 10, "endDate": "2026-07-18" },
+        "blockers": [],
+        "milestones": [{ "name": "Beta launch", "date": "2026-08-01", "readiness": 0.72 }],
+        "recentVelocityAvg": 9.5
+      }
+    },
+    {
+      "id": "blocker-heavy-project",
+      "kind": "blocker-heavy",
+      "sprintGoal": "Migrate billing to the new ledger without downtime",
+      "metrics": {
+        "project": "Billing Migration",
+        "statusCounts": { "BACKLOG": 12, "TODO": 9, "IN_PROGRESS": 7, "IN_REVIEW": 1, "DONE": 6 },
+        "open": 29,
+        "done": 6,
+        "workstream": { "SPRINT": 17, "ADHOC": 12 },
+        "activeSprint": { "name": "Sprint 3", "done": 2, "total": 12, "endDate": "2026-07-14" },
+        "blockers": [
+          { "key": "BILL-42", "title": "Legacy invoice import fails on multi-currency rows", "openBlockers": 3 },
+          { "key": "BILL-51", "title": "Payment provider sandbox keys expired", "openBlockers": 2 },
+          { "key": "BILL-63", "title": "Schema migration locks the ledger table", "openBlockers": 1 }
+        ],
+        "milestones": [
+          { "name": "Cutover", "date": "2026-07-20", "readiness": 0.21 },
+          { "name": "Decommission legacy", "date": "2026-08-15", "readiness": 0.05 }
+        ],
+        "recentVelocityAvg": 3.0
+      }
+    }
+  ]
+}

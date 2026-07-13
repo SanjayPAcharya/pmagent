@@ -9,6 +9,10 @@ export interface AppConfig {
   KEYCLOAK_INTERNAL_URL: string // API-reachable realm base for JWKS discovery (same keys, any host)
   KEYCLOAK_API_AUDIENCE: string
   RETENTION_NOTIFICATION_DAYS: number // 3.7.4 E2 — read notifications older than this are purged daily
+  // Global per-client request cap (per real client IP once trustProxy resolves
+  // X-Forwarded-For). Sized for SPA fan-out (~15 requests per page navigation) —
+  // an abuse backstop, not something normal clicking should ever hit.
+  RATE_LIMIT_MAX: number
   // ── AI (optional, 3.8) — empty AI_PROVIDER = AI disabled (buttons show disabled-with-reason) ──
   AI_PROVIDER: string // '' = disabled | 'bedrock'
   BEDROCK_MODEL_ID: string // inference-profile ID; Nova Micro (APAC) by default, flip to a Claude global.* profile for quality
@@ -36,6 +40,7 @@ export function loadConfig(): AppConfig {
       process.env.KEYCLOAK_INTERNAL_URL ?? process.env.KEYCLOAK_ISSUER_URL ?? '',
     KEYCLOAK_API_AUDIENCE: process.env.KEYCLOAK_API_AUDIENCE ?? 'agentpm-api',
     RETENTION_NOTIFICATION_DAYS: Number(process.env.RETENTION_NOTIFICATION_DAYS ?? 90),
+    RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX ?? 400),
     AI_PROVIDER: (process.env.AI_PROVIDER ?? '').trim(),
     BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID ?? 'apac.amazon.nova-micro-v1:0',
     AWS_REGION: process.env.AWS_REGION ?? 'ap-south-1',

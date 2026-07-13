@@ -1,114 +1,77 @@
-import type { FastifyPluginAsync } from 'fastify'
+import type { FastifyPluginAsync, FastifyBaseLogger } from 'fastify'
 import { z } from 'zod'
 import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod'
 import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
-import { aiHealth, requireProvider, type JsonSchema } from '../services/ai.service.js'
+import { aiHealth, requireProvider, type AIProvider, type GenerateOptions } from '../services/ai.service.js'
+import {
+  PROMPTS,
+  PROMPT_VERSION,
+  buildDraftUser,
+  buildExpandUser,
+  buildSummaryUser,
+  buildSprintGoalUser,
+  type PromptEndpoint,
+} from '../services/ai.prompts.js'
 import { projectOverview } from '../services/overview.service.js'
 
 // Phase 3.8 — self-hosted AI drafting. All endpoints sit behind requireAuth and
 // (for the generation routes) org-role checks; each generation is only ever a
 // draft the same user reviews — no tool use, no auto-save (see phase spec §Prompt hygiene).
+// 3.8.1 A1: the prompts/schemas/zod live in ../services/ai.prompts.ts (shared with
+// the offline eval harness); this file only assembles per-request context + wiring.
 
-const PRIORITIES = ['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const
-
-// ── A2: draft-ticket ─────────────────────────────────────────────────────────
+// ── request-body validators (route input, not model prompts) ──────────────────
 const draftTicketBody = z.object({
   projectId: z.string().uuid(),
   notes: z.string().min(1).max(4000),
 })
-const draftTicketSchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    description: { type: 'string' },
-    acceptanceCriteria: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
-    priority: { type: 'string', enum: [...PRIORITIES] },
-  },
-  required: ['title', 'description', 'acceptanceCriteria', 'priority'],
-}
-const draftTicketZod = z.object({
-  title: z.string().min(1).max(200),
-  description: z.string(),
-  // .min(1): an empty list fails validation → the seam's one corrective re-prompt
-  // fires with an explicit message. Small models (Nova Micro) otherwise omit AC on
-  // thin input despite the prompt + schema minItems.
-  acceptanceCriteria: z.array(z.string()).min(1),
-  priority: z.enum(PRIORITIES),
-})
-
-const DRAFT_SYSTEM = [
-  'You are a senior product manager writing a single work ticket from rough notes.',
-  'Be concrete and concise. Do NOT invent requirements the notes do not support.',
-  'title: a short imperative summary (max ~12 words).',
-  'description: 2–5 sentences of context and scope.',
-  'acceptanceCriteria: 2–6 short, testable, outcome-focused bullet strings (no leading dash).',
-  `priority: choose exactly one of ${PRIORITIES.join(', ')} based only on urgency implied by the notes.`,
-  'Return ONLY JSON matching the schema — no prose, no markdown.',
-].join('\n')
-
-// ── A3: expand-ticket ────────────────────────────────────────────────────────
 const expandTicketBody = z.object({
   ticketId: z.string().uuid(),
   prompt: z.string().max(2000).optional(),
 })
-const expandTicketSchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    description: { type: 'string' },
-    acceptanceCriteria: { type: 'array', items: { type: 'string' }, minItems: 2, maxItems: 6 },
-    goal: { type: 'string' },
-    constraints: { type: 'string' },
-  },
-  required: ['description', 'acceptanceCriteria', 'goal', 'constraints'],
-}
-const expandTicketZod = z.object({
-  description: z.string(),
-  // .min(1): see draftTicketZod — forces the corrective re-prompt if the model
-  // returns an empty acceptanceCriteria (observed with Nova Micro on thin tickets).
-  acceptanceCriteria: z.array(z.string()).min(1),
-  goal: z.string(),
-  constraints: z.string(),
-})
-const EXPAND_SYSTEM = [
-  'You are a senior product manager fleshing out an existing work ticket.',
-  'Use the ticket context below; do NOT contradict its title or invent unrelated scope.',
-  'description: a clear 2–5 sentence problem/scope statement.',
-  'acceptanceCriteria: REQUIRED — always 2 to 6 short, testable bullet strings (no leading dash). Never return an empty list; if the ticket has none yet, derive them from its title, description, and intent.',
-  'goal: one sentence — the outcome this ticket achieves.',
-  'constraints: one or two sentences — technical or scope limits (empty string if none).',
-  'Return ONLY JSON matching the schema — no prose, no markdown.',
-].join('\n')
+const projectSummaryBody = z.object({ projectId: z.string().uuid() })
+const sprintGoalBody = z.object({ sprintId: z.string().uuid() })
 
 /** Cap a field so the whole context comfortably fits num_ctx (~4096 tokens). */
 const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
 
-// ── A4: project-summary ──────────────────────────────────────────────────────
-const projectSummaryBody = z.object({ projectId: z.string().uuid() })
-const projectSummarySchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    headline: { type: 'string' },
-    bullets: { type: 'array', items: { type: 'string' } },
-    risks: { type: 'array', items: { type: 'string' } },
-  },
-  required: ['headline', 'bullets', 'risks'],
+/**
+ * 3.8.1 A6 — run a generation through the seam and emit exactly ONE structured
+ * telemetry line per attempt-set (no request-body logging). Gives A5 prod
+ * evidence and makes Cost Explorer anomalies attributable to an endpoint/model/
+ * prompt version. `outcome`: ok | retry_ok on success; bad_output | timeout |
+ * unavailable | error on the mapped ApiError code.
+ */
+async function generateLogged<T>(
+  log: FastifyBaseLogger,
+  endpoint: PromptEndpoint,
+  provider: AIProvider,
+  opts: GenerateOptions<T>,
+): Promise<T> {
+  const started = Date.now()
+  const base = { evt: 'ai.generate', endpoint, model: provider.model, promptVersion: PROMPT_VERSION }
+  try {
+    const { value, meta } = await provider.generateDetailed(opts)
+    log.info({
+      ...base,
+      attempts: meta.attempts,
+      ms: meta.ms,
+      outcome: meta.attempts === 1 ? 'ok' : 'retry_ok',
+      inputTokens: meta.inputTokens,
+      outputTokens: meta.outputTokens,
+    })
+    return value
+  } catch (err) {
+    const code = err instanceof ApiError ? err.code : undefined
+    const outcome =
+      code === 'AI_BAD_OUTPUT' ? 'bad_output' : code === 'AI_TIMEOUT' ? 'timeout' : code === 'AI_UNAVAILABLE' ? 'unavailable' : 'error'
+    log.warn({ ...base, ms: Date.now() - started, outcome })
+    throw err
+  }
 }
-const projectSummaryZod = z.object({
-  headline: z.string(),
-  bullets: z.array(z.string()),
-  risks: z.array(z.string()),
-})
-const SUMMARY_SYSTEM = [
-  'You are a senior product manager writing a short status digest for a stakeholder.',
-  'Base everything ONLY on the metrics below — do not invent tickets, names, or dates.',
-  'headline: one sentence capturing overall project health.',
-  'bullets: 3–5 short strings of concrete progress/status (no leading dash).',
-  'risks: 1–4 short strings naming real risks visible in the metrics (blockers, slipping milestones, imbalance); empty array if none.',
-  'Return ONLY JSON matching the schema — no prose, no markdown.',
-].join('\n')
 
 const routes: FastifyPluginAsync = async (app) => {
   app.setValidatorCompiler(validatorCompiler)
@@ -128,16 +91,31 @@ const routes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const { projectId, notes } = request.body
-      const project = await prisma.project.findUnique({ where: { id: projectId }, select: { orgId: true } })
+      const project = await prisma.project.findUnique({ where: { id: projectId }, select: { orgId: true, name: true } })
       if (!project) throw new ApiError(404, 'Project not found')
       await assertOrgRole(request.userId!, project.orgId, 'MEMBER')
 
+      // A3 enrichment: project name + up to 10 recent titles (naming-style anchor)
+      // + the org's label vocabulary. Same org-role gate covers these reads.
+      const [recent, labels] = await Promise.all([
+        prisma.ticket.findMany({
+          where: { projectId, archivedAt: null },
+          orderBy: { updatedAt: 'desc' },
+          take: 10,
+          select: { title: true },
+        }),
+        prisma.label.findMany({ where: { orgId: project.orgId }, select: { name: true } }),
+      ])
+
       const provider = requireProvider(project.orgId)
-      const draft = await provider.generate({
-        system: DRAFT_SYSTEM,
-        user: `Rough notes for the ticket:\n\n${notes}`,
-        schema: draftTicketSchema,
-        zod: draftTicketZod,
+      const draft = await generateLogged(request.log, 'draft', provider, {
+        ...PROMPTS.draft,
+        user: buildDraftUser({
+          notes,
+          projectName: project.name,
+          recentTitles: recent.map((t) => t.title),
+          labels: labels.map((l) => l.name),
+        }),
       })
       return { draft }
     },
@@ -160,27 +138,42 @@ const routes: FastifyPluginAsync = async (app) => {
           acceptanceCriteria: true,
           goal: true,
           constraints: true,
+          projectId: true,
+          parentId: true,
+          parent: { select: { title: true } },
           project: { select: { orgId: true } },
         },
       })
       if (!ticket) throw new ApiError(404, 'Ticket not found')
       await assertOrgRole(request.userId!, ticket.project.orgId, 'MEMBER')
 
-      const context = [
-        `Title: ${cap(ticket.title, 200)}`,
-        `Current description: ${cap(ticket.description, 2000) || '(none)'}`,
-        `Current acceptance criteria: ${cap(ticket.acceptanceCriteria, 1500) || '(none)'}`,
-        `Current goal: ${cap(ticket.goal, 500) || '(none)'}`,
-        `Current constraints: ${cap(ticket.constraints, 500) || '(none)'}`,
-        prompt ? `\nAdditional direction from the user: ${prompt}` : '',
-      ].join('\n')
+      // A3 enrichment: parent title + up to 5 sibling titles (same parent if this
+      // ticket is a subtask, else the nearest tickets in the project).
+      const siblings = await prisma.ticket.findMany({
+        where: {
+          projectId: ticket.projectId,
+          id: { not: ticketId },
+          archivedAt: null,
+          ...(ticket.parentId ? { parentId: ticket.parentId } : {}),
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: { title: true },
+      })
 
       const provider = requireProvider(ticket.project.orgId)
-      const draft = await provider.generate({
-        system: EXPAND_SYSTEM,
-        user: context,
-        schema: expandTicketSchema,
-        zod: expandTicketZod,
+      const draft = await generateLogged(request.log, 'expand', provider, {
+        ...PROMPTS.expand,
+        user: buildExpandUser({
+          title: ticket.title,
+          description: ticket.description,
+          acceptanceCriteria: ticket.acceptanceCriteria,
+          goal: ticket.goal,
+          constraints: ticket.constraints,
+          prompt,
+          parentTitle: ticket.parent?.title,
+          siblingTitles: siblings.map((s) => s.title),
+        }),
       })
       return { draft }
     },
@@ -219,14 +212,48 @@ const routes: FastifyPluginAsync = async (app) => {
         recentVelocityAvg: ov.capacity.recentVelocityAvg,
       }
 
+      // A3 enrichment: the active sprint's goal (OverviewActiveSprint doesn't carry
+      // it — query the sprint directly rather than widening the overview type).
+      const activeSprint = await prisma.sprint.findFirst({
+        where: { projectId, status: 'ACTIVE' },
+        select: { goal: true },
+      })
+
       const provider = requireProvider(project.orgId)
-      const draft = await provider.generate({
-        system: SUMMARY_SYSTEM,
-        user: `Project metrics (JSON):\n\n${JSON.stringify(metrics)}`,
-        schema: projectSummarySchema,
-        zod: projectSummaryZod,
+      const draft = await generateLogged(request.log, 'summary', provider, {
+        ...PROMPTS.summary,
+        user: buildSummaryUser({ metrics, sprintGoal: activeSprint?.goal ?? null }),
       })
       return { summary: draft }
+    },
+  )
+
+  // ── 3.8.3 S1: draft a sprint goal from its committed ticket titles (draft only) ──
+  r.post(
+    '/sprint-goal',
+    {
+      schema: { body: sprintGoalBody, tags: ['ai'] },
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      const { sprintId } = request.body
+      const sprint = await prisma.sprint.findUnique({
+        where: { id: sprintId },
+        select: {
+          name: true,
+          project: { select: { orgId: true } },
+          tickets: { orderBy: { updatedAt: 'desc' }, take: 15, select: { title: true } },
+        },
+      })
+      if (!sprint) throw new ApiError(404, 'Sprint not found')
+      await assertOrgRole(request.userId!, sprint.project.orgId, 'MEMBER')
+
+      const provider = requireProvider(sprint.project.orgId)
+      const { goal } = await generateLogged(request.log, 'sprintGoal', provider, {
+        ...PROMPTS.sprintGoal,
+        user: buildSprintGoalUser({ sprintName: sprint.name, ticketTitles: sprint.tickets.map((t) => t.title) }),
+      })
+      return { goal }
     },
   )
 }

@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { BlockedBadge } from '@/components/BlockedBadge'
-import { api, type WorkloadRow } from '@/lib/api'
+import { api, type AIProjectSummary, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { useAIHealth, aiButtonState } from '@/lib/useAIHealth'
+import { useAIHealth, aiButtonState, aiErrorKey } from '@/lib/useAIHealth'
+import { useListReveal, useTextReveal } from '@/lib/aiReveal'
+import { AIThinkingIndicator } from '@/components/AIThinkingIndicator'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -75,6 +77,44 @@ function CapacityRow({ row, max }: { row: WorkloadRow; max: number }) {
   )
 }
 
+// 3.8.1 B2 — staged "streaming" reveal of the AI digest: headline types in
+// word-by-word, then bullets, then risks appear one by one. Presentation only —
+// the validated summary is already complete when this renders.
+function SummaryReveal({ summary }: { summary: AIProjectSummary }) {
+  const { t } = useTranslation()
+  const headline = useTextReveal(summary.headline)
+  const bulletsVisible = useListReveal(summary.bullets.length, headline.done)
+  const bulletsDone = headline.done && bulletsVisible >= summary.bullets.length
+  const risksVisible = useListReveal(summary.risks.length, bulletsDone)
+
+  return (
+    <div className="space-y-2 text-sm">
+      <p className="font-medium text-foreground">{headline.shown}</p>
+      {bulletsVisible > 0 && (
+        <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
+          {summary.bullets.slice(0, bulletsVisible).map((b, i) => (
+            <li key={i} className="motion-safe:animate-in motion-safe:fade-in">
+              {b}
+            </li>
+          ))}
+        </ul>
+      )}
+      {risksVisible > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.risks')}</p>
+          <ul className="list-disc space-y-0.5 pl-5 text-destructive">
+            {summary.risks.slice(0, risksVisible).map((r, i) => (
+              <li key={i} className="motion-safe:animate-in motion-safe:fade-in">
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProjectOverview() {
   const { slug = '', projectSlug = '' } = useParams()
   const { t } = useTranslation()
@@ -106,11 +146,21 @@ export default function ProjectOverview() {
   const aiState = aiButtonState(aiHealth.data)
   const summary = useQuery({
     queryKey: ['ai-summary', projectId],
-    queryFn: () => api.aiProjectSummary(projectId!),
+    // react-query's signal makes Cancel (cancelQueries) actually abort the fetch;
+    // cancellation reverts to the previous state — it never lands in isError.
+    queryFn: ({ signal }) => api.aiProjectSummary(projectId!, signal),
     enabled: false,
     staleTime: Infinity,
     retry: false,
   })
+  const summaryErrorKey = summary.isError ? aiErrorKey(summary.error) : null
+  // Re-gate the AI buttons immediately when a summary attempt reveals the server
+  // is down, rather than waiting out the 60s health staleTime.
+  useEffect(() => {
+    if (summary.isError && aiErrorKey(summary.error) === 'ai.error.unavailable') {
+      qc.invalidateQueries({ queryKey: ['ai-health'] })
+    }
+  }, [summary.isError, summary.error, qc])
 
   const isAdmin = org.data?.org.role === 'OWNER' || org.data?.org.role === 'ADMIN'
   const [managing, setManaging] = useState(false)
@@ -438,52 +488,50 @@ export default function ProjectOverview() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {summary.data ? (
-                <div className="space-y-2 text-sm">
-                  <p className="font-medium text-foreground">{summary.data.summary.headline}</p>
-                  {summary.data.summary.bullets.length > 0 && (
-                    <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
-                      {summary.data.summary.bullets.map((b, i) => (
-                        <li key={i}>{b}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {summary.data.summary.risks.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('ai.risks')}</p>
-                      <ul className="list-disc space-y-0.5 pl-5 text-destructive">
-                        {summary.data.summary.risks.map((r, i) => (
-                          <li key={i}>{r}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
+              {/* Announce start + done only — the staged hint is not live. */}
+              <span className="sr-only" aria-live="polite">
+                {summary.isFetching ? t('ai.generating') : summary.data ? t('ai.readyAnnounce') : ''}
+              </span>
+              {summary.isFetching ? (
+                /* B4 — modern "thinking" loader; the row's Cancel handles abort. */
+                <AIThinkingIndicator active />
+              ) : summary.data ? (
+                <SummaryReveal summary={summary.data.summary} />
               ) : (
                 <p className="text-sm text-muted-foreground">
                   {aiState.reasonKey ? t(aiState.reasonKey) : t('ai.summaryEmpty')}
                 </p>
               )}
-              {summary.isError && (
-                <p className="text-xs text-destructive">{t('ai.failed')}</p>
+              {!summary.isFetching && summaryErrorKey && (
+                <p className="text-xs text-destructive">{t(summaryErrorKey)}</p>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => summary.refetch()}
-                disabled={!aiState.ready || summary.isFetching}
-                title={aiState.reasonKey ? t(aiState.reasonKey) : undefined}
-              >
-                {summary.isFetching ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    {t('ai.generating')}
-                  </>
-                ) : (
-                  t(summary.data ? 'ai.regenerate' : 'ai.generateSummary')
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => summary.refetch()}
+                  disabled={!aiState.ready || summary.isFetching}
+                  title={aiState.reasonKey ? t(aiState.reasonKey) : undefined}
+                >
+                  {summary.isFetching ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 motion-safe:animate-spin" />
+                      {t('ai.generating')}
+                    </>
+                  ) : (
+                    t(summary.data ? 'ai.regenerate' : 'ai.generateSummary')
+                  )}
+                </Button>
+                {summary.isFetching && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => qc.cancelQueries({ queryKey: ['ai-summary', projectId] })}
+                  >
+                    {t('common.cancel')}
+                  </Button>
                 )}
-              </Button>
-              {summary.isFetching && <p className="text-xs text-muted-foreground">{t('ai.generatingHint')}</p>}
+              </div>
             </CardContent>
           </Card>
         </div>

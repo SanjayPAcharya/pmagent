@@ -1,0 +1,32 @@
+# Phase 3.8.3 — AI auto-populate (T1 · S1 · X1)
+
+> **Legend:** 🤖 = Claude implements end-to-end. ⛔ = owner checkpoint.
+> Owner triaged the Part C catalog (3.8.1 ⛔C0, 2026-07-12) → build **T1 subtasks · S1 sprint goal · X1 NL quick-add**. BYOK stays 3.8.2. Everything goes through the existing `AIProvider` seam + `generateLogged` telemetry; each generation is a **draft the user reviews** — no auto-save, no tool use (same posture as 3.8/3.8.1).
+
+## Ground truth (verified 2026-07-12)
+- **Endpoint pattern** (`apps/api/src/routes/ai.ts`): `requireAuth` preHandler → load entity + `assertOrgRole(userId, orgId, 'MEMBER')` → enrichment reads (titles/labels/goal only, never other tickets' descriptions) → `requireProvider(orgId)` → `generateLogged(log, endpoint, provider, { ...PROMPTS.x, user })`. Prompts/schemas/zod/builders live in `services/ai.prompts.ts` (shared with the eval harness).
+- **`generateLogged` endpoint arg** is typed `'draft'|'expand'|'summary'` → **widen to `PromptEndpoint`** (keyof `PROMPTS`) so new registry entries are covered + still emit the A6 telemetry line. The A6 hermetic test asserts one `ok` line — keep it green.
+- **Frontend AI plumbing** (3.8.1): `useAIHealth`/`aiButtonState` gate `AIButton` (`components/BetaBadge.tsx`); `aiErrorKey` maps failures (returns null on abort); `lib/aiReveal.ts` (`useTextReveal`/`useListReveal`/`useStagedHint`/`sliceSequential`) + `AIThinkingIndicator` give the streaming reveal + modern loader; `api.ai*` calls take an `AbortSignal`. Reuse all of it.
+- **Where each lands:** S1 → sprint goal field (Sprints page; `Sprint.goal` exists, `updateSprint` accepts `goal`). T1 → `TicketDrawer` subtasks/relations section (`parentId` + done/total chips exist; `createTicket` accepts `parentId`). X1 → board quick-add composer (`components/board/Column.tsx`) + `lib/parseQuickCreate.ts` R9 tokens (`!high @name #sprint`).
+
+## - [x] S1 — 🤖 Draft sprint goal (S) ✅ DONE 2026-07-13 (api 114→116; browser-verified live: thinking loader → goal streams into the readOnly-while-streaming field → Save)
+- **API** `POST /api/ai/sprint-goal` body `{ sprintId }`. Load sprint (`name`, `projectId`, `project.orgId`) + up to ~15 of its ticket titles (`sprint.tickets`, order updatedAt). Role-gate MEMBER. New registry entry `sprintGoal`: system ("write ONE sprint goal sentence from the committed ticket titles; outcome-focused, ≤ ~25 words; don't list tickets"), schema/zod `{ goal: string (1..300) }`, `buildSprintGoalUser({ sprintName, ticketTitles })`. `generateLogged(…, 'sprintGoal', …)`. Return `{ goal }`.
+- **FE:** `AIButton` "Draft with AI" next to the sprint goal input (create + edit surfaces). Generate → stream the goal into the field via `useTextReveal` (editable; user Saves normally). Error copy via `aiErrorKey`; cancel via `AbortSignal`.
+- **Tests:** hermetic API test (mock provider → goal; asserts role gate + shape) — api +1/2. FE: gate/disabled logic covered by existing `aiButtonState`.
+- **DoD:** browser-verified on the Sprints page against live Nova Micro; suite green; PROGRESS + FEATURES.
+
+## - [ ] T1 — 🤖 Break into subtasks (M)
+- **API** `POST /api/ai/subtasks` body `{ ticketId }`. Load parent (`title`, `description`, `acceptanceCriteria`, `projectId`, `project.orgId`) + existing child titles (enrichment: don't duplicate). Role-gate MEMBER. Registry entry `subtasks`: system ("break the parent into 3–7 independent child tickets; each a short imperative title + 1–3 testable AC; no overlap, no restating the parent"), schema/zod `{ subtasks: [{ title: string(1..200), acceptanceCriteria: string[] (0..5) }] }` with `min(1)` (corrective re-prompt on empty). `buildSubtasksUser({ title, description, acceptanceCriteria, existingChildTitles })`. Return `{ subtasks }`.
+- **FE:** in the `TicketDrawer` subtasks section, an `AIButton` "Suggest subtasks" → `AIThinkingIndicator` while generating → a **reviewable checklist** (each row: checkbox default-on + editable title; AC shown, collapsible) that streams in (`useListReveal`) → **"Create N subtasks"** bulk-creates the checked rows via `createTicket({ …, parentId: ticketId, projectId })` (sequential or `Promise.all`), then refreshes relations. Discard drops all. Pure compose/selection logic in a small `lib/aiSubtasks.ts` (+ unit tests).
+- **Tests:** hermetic API test (mock → 3 subtasks; role gate; empty-list re-prompt). FE unit: selection→create payload (checked only), edited-title carried. api +1/2, web +~3.
+- **DoD:** browser-verified (parent → suggest → edit one → uncheck one → create → children appear with correct parentId); suite green; PROGRESS + FEATURES.
+
+## - [ ] X1 — 🤖 NL quick-add (M)
+- **API** `POST /api/ai/quick-parse` body `{ projectId, text }`. Role-gate MEMBER. Enrichment: org label names + project member display names + active/upcoming sprint names (so the model maps to real values). Registry entry `quickParse`: system ("turn one natural sentence into a ticket intent; pick title + optional priority/labels/assignee/sprint ONLY from the provided vocabularies; never invent"), schema/zod `{ title: string, priority?: enum, labels?: string[], assignee?: string, sprint?: string }`. `buildQuickParseUser({ text, labels, members, sprints })`. Return `{ parsed }`.
+- **FE:** in the board quick-add composer, a small ✨ affordance (visible when the text looks like a sentence, or always as an alt action) → calls `quick-parse` → **maps the structured result back into an R9 token string** (`title !PRIORITY @assignee #sprint` + labels) that prefills the composer, so the existing `parseQuickCreate` + preview chips take over (user reviews, then Enter/Create). No new create path. Loader + error + cancel reuse 3.8.1.
+- **Tests:** hermetic API test (mock → parsed; vocab-restricted). FE unit: structured result → R9 token string (`lib/aiQuickParse.ts` builder, closed-set: unknown assignee/label/sprint dropped). api +1/2, web +~3.
+- **DoD:** browser-verified ("fix login on Safari, urgent, next sprint" → composer prefilled with `!urgent #<sprint>` chips); suite green; PROGRESS + FEATURES.
+
+## Sequencing & exit
+- **Order:** S1 (smallest, proves the new-endpoint widening) → T1 (flagship) → X1. `PROMPT_VERSION` bump when the first new prompt lands (registry grows).
+- **Exit:** three new AI endpoints through the seam, each browser-verified on live Nova Micro; hermetic API tests; FE reuses 3.8.1 streaming/loader/error/gating; full suite green; PROGRESS rows + FEATURES entries. Est. exit **api ~114→~120 · web ~60→~68**.
