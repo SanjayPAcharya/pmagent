@@ -38,8 +38,23 @@ async function authedFetch(method: string, path: string, body?: unknown, signal?
   return res
 }
 
+/** How long to wait before the single silent 429 retry: server's Retry-After
+ *  (seconds), clamped to 1–10s; 1s when the header is missing/garbled. */
+export function retryAfterMs(header: string | null): number {
+  const s = Number(header)
+  return Math.min(Math.max(Number.isFinite(s) && s > 0 ? s : 1, 1), 10) * 1000
+}
+
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const res = await authedFetch(method, path, body, signal)
+  let res = await authedFetch(method, path, body, signal)
+  // Graceful 429 (2026-07-13): a transient rate-limit burst on an idempotent GET
+  // self-heals with ONE silent retry after the server's Retry-After, instead of
+  // flashing an error at the user. Mutations still fail fast — a write is never
+  // silently re-fired.
+  if (res.status === 429 && method === 'GET') {
+    await new Promise((resolve) => setTimeout(resolve, retryAfterMs(res.headers.get('retry-after'))))
+    if (!signal?.aborted) res = await authedFetch(method, path, body, signal)
+  }
   if (!res.ok) {
     const err = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string; code?: string }
     throw new ApiError(res.status, err.error ?? 'Request failed', err.code)
