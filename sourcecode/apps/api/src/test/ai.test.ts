@@ -562,7 +562,50 @@ describe('AI telemetry (3.8.1 A6)', () => {
       .filter((l) => l.includes('"evt":"ai.generate"'))
     expect(lines).toHaveLength(1)
     const entry = JSON.parse(lines[0])
-    expect(entry).toMatchObject({ evt: 'ai.generate', endpoint: 'draft', outcome: 'ok', attempts: 1, promptVersion: 2 })
+    expect(entry).toMatchObject({ evt: 'ai.generate', endpoint: 'draft', outcome: 'ok', attempts: 1, promptVersion: 3 })
     expect(entry.model).toBeTruthy()
+  })
+})
+
+describe('AI sprint-goal (3.8.3 S1)', () => {
+  it('drafts a goal from the sprint and never persists it', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-sg-owner')
+    await provision(owner)
+    const orgId = await makeOrg(owner, 'Sprint Goal Co')
+    const projectId = await makeProject(owner, orgId, 'SG Proj')
+    const sprintRes = await app.inject({
+      method: 'POST',
+      url: '/api/sprints',
+      headers: bearer(owner),
+      payload: { projectId, name: 'Sprint 1' },
+    })
+    const sprintId = sprintRes.json().sprint.id as string
+    const ticketId = await makeTicket(owner, projectId, 'Add OAuth login')
+    await app.inject({ method: 'POST', url: `/api/sprints/${sprintId}/tickets`, headers: bearer(owner), payload: { ticketIds: [ticketId] } })
+
+    runtimeSend.mockResolvedValueOnce(toolResponse({ goal: 'Ship secure sign-in for all users.' }))
+    const res = await app.inject({ method: 'POST', url: '/api/ai/sprint-goal', headers: bearer(owner), payload: { sprintId } })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ goal: 'Ship secure sign-in for all users.' })
+    expect(runtimeSend).toHaveBeenCalledTimes(1)
+    // The committed ticket title reached the model; the goal was NOT saved to the sprint.
+    expect(lastUserText()).toContain('Add OAuth login')
+    const sprint = await app.inject({ method: 'GET', url: `/api/sprints/${sprintId}`, headers: bearer(owner) })
+    expect(sprint.json().sprint.goal).toBeNull()
+  })
+
+  it('404s an unknown sprint', async () => {
+    process.env.AI_PROVIDER = 'bedrock'
+    const owner = await tokenFor('ai-sg-404')
+    await provision(owner)
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ai/sprint-goal',
+      headers: bearer(owner),
+      payload: { sprintId: '00000000-0000-0000-0000-000000000000' },
+    })
+    expect(res.statusCode).toBe(404)
+    expect(runtimeSend).not.toHaveBeenCalled()
   })
 })

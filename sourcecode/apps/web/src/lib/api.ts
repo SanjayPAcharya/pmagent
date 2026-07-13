@@ -615,4 +615,6 @@ export const api = {
     request<{ draft: AIExpandDraft }>('POST', '/api/ai/expand-ticket', { ticketId, ...(prompt ? { prompt } : {}) }, signal),
   aiProjectSummary: (projectId: string, signal?: AbortSignal) =>
     request<{ summary: AIProjectSummary }>('POST', '/api/ai/project-summary', { projectId }, signal),
+  aiSprintGoal: (sprintId: string, signal?: AbortSignal) =>
+    request<{ goal: string }>('POST', '/api/ai/sprint-goal', { sprintId }, signal),
 }

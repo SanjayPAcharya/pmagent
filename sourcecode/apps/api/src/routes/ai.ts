@@ -6,7 +6,15 @@ import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { ApiError } from '../lib/errors.js'
 import { aiHealth, requireProvider, type AIProvider, type GenerateOptions } from '../services/ai.service.js'
-import { PROMPTS, PROMPT_VERSION, buildDraftUser, buildExpandUser, buildSummaryUser } from '../services/ai.prompts.js'
+import {
+  PROMPTS,
+  PROMPT_VERSION,
+  buildDraftUser,
+  buildExpandUser,
+  buildSummaryUser,
+  buildSprintGoalUser,
+  type PromptEndpoint,
+} from '../services/ai.prompts.js'
 import { projectOverview } from '../services/overview.service.js'
 
 // Phase 3.8 — self-hosted AI drafting. All endpoints sit behind requireAuth and
@@ -25,6 +33,7 @@ const expandTicketBody = z.object({
   prompt: z.string().max(2000).optional(),
 })
 const projectSummaryBody = z.object({ projectId: z.string().uuid() })
+const sprintGoalBody = z.object({ sprintId: z.string().uuid() })
 
 /** Cap a field so the whole context comfortably fits num_ctx (~4096 tokens). */
 const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
@@ -38,7 +47,7 @@ const cap = (s: string | null | undefined, n: number) => (s ?? '').slice(0, n)
  */
 async function generateLogged<T>(
   log: FastifyBaseLogger,
-  endpoint: 'draft' | 'expand' | 'summary',
+  endpoint: PromptEndpoint,
   provider: AIProvider,
   opts: GenerateOptions<T>,
 ): Promise<T> {
@@ -216,6 +225,35 @@ const routes: FastifyPluginAsync = async (app) => {
         user: buildSummaryUser({ metrics, sprintGoal: activeSprint?.goal ?? null }),
       })
       return { summary: draft }
+    },
+  )
+
+  // ── 3.8.3 S1: draft a sprint goal from its committed ticket titles (draft only) ──
+  r.post(
+    '/sprint-goal',
+    {
+      schema: { body: sprintGoalBody, tags: ['ai'] },
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      const { sprintId } = request.body
+      const sprint = await prisma.sprint.findUnique({
+        where: { id: sprintId },
+        select: {
+          name: true,
+          project: { select: { orgId: true } },
+          tickets: { orderBy: { updatedAt: 'desc' }, take: 15, select: { title: true } },
+        },
+      })
+      if (!sprint) throw new ApiError(404, 'Sprint not found')
+      await assertOrgRole(request.userId!, sprint.project.orgId, 'MEMBER')
+
+      const provider = requireProvider(sprint.project.orgId)
+      const { goal } = await generateLogged(request.log, 'sprintGoal', provider, {
+        ...PROMPTS.sprintGoal,
+        user: buildSprintGoalUser({ sprintName: sprint.name, ticketTitles: sprint.tickets.map((t) => t.title) }),
+      })
+      return { goal }
     },
   )
 }

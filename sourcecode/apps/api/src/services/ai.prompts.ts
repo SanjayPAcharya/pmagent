@@ -18,7 +18,10 @@ import type { JsonSchema } from './ai.service.js'
 // verbatim"; per-endpoint temperature/maxTokens. A few-shot exemplar per endpoint
 // was measured and DROPPED — on Nova Micro it cost ~+23% input tokens with no
 // scorecard gain and two regressions (see release-doc/ai-eval-report.md).
-export const PROMPT_VERSION = 2
+// v3 (3.8.3): added the sprint-goal / subtasks / quick-parse registry entries.
+// The three original prompts are unchanged; the bump keeps eval scorecards and
+// the A6 telemetry line attributable as the registry grows.
+export const PROMPT_VERSION = 3
 
 export const PRIORITIES = ['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const
 
@@ -107,6 +110,20 @@ export const SUMMARY_SYSTEM = [
   'Return ONLY JSON matching the schema — no prose, no markdown.',
 ].join('\n')
 
+// ── sprint-goal (3.8.3 S1) ───────────────────────────────────────────────────
+export const sprintGoalSchema: JsonSchema = {
+  type: 'object',
+  properties: { goal: { type: 'string' } },
+  required: ['goal'],
+}
+export const sprintGoalZod = z.object({ goal: z.string().min(1).max(300) })
+export const SPRINT_GOAL_SYSTEM = [
+  'You are a senior product manager writing ONE sprint goal from the committed ticket titles.',
+  'Write a single outcome-focused sentence (max ~25 words) — the value this sprint delivers, not a list of tickets.',
+  'Do NOT enumerate the tickets or invent scope beyond what the titles imply. If the titles are thin, keep the goal broad but honest.',
+  'Return ONLY JSON matching the schema — no prose, no markdown.',
+].join('\n')
+
 // ── User-text builders (3.8.1 A3) ────────────────────────────────────────────
 // Shared by routes/ai.ts and the eval harness so the harness measures the EXACT
 // text production sees, enrichment included. Enrichment = titles/labels/goal only
@@ -175,6 +192,20 @@ export function buildSummaryUser(ctx: SummaryContext): string {
   return ctx.sprintGoal ? `${base}\n\nActive sprint goal: ${cap(ctx.sprintGoal, 300)}` : base
 }
 
+export interface SprintGoalContext {
+  sprintName: string
+  ticketTitles: string[]
+}
+export function buildSprintGoalUser(ctx: SprintGoalContext): string {
+  const lines = [`Sprint: ${cap(ctx.sprintName, 200)}`]
+  if (ctx.ticketTitles.length) {
+    lines.push('Committed ticket titles:', ...ctx.ticketTitles.slice(0, 15).map((t) => `- ${cap(t, 200)}`))
+  } else {
+    lines.push('(No tickets committed yet — write a broad, honest goal.)')
+  }
+  return lines.join('\n')
+}
+
 // ── Registry — one entry per endpoint, shared by the route and the eval harness.
 // temperature/maxTokens are the A2 per-endpoint sampling knobs: summary runs
 // cooler (more deterministic digests); caps are generous headroom over observed
@@ -184,6 +215,7 @@ export const PROMPTS = {
   draft: { system: DRAFT_SYSTEM, schema: draftTicketSchema, zod: draftTicketZod, temperature: 0.2, maxTokens: 400 },
   expand: { system: EXPAND_SYSTEM, schema: expandTicketSchema, zod: expandTicketZod, temperature: 0.2, maxTokens: 500 },
   summary: { system: SUMMARY_SYSTEM, schema: projectSummarySchema, zod: projectSummaryZod, temperature: 0.1, maxTokens: 350 },
+  sprintGoal: { system: SPRINT_GOAL_SYSTEM, schema: sprintGoalSchema, zod: sprintGoalZod, temperature: 0.2, maxTokens: 120 },
 } as const
 
 export type PromptEndpoint = keyof typeof PROMPTS

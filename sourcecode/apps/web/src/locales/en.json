@@ -23,6 +23,7 @@
   },
   "ai": {
     "draftWithAI": "Draft with AI",
+    "draftGoal": "Draft goal with AI",
     "autoFill": "Auto-fill from prompt",
     "generateSummary": "Generate summary",
     "regenerate": "Regenerate",

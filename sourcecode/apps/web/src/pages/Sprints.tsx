@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +26,10 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { BurndownSparkline } from '@/components/BurndownSparkline'
+import { AIButton } from '@/components/BetaBadge'
+import { AIThinkingIndicator } from '@/components/AIThinkingIndicator'
+import { useAIHealth, aiButtonState, aiErrorKey } from '@/lib/useAIHealth'
+import { prefersReducedMotion, segmentText } from '@/lib/aiReveal'
 import { cn } from '@/lib/utils'
 
 const selectCls = 'h-8 shrink-0 rounded-md border border-input bg-transparent px-2 text-xs'
@@ -70,6 +74,54 @@ function SprintRow({
   const [expanded, setExpanded] = useState(false)
   const [editingGoal, setEditingGoal] = useState(false)
   const [goalDraft, setGoalDraft] = useState(sprint.goal ?? '')
+  // 3.8.3 S1 — draft the goal with AI, streamed into the (readOnly-while-streaming) field.
+  const aiReady = aiButtonState(useAIHealth().data).ready
+  const [goalBusy, setGoalBusy] = useState(false)
+  const [goalStreaming, setGoalStreaming] = useState(false)
+  const [goalErr, setGoalErr] = useState<string | null>(null)
+  const goalAbort = useRef<AbortController | null>(null)
+  const goalTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const cancelGoal = () => goalAbort.current?.abort()
+  const runDraftGoal = async () => {
+    goalAbort.current?.abort()
+    const ctrl = new AbortController()
+    goalAbort.current = ctrl
+    setGoalBusy(true)
+    setGoalErr(null)
+    try {
+      const { goal } = await api.aiSprintGoal(sprint.id, ctrl.signal)
+      if (prefersReducedMotion()) {
+        setGoalDraft(goal)
+      } else {
+        const segs = segmentText(goal)
+        let n = 0
+        setGoalDraft('')
+        setGoalStreaming(true)
+        if (goalTimer.current) clearInterval(goalTimer.current)
+        goalTimer.current = setInterval(() => {
+          n += 4
+          setGoalDraft(segs.slice(0, n).join(''))
+          if (n >= segs.length) {
+            if (goalTimer.current) clearInterval(goalTimer.current)
+            goalTimer.current = null
+            setGoalStreaming(false)
+          }
+        }, 40)
+      }
+    } catch (e) {
+      const key = aiErrorKey(e)
+      if (key) {
+        setGoalErr(t(key))
+        if (key === 'ai.error.unavailable') qc.invalidateQueries({ queryKey: ['ai-health'] })
+      }
+    } finally {
+      if (goalAbort.current === ctrl) {
+        goalAbort.current = null
+        setGoalBusy(false)
+      }
+    }
+  }
   const [fAssignee, setFAssignee] = useState('')
   const [fStatus, setFStatus] = useState('')
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: sprint.id })
@@ -144,23 +196,42 @@ function SprintRow({
             )}
           </div>
         </div>
-        {/* R12 — editable sprint goal */}
+        {/* R12 — editable sprint goal; 3.8.3 S1 — optional AI draft */}
         {editingGoal ? (
-          <div className="flex items-center gap-1">
-            <Input
-              value={goalDraft}
-              onChange={(e) => setGoalDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void saveGoal()
-                if (e.key === 'Escape') { setEditingGoal(false); setGoalDraft(sprint.goal ?? '') }
-              }}
-              autoFocus
-              placeholder={t('sprints.goalPlaceholder')}
-              className="h-7 text-sm"
-            />
-            <button onClick={() => void saveGoal()} className="text-muted-foreground hover:text-foreground" aria-label={t('common.save')}><Check className="h-4 w-4" /></button>
-            <button onClick={() => { setEditingGoal(false); setGoalDraft(sprint.goal ?? '') }} className="text-muted-foreground hover:text-foreground" aria-label={t('common.cancel')}><X className="h-4 w-4" /></button>
-          </div>
+          goalBusy ? (
+            <div>
+              <span className="sr-only" aria-live="polite">{t('ai.generating')}</span>
+              <AIThinkingIndicator active onCancel={cancelGoal} />
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                <Input
+                  value={goalDraft}
+                  onChange={(e) => setGoalDraft(e.target.value)}
+                  readOnly={goalStreaming}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !goalStreaming) void saveGoal()
+                    if (e.key === 'Escape') { setEditingGoal(false); setGoalDraft(sprint.goal ?? '') }
+                  }}
+                  autoFocus
+                  placeholder={t('sprints.goalPlaceholder')}
+                  className="h-7 text-sm"
+                />
+                <button onClick={() => void saveGoal()} disabled={goalStreaming} className="text-muted-foreground hover:text-foreground disabled:opacity-50" aria-label={t('common.save')}><Check className="h-4 w-4" /></button>
+                <button onClick={() => { setEditingGoal(false); setGoalDraft(sprint.goal ?? '') }} className="text-muted-foreground hover:text-foreground" aria-label={t('common.cancel')}><X className="h-4 w-4" /></button>
+              </div>
+              {aiReady && !goalStreaming && (
+                <AIButton label={t('ai.draftGoal')} onClick={runDraftGoal} busy={false} />
+              )}
+              {goalErr && (
+                <div className="flex items-center gap-2 text-[11px] text-destructive">
+                  <span>{goalErr}</span>
+                  <button type="button" onClick={runDraftGoal} className="underline hover:no-underline">{t('ai.retry')}</button>
+                </div>
+              )}
+            </div>
+          )
         ) : (
           <button
             onClick={() => { setGoalDraft(sprint.goal ?? ''); setEditingGoal(true) }}
