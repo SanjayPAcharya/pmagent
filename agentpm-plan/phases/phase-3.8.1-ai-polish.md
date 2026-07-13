@@ -62,8 +62,9 @@
 - Output: side-by-side per-fixture outputs + scorecards + **₹/month projection at expected volume** per model (refresh per-token prices at run time; 2026-07 ballpark: Nova Micro ≈ ₹10–40 · Haiku ≈ ₹320).
 - **DoD:** `release-doc/ai-eval-report.md` gains the A/B section; no code changes.
 
-### - [ ] A5 — ⛔ 🧑 `[MANUAL — owner]` quality judgment + model decision
+### - [~] A5 — ⛔ 🧑 `[MANUAL — owner]` quality judgment + model decision — **DEFERRED by owner 2026-07-12**
 - Owner reads A4, picks the prod model. Switch = edit `BEDROCK_MODEL_ID` in `.github/workflows/deploy.yml` env (or the box's `.env.prod`) + redeploy — **no code**. Record decision + cost delta in PROGRESS.
+- **Owner decision 2026-07-12:** **stay on Nova Micro for now** (no flip). Owner will submit the Anthropic use-case form later, then we benchmark Claude Haiku 4.5 and revisit. A4 showed Nova Lite as the value upgrade (~₹43/mo) if a cheaper-than-Claude bump is wanted meanwhile.
 
 ### - [x] A6 — 🤖 Generation telemetry line (S) — *new in the verified plan* ✅ DONE 2026-07-11 (one structured line/generation; api 113→114)
 - One structured log per generation through the seam: `{endpoint, model, promptVersion, attempts, ms, outcome: ok|retry_ok|bad_output|timeout|throttle|error, inputTokens?, outputTokens?}` via the existing Fastify/pino logger (no new infra, no request-body logging). Gives A5 prod evidence and makes Cost Explorer anomalies attributable.
@@ -158,8 +159,9 @@
 | X5 | **Template generator** | New `TicketTemplate` from a one-line ask | TemplatesCard (org settings) | S/M | Templates = title+description only |
 | X6 | **Notification digest** | "While you were away" rollup | NotificationBell | M | Park until volume justifies |
 
-### - [ ] C0 — ⛔ 🧑 `[MANUAL — owner]` triage
+### - [x] C0 — ⛔ 🧑 `[MANUAL — owner]` triage — **DECIDED by owner 2026-07-12**
 - Owner picks **up to 3** to become 3.8.1 stretch (or a 3.8.3 batch). Suggested shortlist by value÷effort: **T1 subtasks · S1 sprint goal · X1 NL quick-add** (T2/T5/X5 as cheap fillers).
+- **Owner picked the full suggested shortlist: T1 · S1 · X1** → batched into new **Phase 3.8.3 — AI auto-populate** (`agentpm-plan/phases/phase-3.8.3-ai-autopopulate.md`). BYOK stays 3.8.2.
 
 ## Sequencing & scope
 
