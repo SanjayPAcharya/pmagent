@@ -140,3 +140,37 @@ export function applyDrag(bar: GanttBar, kind: DragKind, deltaDays: number): Gan
 export function traySchedule(day: number): GanttBar {
   return { startDay: day, endDay: day + 2 }
 }
+
+export interface MilestoneViewport {
+  /** ids of milestones whose diamond falls inside the horizontal viewport */
+  visibleIds: string[]
+  /** milestones scrolled out of view, and which way to scroll to reach them */
+  offscreen: { id: string; dir: 'left' | 'right' }[]
+}
+
+/**
+ * B2 — classify each milestone as visible in the horizontal viewport or
+ * off-screen (and which direction), from the chart's scroll offset. Works in
+ * the same pixel space as the chart (`xForDay`): a milestone counts as visible
+ * when its diamond x is within `[scrollLeft, scrollLeft + clientWidth]`. Before
+ * the container is measured (`clientWidth <= 0`) everything is treated as
+ * visible, so no chip flashes a stale off-screen arrow on first paint.
+ */
+export function milestoneViewport(
+  milestones: { id: string; date: string }[],
+  rangeStartDay: number,
+  scale: GanttScale,
+  scrollLeft: number,
+  clientWidth: number,
+): MilestoneViewport {
+  const visibleIds: string[] = []
+  const offscreen: { id: string; dir: 'left' | 'right' }[] = []
+  if (clientWidth <= 0) return { visibleIds: milestones.map((m) => m.id), offscreen }
+  for (const m of milestones) {
+    const x = xForDay(toDayNum(m.date), rangeStartDay, scale)
+    if (x < scrollLeft) offscreen.push({ id: m.id, dir: 'left' })
+    else if (x > scrollLeft + clientWidth) offscreen.push({ id: m.id, dir: 'right' })
+    else visibleIds.push(m.id)
+  }
+  return { visibleIds, offscreen }
+}

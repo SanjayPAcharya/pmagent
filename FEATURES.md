@@ -170,7 +170,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 
 ## Timeline (Gantt)
 - A horizontal **timeline** of every scheduled ticket: each shows as a bar from its start to its due date (a single date shows as a one-day marker), colored by status.
-- **Milestones** appear as diamonds with a dashed line across the chart; a **today** line marks the current date; **dependency arrows** connect a ticket to the ones it's waiting on.
+- **Milestones** appear as diamonds with a dashed line across the chart; a **today** line marks the current date; **dependency arrows** connect a ticket to the ones it's waiting on. A **Milestones** strip above the chart lists every milestone as a chip — click one to jump the timeline to it, and chips for milestones currently off to the side show a small arrow so a far-off target date is never hidden.
 - Switch the zoom between **Day / Week / Month**, jump to **Today**, and filter by assignee, sprint, label, status, or workstream — the filters narrow both the chart and the tray.
 - Tickets without any dates sit in a collapsible **Unscheduled** tray at the bottom. Click any bar, row, or chip to open the ticket — it opens in a side panel **over the timeline**, and closing it leaves you right back on the timeline where you were.
 - **Drag to schedule** (on desktop): drag a bar to move it, drag its ends to resize, drag an **Unscheduled** chip onto the timeline to give it a 3-day slot, and drag a milestone diamond to a new date. Every change shows an **Undo** toast. Updates live as the team schedules work.

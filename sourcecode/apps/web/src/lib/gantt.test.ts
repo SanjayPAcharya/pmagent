@@ -10,6 +10,7 @@ import {
   ticks,
   applyDrag,
   traySchedule,
+  milestoneViewport,
   PX_PER_DAY,
   type GanttScale,
 } from './gantt'
@@ -115,5 +116,24 @@ describe('gantt date math (3.7 R6)', () => {
     expect(traySchedule(200)).toEqual({ startDay: 200, endDay: 202 })
     const b = traySchedule(200)
     expect(b.endDay - b.startDay + 1).toBe(3)
+  })
+
+  it('classifies milestones by horizontal viewport (B2)', () => {
+    // day scale ⇒ x = day * 36. Range starts at day 0.
+    const ms = [
+      { id: 'a', date: dayNumToISO(2) }, //   x = 72  (left of window)
+      { id: 'b', date: dayNumToISO(100) }, // x = 3600 (right of window)
+      { id: 'c', date: dayNumToISO(5) }, //   x = 180 (inside window)
+    ]
+    const vp = milestoneViewport(ms, 0, 'day', 100, 200) // visible x ∈ [100, 300]
+    expect(vp.visibleIds).toEqual(['c'])
+    expect(vp.offscreen).toEqual([
+      { id: 'a', dir: 'left' },
+      { id: 'b', dir: 'right' },
+    ])
+    // Before the container is measured, everything counts as visible (no arrows).
+    const pre = milestoneViewport(ms, 0, 'day', 0, 0)
+    expect(pre.visibleIds).toEqual(['a', 'b', 'c'])
+    expect(pre.offscreen).toEqual([])
   })
 })

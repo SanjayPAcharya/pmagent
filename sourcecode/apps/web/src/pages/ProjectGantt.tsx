@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, type GanttItem, type GanttPayload } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
-import { barForTicket, computeRange, dayNumToISO, toDayNum, traySchedule, xForDay, type GanttScale } from '@/lib/gantt'
+import { barForTicket, computeRange, dayNumToISO, milestoneViewport, toDayNum, traySchedule, xForDay, type GanttScale } from '@/lib/gantt'
 import { useProjectSync } from '@/lib/websocket'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { CalendarRange } from 'lucide-react'
@@ -16,6 +16,8 @@ import { TicketDrawer } from '@/components/TicketDrawer'
 import { cn } from '@/lib/utils'
 
 const selectCls = 'h-8 rounded-md border border-input bg-transparent px-2 text-sm'
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 
 export default function ProjectGantt() {
   const { slug = '', projectSlug = '', number } = useParams()
@@ -85,10 +87,34 @@ export default function ProjectGantt() {
   const openTicket = (n: number) => navigate(`${base}/gantt/ticket/${n}`)
   const closeDrawer = () => navigate(`${base}/gantt`)
   const drawerTicket = number ? payload?.items.find((it) => it.number === Number(number)) : undefined
-  const scrollToToday = () => {
+  const scrollToDay = (day: number) => {
     const el = scrollRef.current
-    if (el) el.scrollLeft = xForDay(today, range.startDay, scale) - el.clientWidth / 3
+    if (el) el.scrollLeft = xForDay(day, range.startDay, scale) - el.clientWidth / 3
   }
+  const scrollToToday = () => scrollToDay(today)
+
+  // B2 — track the chart's horizontal scroll so we can tell which milestones are
+  // currently off-screen (their diamonds can sit far past the last bar). The
+  // scroll container lives inside GanttChart but is reachable via scrollRef.
+  const milestones = payload?.milestones ?? []
+  const [viewport, setViewport] = useState({ scrollLeft: 0, width: 0 })
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const update = () => setViewport({ scrollLeft: el.scrollLeft, width: el.clientWidth })
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      el.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [payload, scale])
+  const mViewport = useMemo(
+    () => milestoneViewport(milestones, range.startDay, scale, viewport.scrollLeft, viewport.width),
+    [milestones, range.startDay, scale, viewport],
+  )
+  const offscreenDir = (id: string) => mViewport.offscreen.find((o) => o.id === id)?.dir
 
   // ── Persistence + undo (R8) — optimistic gantt-cache patch, rollback on error.
   const ganttKey = ['gantt', projectId]
@@ -194,6 +220,35 @@ export default function ProjectGantt() {
           </div>
         </div>
       </div>
+
+      {/* B2 — milestone strip: always-visible chips so a milestone dated far past
+          the last bar is never invisible. Click scrolls the chart to it; an arrow
+          marks chips whose diamond is currently off-screen. */}
+      {milestones.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">{t('gantt.milestonesLabel')}</span>
+          {milestones.map((m) => {
+            const dir = offscreenDir(m.id)
+            return (
+              <button
+                key={m.id}
+                onClick={() => scrollToDay(toDayNum(m.date))}
+                title={`${m.name} · ${fmtDate(m.date)}`}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors hover:border-primary/40',
+                  dir ? 'border-amber-500/50 text-foreground' : 'border-input text-muted-foreground',
+                )}
+              >
+                <span className={cn('text-[10px]', m.done ? 'text-muted-foreground' : 'text-amber-500')} aria-hidden>◆</span>
+                <span className={cn('max-w-[12rem] truncate', m.done && 'line-through')}>{m.name}</span>
+                <span className="text-muted-foreground">{fmtDate(m.date)}</span>
+                {dir === 'left' && <span aria-hidden>←</span>}
+                {dir === 'right' && <span aria-hidden>→</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {payload?.truncated && (
         <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-amber-600 dark:text-amber-400">

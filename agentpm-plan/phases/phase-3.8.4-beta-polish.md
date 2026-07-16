@@ -68,7 +68,9 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] B2 — Milestones are discoverable on the Timeline (M) — BUG-1
+### - [x] B2 — Milestones are discoverable on the Timeline (M) — BUG-1 *(done 2026-07-16)*
+> Browser-verified on Oracle → New: added a throwaway milestone dated 15 Dec 2026 (bars cluster late-May/early-Jun) → a **Milestones** chip strip appeared under the toolbar with an amber ◆, name, date and a `→` (off-screen-right) arrow; clicking the chip scrolled the chart to December and the diamond rendered at 15 Dec, and the chip's arrow disappeared once the diamond entered the viewport (scroll-tracking works). Throwaway milestone deleted afterwards (inline Delete? confirm) — data restored. Pure `milestoneViewport` helper added to `lib/gantt.ts` + unit test (web 63→64); typecheck + vite build green.
+
 **Goal:** a milestone can never exist without the Timeline showing *some* cue for it.
 
 1. Reproduce first: project with tickets scheduled near today + a milestone 4 months out → confirm the diamond renders far right, off-viewport (diamond code: `GanttChart.tsx:239-261`; range: `ProjectGantt.tsx:79`).
