@@ -286,19 +286,25 @@ export function Column({
           </div>
         )}
         <SortableContext items={tickets.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {tickets.map((t) => (
-            <TicketCard
-              key={t.id}
-              ticket={t}
-              onOpen={onOpen}
-              onStatusChange={onStatusChange}
-              onAddSubtask={onAddSubtask}
-              dimmed={Boolean(focusUserId) && t.assignedToId !== focusUserId}
-              viewers={viewers?.[t.id]}
-              selected={selectedIds?.has(t.id)}
-              onToggleSelect={onToggleSelect}
-            />
-          ))}
+          {tickets.map((t) => {
+            // U2 — resolve the sprint name from the already-loaded sprints (no per-card fetch).
+            const sp = t.sprintId ? sprints.find((s) => s.id === t.sprintId) : undefined
+            return (
+              <TicketCard
+                key={t.id}
+                ticket={t}
+                onOpen={onOpen}
+                onStatusChange={onStatusChange}
+                onAddSubtask={onAddSubtask}
+                dimmed={Boolean(focusUserId) && t.assignedToId !== focusUserId}
+                viewers={viewers?.[t.id]}
+                selected={selectedIds?.has(t.id)}
+                onToggleSelect={onToggleSelect}
+                sprintName={sp?.name}
+                sprintActive={sp?.status === 'ACTIVE'}
+              />
+            )
+          })}
         </SortableContext>
         {/* B1 — ghost cards for other viewers' in-flight drags landing here */}
         {ghosts?.map((g) => (

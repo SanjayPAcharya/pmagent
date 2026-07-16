@@ -148,7 +148,8 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] U2 — Current-sprint visibility on the Board (S/M) — UX-2
+### - [x] U2 — Current-sprint visibility on the Board (S/M) — UX-2 *(done 2026-07-16)*
+> Board cards now carry a small **sprint chip** (rocket + sprint name) when the ticket is in a sprint — primary-tinted for the **active** sprint, muted otherwise — so on the All tab you can tell at a glance which cards belong to the current sprint (the tester's "how to differentiate what's in the current sprint?"). The name is resolved in `Column.tsx` from the already-loaded `sprints` prop (no per-card fetch) and threaded through `TicketCard` → `TicketCardBody`. i18n `board.inSprint`/`inActiveSprint`. +2 component tests (`TicketCard.test.tsx`, renderToStaticMarkup like EmptyState). **Browser-verified**: NEW-3/4/6 (in active Sprint 1) show a "🚀 Sprint 1" chip; NEW-2/7/8 (no sprint) show none. web 67→69, typecheck + build green. *(The optional scope-tab count badge was not added — the per-card chip already answers the question; noted as a possible follow-up.)*
 1. **Sprint chip on cards:** in `components/board/TicketCard.tsx`, when the ticket has a `sprintId`, render a small muted chip with the sprint name (data availability: check what the board ticket payload carries — if it has only `sprintId`, resolve names from the already-cached `['sprints', projectId]` query in `Board.tsx` and pass a `sprintName` prop down; do **not** add a per-card fetch).
 2. **Scope prominence:** on the Board header, give the workstream tabs a count badge for the active sprint scope (e.g. "Sprint work · 6") and ensure the Sprint filter's active state is visually obvious (it's a `MultiSelect`; verify the selected state reads clearly, fix if not).
 3. i18n; no API change if counts are derivable from the loaded tickets query.
