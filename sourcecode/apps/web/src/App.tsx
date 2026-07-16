@@ -52,6 +52,7 @@ export default function App() {
             <Route path="/orgs/:slug/projects/:projectSlug/list/ticket/:number" element={<ProjectList />} />
             <Route path="/orgs/:slug/projects/:projectSlug/sprints" element={<Sprints />} />
             <Route path="/orgs/:slug/projects/:projectSlug/gantt" element={<ProjectGantt />} />
+            <Route path="/orgs/:slug/projects/:projectSlug/gantt/ticket/:number" element={<ProjectGantt />} />
             <Route path="/orgs/:slug/projects/:projectSlug/reports" element={<ProjectReports />} />
             <Route path="/orgs/:slug/projects/:projectSlug/archived" element={<ArchivedTickets />} />
             <Route path="/orgs/:slug/projects/:projectSlug/settings" element={<ProjectSettings />} />

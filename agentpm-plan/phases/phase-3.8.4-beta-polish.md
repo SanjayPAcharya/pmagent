@@ -48,7 +48,9 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] B1 — Ticket drawer opens in place on the Timeline (M) — BUG-3 + owner O1
+### - [x] B1 — Ticket drawer opens in place on the Timeline (M) — BUG-3 + owner O1 *(done 2026-07-16)*
+> Browser-verified on Oracle → New: clicked NEW-2 bar → URL `/gantt/ticket/2`, drawer slid over the Timeline (chart still mounted behind); closed via X → back to `/gantt`, Timeline restored in place (not List); cold deep-link to `/gantt/ticket/3` loaded the Timeline with the NEW-3 drawer open. web typecheck + vite build + 63/63 tests green; no test data changed. No route-test added — the repo has no page-level route-test harness and neither the Board nor List drawer routes have one (would be inventing a pattern).
+
 **Goal (owner's words):** "when opening ticket from timeline, user should stay in same screen, but open ticket in same slider window. closing should also stay in same screen."
 
 1. **`apps/web/src/App.tsx`** — after the gantt route (line 54), add:

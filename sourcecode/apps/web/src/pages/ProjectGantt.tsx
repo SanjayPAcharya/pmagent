@@ -12,12 +12,13 @@ import { CalendarRange } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { GanttChart } from '@/components/gantt/GanttChart'
+import { TicketDrawer } from '@/components/TicketDrawer'
 import { cn } from '@/lib/utils'
 
 const selectCls = 'h-8 rounded-md border border-input bg-transparent px-2 text-sm'
 
 export default function ProjectGantt() {
-  const { slug = '', projectSlug = '' } = useParams()
+  const { slug = '', projectSlug = '', number } = useParams()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -78,7 +79,12 @@ export default function ProjectGantt() {
   const today = toDayNum(new Date().toISOString())
   const range = useMemo(() => computeRange(scheduled, payload?.milestones ?? [], today), [scheduled, payload, today])
 
-  const openTicket = (number: number) => navigate(`${base}/board/ticket/${number}`)
+  // B1 — open the ticket in the standard drawer *over the Timeline* (its own
+  // /gantt/ticket/:number route), so opening and closing both stay on this page
+  // and keep the chart's horizontal scroll. Mirrors the List/Board drawer idiom.
+  const openTicket = (n: number) => navigate(`${base}/gantt/ticket/${n}`)
+  const closeDrawer = () => navigate(`${base}/gantt`)
+  const drawerTicket = number ? payload?.items.find((it) => it.number === Number(number)) : undefined
   const scrollToToday = () => {
     const el = scrollRef.current
     if (el) el.scrollLeft = xForDay(today, range.startDay, scale) - el.clientWidth / 3
@@ -248,6 +254,16 @@ export default function ProjectGantt() {
             </div>
           )}
         </div>
+      )}
+
+      {drawerTicket && orgId && (
+        <TicketDrawer
+          ticketId={drawerTicket.id}
+          orgId={orgId}
+          members={members.data?.members ?? []}
+          onClose={closeDrawer}
+          onChanged={() => qc.invalidateQueries({ queryKey: ['gantt', projectId] })}
+        />
       )}
     </div>
   )
