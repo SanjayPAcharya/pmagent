@@ -191,7 +191,7 @@ function ReleaseReadiness({ readiness, overall, backHref }: { readiness: Readine
             const pct = m.total ? Math.round((m.done / m.total) * 100) : 0
             const openCount = m.total - m.done
             return (
-              <div key={m.id}>
+              <div key={m.id} title={t('reports.readinessHint')}>
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="truncate text-sm font-medium text-foreground">{m.name}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">{fmt(m.date)}</span>
@@ -200,7 +200,9 @@ function ReleaseReadiness({ readiness, overall, backHref }: { readiness: Readine
                   <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
-                  {t('reports.readinessProgress', { done: m.done, total: m.total })}
+                  {m.total === 0
+                    ? t('reports.readinessNoDue')
+                    : t('reports.readinessProgress', { done: m.done, total: m.total })}
                   {openCount > 0 && ` · ${t('reports.readinessOpen', { count: openCount })}`}
                 </div>
               </div>

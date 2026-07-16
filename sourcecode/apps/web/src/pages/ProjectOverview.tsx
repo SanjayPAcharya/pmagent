@@ -30,7 +30,7 @@ const initialsOf = (name: string) => {
 }
 
 /** Small donut showing milestone readiness (done/total). */
-function ReadinessDonut({ done, total }: { done: number; total: number }) {
+function ReadinessDonut({ done, total, title }: { done: number; total: number; title?: string }) {
   const size = 22
   const stroke = 3
   const r = size / 2 - stroke
@@ -39,6 +39,7 @@ function ReadinessDonut({ done, total }: { done: number; total: number }) {
   const color = total === 0 ? 'text-muted-foreground/40' : done === total ? 'text-green-500' : 'text-amber-500'
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={cn('shrink-0', color)} role="img" aria-label={`${done}/${total}`}>
+      {title && <title>{title}</title>}
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeOpacity={0.2} strokeWidth={stroke} />
       <circle
         cx={size / 2}
@@ -414,11 +415,14 @@ export default function ProjectOverview() {
                 <ul className="space-y-2">
                   {data.milestones.map((m) => (
                     <li key={m.id} className="flex items-center gap-2.5">
-                      <ReadinessDonut done={m.readiness.done} total={m.readiness.total} />
+                      <ReadinessDonut done={m.readiness.done} total={m.readiness.total} title={t('overview.milestoneReadinessHint')} />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-foreground">{m.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {fmtDate(m.date)} · {t('overview.milestoneReadiness', { done: m.readiness.done, total: m.readiness.total })}
+                        <div className="text-xs text-muted-foreground" title={t('overview.milestoneReadinessHint')}>
+                          {fmtDate(m.date)} ·{' '}
+                          {m.readiness.total === 0
+                            ? t('overview.milestoneNoDue')
+                            : t('overview.milestoneReadiness', { done: m.readiness.done, total: m.readiness.total })}
                         </div>
                       </div>
                       <button

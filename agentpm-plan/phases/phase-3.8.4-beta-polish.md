@@ -121,7 +121,8 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] B6 — Honest, stable readiness labelling (S) — BUG-2 interim + UX-4
+### - [x] B6 — Honest, stable readiness labelling (S) — BUG-2 interim + UX-4 *(done 2026-07-16)*
+> Copy only (the date-window computation is unchanged; the durable fix is Milestones v2). Overview (`ProjectOverview.tsx`) + Reports (`ProjectReports.tsx`): readiness now reads **"{{done}} of {{total}} tickets done"** (was "{{done}}/{{total}} ready" / "{{done}}/{{total}} done"), a `total === 0` row shows **"No tickets due before this date"** instead of "0/0", and a `title` tooltip on the donut/row explains the window rule ("Counts tickets with a due date between the previous milestone and this one."). i18n: `overview.milestoneReadiness` reworded + new `overview.milestoneNoDue`/`milestoneReadinessHint`; `reports.readinessProgress` reworded + new `reports.readinessNoDue`/`readinessHint`. **Browser-verified** on Overview: a milestone with dated tickets → "1 of 4 tickets done"; a milestone dated before all tickets → "No tickets due before this date". My throwaway milestone deleted. typecheck + web 65/65 + build green. *(Note: an unrelated stray milestone "tes" (17 Jul 2026) was found on the project — not created by this work; left in place per "don't delete what you didn't create".)*
 **Not** the Milestones-v2 rework — only stop the number from lying/confusing until then.
 
 1. **Copy:** change the milestone readiness line on Overview (`ProjectOverview.tsx:417-421`, key `overview.milestoneReadiness`) from "3/4 ready" to an explicit `"{{done}} of {{total}} tickets due by this date are done"` (adjust the key's phrasing; update `locales/en.json`).
