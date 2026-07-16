@@ -11,6 +11,7 @@ import {
   applyDrag,
   traySchedule,
   milestoneViewport,
+  classifyEdge,
   PX_PER_DAY,
   type GanttScale,
 } from './gantt'
@@ -135,5 +136,28 @@ describe('gantt date math (3.7 R6)', () => {
     const pre = milestoneViewport(ms, 0, 'day', 0, 0)
     expect(pre.visibleIds).toEqual(['a', 'b', 'c'])
     expect(pre.offscreen).toEqual([])
+  })
+
+  it('classifies dependency edges by which ends are scheduled (B3)', () => {
+    const sched = new Set(['s1', 's2'])
+    const isSched = (id: string) => sched.has(id)
+    // both scheduled → arrow
+    expect(classifyEdge({ ticketId: 's1', dependsOnId: 's2' }, isSched)).toEqual({ kind: 'arrow' })
+    // blocked ticket scheduled, blocker off-chart → glyph on the blocked bar
+    expect(classifyEdge({ ticketId: 's1', dependsOnId: 'u9' }, isSched)).toEqual({
+      kind: 'glyph',
+      onId: 's1',
+      role: 'blocked',
+      otherId: 'u9',
+    })
+    // blocker scheduled, blocked ticket off-chart → glyph on the blocker bar
+    expect(classifyEdge({ ticketId: 'u9', dependsOnId: 's2' }, isSched)).toEqual({
+      kind: 'glyph',
+      onId: 's2',
+      role: 'blocks',
+      otherId: 'u9',
+    })
+    // neither on the chart → nothing to draw
+    expect(classifyEdge({ ticketId: 'u8', dependsOnId: 'u9' }, isSched)).toEqual({ kind: 'none' })
   })
 })

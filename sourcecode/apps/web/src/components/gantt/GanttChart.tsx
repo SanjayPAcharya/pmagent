@@ -1,9 +1,11 @@
 import { type RefObject, type PointerEvent as ReactPointerEvent, type DragEvent as ReactDragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import type { GanttItem, GanttEdge, Milestone } from '@/lib/api'
 import { STATUS_COLOR } from '@/lib/board'
+import { useTranslation } from 'react-i18next'
 import {
   applyDrag,
   barForTicket,
+  classifyEdge,
   dayForX,
   ticks,
   toDayNum,
@@ -14,6 +16,10 @@ import {
   type GanttScale,
 } from '@/lib/gantt'
 import { cn } from '@/lib/utils'
+
+/** B3 — key + title for every payload ticket, so an off-chart dependency end can be named. */
+export type TicketMeta = Record<string, { key: string; title: string }>
+const DEP_GLYPH = 'hsl(var(--destructive))'
 
 // 3.7 R7/R8 — presentational Gantt (hand-rolled <svg>, BurndownSparkline
 // precedent) with pointer-driven drag (move / resize / milestone) layered on in
@@ -41,6 +47,7 @@ type Drag =
 interface Props {
   items: GanttItem[]
   edges: GanttEdge[]
+  ticketMeta?: TicketMeta
   milestones: Milestone[]
   scale: GanttScale
   range: GanttBar
@@ -58,6 +65,7 @@ interface Props {
 export function GanttChart({
   items,
   edges,
+  ticketMeta,
   milestones,
   scale,
   range,
@@ -71,6 +79,7 @@ export function GanttChart({
   onRescheduleMilestone,
   onDragActiveChange,
 }: Props) {
+  const { t } = useTranslation()
   const pxPerDay = PX_PER_DAY[scale]
   const railW = narrow ? 88 : RAIL_W
   const xOf = (day: number) => xForDay(day, range.startDay, scale)
@@ -88,6 +97,30 @@ export function GanttChart({
     rows.forEach((r, idx) => m.set(r.item.id, { idx, bar: r.bar }))
     return m
   }, [rows])
+
+  // B3 — split edges into arrows (both ends scheduled) and off-chart glyphs (one
+  // end in the tray / off-payload). Glyphs are grouped per bar+direction so a
+  // ticket blocked by several off-chart tickets shows a single marker.
+  const { arrowEdges, glyphs } = useMemo(() => {
+    const arrows: GanttEdge[] = []
+    const byKey = new Map<string, { onId: string; role: 'blocked' | 'blocks'; others: string[] }>()
+    for (const e of edges) {
+      const c = classifyEdge(e, (id) => rowById.has(id))
+      if (c.kind === 'arrow') arrows.push(e)
+      else if (c.kind === 'glyph') {
+        const k = `${c.onId}:${c.role}`
+        const g = byKey.get(k) ?? { onId: c.onId, role: c.role, others: [] }
+        g.others.push(c.otherId)
+        byKey.set(k, g)
+      }
+    }
+    return { arrowEdges: arrows, glyphs: [...byKey.values()] }
+  }, [edges, rowById])
+
+  const nameOf = (id: string) => {
+    const m = ticketMeta?.[id]
+    return m ? `${m.key} ${m.title}` : ''
+  }
 
   const tickList = useMemo(() => ticks(range.startDay, range.endDay, scale), [range.startDay, range.endDay, scale])
   const width = (range.endDay - range.startDay + 1) * pxPerDay
@@ -260,8 +293,8 @@ export function GanttChart({
             )
           })}
 
-          {/* Dependency edges */}
-          {edges.map((e, i) => {
+          {/* Dependency edges — arrows between two scheduled bars */}
+          {arrowEdges.map((e, i) => {
             const from = rowById.get(e.dependsOnId)
             const to = rowById.get(e.ticketId)
             if (!from || !to) return null
@@ -281,6 +314,23 @@ export function GanttChart({
                 strokeOpacity={0.35}
                 markerEnd="url(#gantt-arrow)"
               />
+            )
+          })}
+
+          {/* B3 — off-chart dependency glyphs: the other end is unscheduled/off-payload */}
+          {glyphs.map((g) => {
+            const row = rowById.get(g.onId)
+            if (!row) return null
+            const bar = barOf(g.onId, row.bar)
+            const cx = g.role === 'blocked' ? xOf(bar.startDay) - 6 : xOf(bar.endDay) + pxPerDay + 6
+            const cy = rowCenter(row.idx)
+            const names = g.others.map(nameOf).filter(Boolean).join(', ')
+            const label = g.role === 'blocked' ? t('gantt.depBlockedBy', { names }) : t('gantt.depBlocks', { names })
+            return (
+              <g key={`g-${g.onId}-${g.role}`}>
+                <title>{label}</title>
+                <circle cx={cx} cy={cy} r={4} fill={DEP_GLYPH} fillOpacity={0.85} />
+              </g>
             )
           })}
 

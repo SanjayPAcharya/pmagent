@@ -100,7 +100,11 @@
     "unassigned": "Unassigned",
     "rescheduled": "Ticket rescheduled",
     "milestoneMoved": "Milestone moved",
-    "milestonesLabel": "Milestones"
+    "milestonesLabel": "Milestones",
+    "depBlockedBy": "Blocked by {{names}}",
+    "depBlocks": "Blocks {{names}}",
+    "legendDependsOn": "depends on",
+    "legendOffchart": "dependency off the chart"
   },
   "overview": {
     "title": "Overview",

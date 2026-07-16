@@ -141,6 +141,32 @@ export function traySchedule(day: number): GanttBar {
   return { startDay: day, endDay: day + 2 }
 }
 
+export type EdgeRender =
+  | { kind: 'arrow' } // both ends are scheduled bars — draw the connector
+  | { kind: 'glyph'; onId: string; role: 'blocked' | 'blocks'; otherId: string } // one end off-chart
+  | { kind: 'none' } // neither end is on the chart — nothing to anchor to
+
+/**
+ * B3 — how to render a dependency edge on the Timeline. `ticketId` is the
+ * blocked ticket, `dependsOnId` the one it waits on. Both scheduled ⇒ an arrow.
+ * Exactly one scheduled ⇒ a glyph on that scheduled bar: if the blocked ticket
+ * is the scheduled one it is `blocked` (by an off-chart ticket); if the blocker
+ * is scheduled it `blocks` an off-chart ticket. Neither scheduled ⇒ nothing to
+ * draw on the chart (the tray shows those). This is what lets a dependency
+ * touching an unscheduled ticket stay visible instead of silently vanishing.
+ */
+export function classifyEdge(
+  edge: { ticketId: string; dependsOnId: string },
+  isScheduled: (id: string) => boolean,
+): EdgeRender {
+  const blockedSched = isScheduled(edge.ticketId)
+  const blockerSched = isScheduled(edge.dependsOnId)
+  if (blockedSched && blockerSched) return { kind: 'arrow' }
+  if (blockedSched) return { kind: 'glyph', onId: edge.ticketId, role: 'blocked', otherId: edge.dependsOnId }
+  if (blockerSched) return { kind: 'glyph', onId: edge.dependsOnId, role: 'blocks', otherId: edge.ticketId }
+  return { kind: 'none' }
+}
+
 export interface MilestoneViewport {
   /** ids of milestones whose diamond falls inside the horizontal viewport */
   visibleIds: string[]

@@ -116,6 +116,29 @@ export default function ProjectGantt() {
   )
   const offscreenDir = (id: string) => mViewport.offscreen.find((o) => o.id === id)?.dir
 
+  // B3 — name any dependency end for the chart's off-chart glyphs, and flag tray
+  // (unscheduled) tickets that are linked to a scheduled one so the pair shows
+  // from both sides.
+  const ticketMeta = useMemo(() => {
+    const m: Record<string, { key: string; title: string }> = {}
+    for (const it of payload?.items ?? []) m[it.id] = { key: it.key, title: it.title }
+    return m
+  }, [payload])
+  const scheduledIds = useMemo(() => new Set(scheduled.map((s) => s.id)), [scheduled])
+  const trayDepTitle = useMemo(() => {
+    const acc = new Map<string, string[]>()
+    const add = (id: string, s: string) => acc.set(id, [...(acc.get(id) ?? []), s])
+    for (const e of payload?.edges ?? []) {
+      const blockedSched = scheduledIds.has(e.ticketId)
+      const blockerSched = scheduledIds.has(e.dependsOnId)
+      if (!blockedSched && blockerSched) add(e.ticketId, t('gantt.depBlockedBy', { names: ticketMeta[e.dependsOnId]?.key ?? '?' }))
+      else if (blockedSched && !blockerSched) add(e.dependsOnId, t('gantt.depBlocks', { names: ticketMeta[e.ticketId]?.key ?? '?' }))
+    }
+    const out = new Map<string, string>()
+    for (const [id, arr] of acc) out.set(id, arr.join(' · '))
+    return out
+  }, [payload, scheduledIds, ticketMeta, t])
+
   // ── Persistence + undo (R8) — optimistic gantt-cache patch, rollback on error.
   const ganttKey = ['gantt', projectId]
   const patchItem = (id: string, patch: Partial<GanttItem>) => (old?: { gantt: GanttPayload }) =>
@@ -264,6 +287,7 @@ export default function ProjectGantt() {
         <GanttChart
           items={scheduled}
           edges={payload.edges}
+          ticketMeta={ticketMeta}
           milestones={payload.milestones}
           scale={scale}
           range={range}
@@ -277,6 +301,18 @@ export default function ProjectGantt() {
           onRescheduleMilestone={onRescheduleMilestone}
           onDragActiveChange={(active) => (dragPaused.current = active)}
         />
+      )}
+
+      {/* B3 — dependency legend (only when the project has any dependency links) */}
+      {payload && payload.edges.length > 0 && scheduled.length > 0 && (
+        <div className="flex flex-wrap items-center gap-4 px-1 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden>→</span> {t('gantt.legendDependsOn')}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-destructive" aria-hidden /> {t('gantt.legendOffchart')}
+          </span>
+        </div>
       )}
 
       {/* Unscheduled tray */}
@@ -302,6 +338,13 @@ export default function ProjectGantt() {
                     interactive && 'cursor-grab active:cursor-grabbing',
                   )}
                 >
+                  {trayDepTitle.has(it.id) && (
+                    <span
+                      title={trayDepTitle.get(it.id)}
+                      className="inline-block h-2 w-2 shrink-0 rounded-full bg-destructive"
+                      aria-hidden
+                    />
+                  )}
                   <span className="font-mono text-[11px] text-muted-foreground">{it.key}</span>
                   <span className="truncate text-foreground">{it.title}</span>
                 </button>

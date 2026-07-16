@@ -84,7 +84,9 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] B3 — Dependencies visible on the Timeline (M) — owner O2
+### - [x] B3 — Dependencies visible on the Timeline (M) — owner O2 *(done 2026-07-16)*
+> **Finding refined:** the API already returns edges touching unscheduled tickets (undated tickets are in `payload.items`, so the service filter keeps them) — the defect was purely frontend: the chart received only `scheduled` items, so any edge whose other end was in the tray hit `if (!from || !to) return null` and vanished. So B3 shipped as a **frontend fix + an API guard test** (no service change needed). Added pure `classifyEdge(edge, isScheduled)` in `lib/gantt.ts` (arrow when both ends scheduled · glyph on the scheduled bar when one end is off-chart · none otherwise) + unit test; GanttChart now takes a `ticketMeta` map, renders arrows for scheduled pairs and a destructive-token dot (with a `<title>` naming the off-chart ticket) for off-chart deps, grouped per bar; ProjectGantt adds the tray-chip dot + a legend. i18n `gantt.depBlockedBy/depBlocks/legendDependsOn/legendOffchart`. API guard test: a dep whose depends-on ticket has no dates still appears in `edges`. **Browser-verified** on Oracle → New with a throwaway undated ticket NEW-11 blocking NEW-2 and NEW-3 blocking NEW-2: arrow NEW-3→NEW-2, red glyph at NEW-2's bar start, tray dot on NEW-11, legend shown; all fixtures removed (deps + throwaway ticket) — data restored. api 118→119, web 64→65, typecheck + build green. *(Spotted in passing, flagged as a background task: deleting a ticket leaves dangling dependency rows where it was the blocker — unrelated to B3.)*
+
 **Goal (owner's words):** "timeline should show dependent tickets, in timeline view." Display-only; **no** FS/SF types, no scheduling.
 
 1. Today edges only draw when **both** tickets are scheduled and on-chart (`GanttChart.tsx:264-267` bails via `rowById`). Keep the drawn-edge behaviour for scheduled↔scheduled pairs (it already has an arrowhead marker, line 212, and drag-preview-aware endpoints).
