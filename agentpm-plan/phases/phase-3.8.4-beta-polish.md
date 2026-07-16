@@ -156,7 +156,8 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] U3 — Label overflow "+N" in the List (S) — UX-3
+### - [x] U3 — Label overflow "+N" in the List (S) — UX-3 *(done 2026-07-16)*
+> `ProjectList.tsx` title cell: after the first 3 label chips, when `labels.length > 3` render a muted `+{n}` chip whose `title` lists the remaining label names. The Board card (`TicketCard.tsx`) wraps all labels (`flex-wrap`) so it needs no change. No new i18n (the chip text is `+N`, tooltip is the joined names). No page-render test harness exists in the repo (as with B1) and the logic is a trivial conditional, so verified in the browser. **Browser-verified** on NEW-8 with 5 labels: List showed 3 chips + a **"+2"** chip; fixtures removed (all 5 labels unassigned; the org labels themselves untouched). typecheck + web 65/65 + build green.
 1. `ProjectList.tsx:204` — after the `slice(0, 3)` badges, when `tk.labels.length > 3` render a `+{n}` badge (same Badge primitive, muted) with a `title` tooltip listing the remaining label names (no new primitives, no popover work).
 2. Check the Board card too (`TicketCard.tsx`) — if it truncates labels the same way, apply the same "+N".
 3. **Tests:** ProjectList (or TicketCard) unit test: 5 labels ⇒ 3 badges + "+2" whose title contains the hidden names.

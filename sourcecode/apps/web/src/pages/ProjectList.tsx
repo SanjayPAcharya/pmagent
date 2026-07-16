@@ -204,6 +204,15 @@ export default function ProjectList() {
             {tk.labels.slice(0, 3).map((l) => (
               <span key={l.id} className="hidden shrink-0 rounded-full px-1.5 py-0.5 text-[11px] sm:inline" style={{ backgroundColor: `${l.color}22`, color: l.color }}>{l.name}</span>
             ))}
+            {/* U3 — never hide labels silently: a +N chip reveals the rest on hover. */}
+            {tk.labels.length > 3 && (
+              <span
+                className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground sm:inline"
+                title={tk.labels.slice(3).map((l) => l.name).join(', ')}
+              >
+                +{tk.labels.length - 3}
+              </span>
+            )}
           </div>
         )
       case 'status':
