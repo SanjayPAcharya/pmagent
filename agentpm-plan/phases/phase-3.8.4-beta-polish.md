@@ -136,7 +136,8 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] U1 — Sprints page: sprint on top + add-to-sprint without dragging (M) — UX-1
+### - [x] U1 — Sprints page: sprint on top + add-to-sprint without dragging (M) — UX-1 *(done 2026-07-16)*
+> `Sprints.tsx`: sprint rows now render **above** the backlog (was below), sorted **active-first** (`orderedSprints`), so a sprint is reachable without scrolling past a full-screen backlog. Each backlog chip gains an **"Add to sprint…"** `<select>` (a sibling of the draggable chip, so it never starts a drag; options are the non-completed sprints) that fires the **same `api.addToSprint` mutation as the drag path** via a shared `onAdd` callback — drag still works unchanged. i18n: new `sprints.addToSprintPlaceholder`, backlog header reworded to mention the dropdown. No Sprints test harness exists (verified in browser, as with B1/U3). **Browser-verified**: sprints above backlog with Sprint 1 (ACTIVE) first; backlog chips each show the dropdown; selecting "Sprint 1" on NEW-2 moved it into the sprint (Tickets 5→6); restored NEW-2 to backlog. typecheck + web 67/67 + build green.
 1. **Layout** (`apps/web/src/pages/Sprints.tsx`): render the sprint cards **above** the backlog block (backlog assembled at line 399; API already orders sprints newest-first, `routes/sprints.ts:83`). The active sprint (status ACTIVE) always sorts first if present. Keep the backlog reachable below; consider making it collapsible with the existing tray/`useLocalStorageState` pattern only if it's cheap.
 2. **No-drag add:** each backlog chip gets a small "add to sprint" affordance — copy the move-`<select>` idiom from `Sprints.tsx:332-348` (options = open sprints; on change call the same `api.addToSprint`-style mutation the drag path uses, with the same toast). Keep drag-and-drop working unchanged.
 3. i18n for any new strings; respect the 3.7.2 patterns (focus ring on the new control).

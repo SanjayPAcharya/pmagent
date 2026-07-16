@@ -166,6 +166,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
   - **Release readiness** — a completion donut for the whole project plus, for each upcoming milestone, how many of the tickets due before it are done (and how many are still open). Add milestones on the Overview page to populate it.
 
 ## Sprints
+- The **sprints show above the backlog** (the active one first), so a sprint is always in reach — no scrolling past a long backlog to find it. Add a backlog ticket to a sprint either by **dragging** it, or from the ticket's **"Add to sprint…" dropdown** — no dragging required.
 - Goal + dates, start/complete lifecycle, capacity view, **burndown chart**, recorded velocity.
 - **Editable goal** inline (click the pencil), and an **expandable ticket list** you can manage without opening each ticket: change **status** and **assignee**, see priority and points at a glance, jump to a ticket, or move it to another sprint/backlog. A small **assignee/status filter** narrows a big sprint. Everything updates live for the whole team.
 
