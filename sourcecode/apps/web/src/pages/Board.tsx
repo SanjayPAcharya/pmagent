@@ -9,8 +9,10 @@ import {
   MouseSensor,
   TouchSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -36,6 +38,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fireConfetti } from '@/lib/confetti'
 import { recordVisit } from '@/lib/frecency'
 import { cn } from '@/lib/utils'
+
+// B4 — the board scrolls horizontally, so Blocked/Done are often off-screen and
+// a drag toward them relies on auto-scroll. `closestCorners` could snap the drop
+// to a nearer *visible* column (a card would land one column short of Blocked);
+// `pointerWithin` makes the drop land on the column the pointer is actually over.
+// Fall back to closestCorners when the pointer is over no column (keyboard drag).
+const boardCollision: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args)
+  return pointer.length > 0 ? pointer : closestCorners(args)
+}
 
 // A fractional position between two neighbours (board uses Float positions), so
 // reordering only ever rewrites the one moved card.
@@ -586,7 +598,10 @@ export default function Board() {
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={boardCollision}
+          // B4 — start the horizontal auto-scroll a little earlier so off-screen
+          // columns (Blocked/Done) are reachable mid-drag.
+          autoScroll={{ threshold: { x: 0.25, y: 0.2 } }}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}

@@ -100,7 +100,8 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] B4 — Drag-and-drop into BLOCKED works (M) — BUG-4
+### - [x] B4 — Drag-and-drop into BLOCKED works (M) — BUG-4 *(done 2026-07-16)*
+> **Reproduced** on Oracle → New: with Blocked **fully visible**, dragging a card into it works perfectly; with Blocked **off-screen** (it's the 5th of 6 columns — needs horizontal auto-scroll), the card lands one column short (dropped in In Review instead of Blocked). Root cause: not the drop logic but `closestCorners` snapping to the nearer *visible* column while auto-scroll lags. Fix in `Board.tsx`: (1) hybrid collision `pointerWithin` → `closestCorners` fallback (`boardCollision`) so a drop lands on the column actually under the pointer; (2) `autoScroll={{ threshold: { x: 0.25, y: 0.2 } }}` to start horizontal scroll a little earlier. **Verified after fix**: the same off-screen drag (To Do → off-screen Blocked) now lands in Blocked; visible-column drops unaffected. Test data restored (moved cards back via the drawer status menu). web 65/65, typecheck + build green. Note: the per-card status dropdown remains the reliable non-drag path.
 1. Reproduce on the dev Board (`@dnd-kit`, `Board.tsx:17`): try dragging a card to Blocked (right-most column) at desktop and narrow widths, with the board horizontally scrolled and not. Also try an **empty** Blocked column (suspect: collapsed droppable area) and dragging **while the column is off-viewport** (suspect: no auto-scroll — check whether `DndContext` has auto-scroll enabled/disabled).
 2. Fix what reproduces. Likely candidates: give empty columns a min-height droppable body in `components/board/Column.tsx`; enable/configure dnd-kit auto-scroll on the horizontal container.
 3. If nothing reproduces, park the step with a written repro-attempt note in this doc and ask the beta tester the Open Question from the requirements doc — do not invent a fix.
