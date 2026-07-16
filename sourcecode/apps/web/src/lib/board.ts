@@ -1,7 +1,15 @@
-import type { Priority, TicketStatus } from './api'
+import type { Priority, TicketStatus, Workstream } from './api'
 
 // Columns shown on the kanban (CANCELLED is reachable from the drawer only).
 export const BOARD_COLUMNS: TicketStatus[] = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'DONE']
+
+// B5 — a new ticket inherits the board's workstream tab: created ad-hoc on the
+// Ad-hoc tab, otherwise left to the server default (sprint-work). Shared by every
+// board create path (quick-add, template, AI draft) so they all behave the same.
+export type WorkstreamTab = 'all' | 'SPRINT' | 'ADHOC'
+export function workstreamForTab(wsTab: WorkstreamTab): Workstream | undefined {
+  return wsTab === 'ADHOC' ? 'ADHOC' : undefined
+}
 
 export const ALL_STATUSES: TicketStatus[] = [...BOARD_COLUMNS, 'CANCELLED']
 

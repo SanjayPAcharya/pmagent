@@ -20,7 +20,7 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
 import { api, type AITicketDraft, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
-import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
+import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL, workstreamForTab } from '@/lib/board'
 import { MultiSelect } from '@/components/MultiSelect'
 import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { useProjectWebSocket } from '@/lib/websocket'
@@ -284,7 +284,7 @@ export default function Board() {
         priority: parsed.priority,
         assignedToId: parsed.assignedToId,
         // On the Ad-hoc tab, new work is ad-hoc and never joins a sprint.
-        workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
+        workstream: workstreamForTab(wsTab),
         sprintId: wsTab === 'ADHOC' ? undefined : parsed.sprintId,
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
@@ -310,7 +310,7 @@ export default function Board() {
           ? draft.acceptanceCriteria.map((ac) => `- ${ac}`).join('\n')
           : undefined,
         priority: draft.priority,
-        workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
+        workstream: workstreamForTab(wsTab),
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       toast.success(t('board.ticketCreated'))
@@ -335,6 +335,9 @@ export default function Board() {
         goal: tpl.goal ?? undefined,
         constraints: tpl.constraints ?? undefined,
         labelIds: validLabelIds.length ? validLabelIds : undefined,
+        // B5 — inherit the tab's workstream, like quickAdd/createFromDraft do,
+        // so a template used on the Ad-hoc board makes an ad-hoc ticket.
+        workstream: workstreamForTab(wsTab),
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)

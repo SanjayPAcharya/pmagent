@@ -111,7 +111,8 @@ This file + `agentpm-plan/README.md` phase-index row + `PROGRESS.md` Now/Next/Lo
 
 ---
 
-### - [ ] B5 — Creation inherits its context (ad-hoc board → ad-hoc ticket) (S/M) — BUG-5
+### - [x] B5 — Creation inherits its context (ad-hoc board → ad-hoc ticket) (S/M) — BUG-5 *(done 2026-07-16)*
+> Audit of every board create path: `quickAdd` and `createFromDraft` already inherited the tab's workstream, but **`createFromTemplate` did not** — a template used on the Ad-hoc tab created a sprint-work ticket that landed in the backlog (finding 7). Fix: extracted a shared, unit-tested `workstreamForTab(wsTab)` helper in `lib/board.ts` and routed all three create paths through it (also DRYs the duplicated `wsTab === 'ADHOC' ? 'ADHOC' : undefined`). Off-board create paths (`CommandPalette`, the empty-project first-ticket) have no tab context and correctly keep the server default. **Browser-verified**: quick-add on the Ad-hoc tab created NEW-12 with WORKSTREAM = Ad-hoc (appeared on the Ad-hoc board immediately); throwaway deleted. +2 unit tests (`lib/board.test.ts`); web 65→67, typecheck + build green.
 1. Audit every ticket-creation entry point for workstream/sprint context: Board quick-create paths (`Board.tsx:275,301` — already correct), Board column "+" (if separate), the quick-add token input (3.7 R9), `CommandPalette.tsx` create action, Sprints-page creation (if any), drawer subtask creation. For each, note whether it passes `workstream`/`sprintId` matching the surface the user is on.
 2. Fix the paths that drop context: created-from-Ad-hoc-tab ⇒ `workstream: 'ADHOC'`; created from an expanded sprint on the Sprints page ⇒ that `sprintId`.
 3. **Tests:** web test asserting the create call from the ADHOC tab carries `workstream: 'ADHOC'` for each fixed path (mock `api.createTicket`, assert payload).
