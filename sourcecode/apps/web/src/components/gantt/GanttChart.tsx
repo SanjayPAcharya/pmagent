@@ -363,11 +363,17 @@ export function GanttChart({
                     <rect x={x + w - HANDLE_W} y={y} width={HANDLE_W} height={BAR_H} fill="transparent" className="cursor-ew-resize" onPointerDown={startBarDrag(r.item, r.bar, 'resize-end')} />
                   </>
                 )}
-                {w > 120 && (
-                  <text x={x + 8} y={y + BAR_H / 2 + 3.5} fontSize={11} fill="#fff" className="pointer-events-none">
-                    {r.item.title}
-                  </text>
-                )}
+                {/* Ticket title just outside (right of) the bar, so every bar is
+                    identifiable even when it's too narrow to hold a label. */}
+                <text
+                  x={x + w + 6}
+                  y={y + BAR_H / 2 + 3.5}
+                  fontSize={11}
+                  fill="hsl(var(--foreground))"
+                  className="pointer-events-none"
+                >
+                  {r.item.title}
+                </text>
               </g>
             )
           })}
