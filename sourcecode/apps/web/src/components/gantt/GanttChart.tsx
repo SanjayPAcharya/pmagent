@@ -242,8 +242,8 @@ export function GanttChart({
           aria-label="Project timeline"
         >
           <defs>
-            <marker id="gantt-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-              <path d="M0,0 L6,3 L0,6 Z" fill="hsl(var(--muted-foreground))" fillOpacity={0.5} />
+            <marker id="gantt-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 Z" fill="hsl(var(--primary))" fillOpacity={0.75} />
             </marker>
           </defs>
 
@@ -310,8 +310,9 @@ export function GanttChart({
                 key={`e-${i}`}
                 d={`M ${fromX} ${fromY} H ${midX} V ${toY} H ${toX}`}
                 fill="none"
-                stroke="hsl(var(--muted-foreground))"
-                strokeOpacity={0.35}
+                stroke="hsl(var(--primary))"
+                strokeWidth={1.75}
+                strokeOpacity={0.7}
                 markerEnd="url(#gantt-arrow)"
               />
             )
@@ -343,7 +344,7 @@ export function GanttChart({
             const color = STATUS_COLOR[r.item.status]
             const showHandles = interactive && w >= 24
             return (
-              <g key={r.item.id}>
+              <g key={r.item.id} className="group">
                 <rect
                   x={x}
                   y={y}
@@ -364,13 +365,14 @@ export function GanttChart({
                   </>
                 )}
                 {/* Ticket title just outside (right of) the bar, so every bar is
-                    identifiable even when it's too narrow to hold a label. */}
+                    identifiable even when it's too narrow to hold a label. Dimmed
+                    by default to keep the chart calm; full opacity on row hover. */}
                 <text
                   x={x + w + 6}
                   y={y + BAR_H / 2 + 3.5}
                   fontSize={11}
                   fill="hsl(var(--foreground))"
-                  className="pointer-events-none"
+                  className="pointer-events-none opacity-40 transition-opacity group-hover:opacity-100"
                 >
                   {r.item.title}
                 </text>
