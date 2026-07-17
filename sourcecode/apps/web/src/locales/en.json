@@ -96,6 +96,7 @@
     "clearFilters": "Clear filters",
     "unscheduled": "Unscheduled ({{count}})",
     "empty": "Nothing scheduled yet — give tickets a start or due date.",
+    "emptyFiltered": "No tickets match the current filters.",
     "truncated": "Showing the 1000 most recently updated tickets.",
     "unassigned": "Unassigned",
     "rescheduled": "Ticket rescheduled",

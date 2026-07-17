@@ -282,7 +282,19 @@ export default function ProjectGantt() {
       {!payload ? (
         <Skeleton className="h-96 rounded-lg" />
       ) : scheduled.length === 0 ? (
-        <EmptyState icon={CalendarRange} message={t('gantt.empty')} />
+        // TL4 — distinguish "filtered to nothing" from "nothing scheduled yet",
+        // and offer a way out when it's the filters.
+        <EmptyState
+          icon={CalendarRange}
+          message={hasFilters ? t('gantt.emptyFiltered') : t('gantt.empty')}
+          cta={
+            hasFilters ? (
+              <button onClick={clearFilters} className="text-sm font-medium text-primary hover:underline">
+                {t('gantt.clearFilters')}
+              </button>
+            ) : undefined
+          }
+        />
       ) : (
         <GanttChart
           items={scheduled}
