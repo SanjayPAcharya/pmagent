@@ -124,6 +124,66 @@ export function ticks(rangeStartDay: number, rangeEndDay: number, scale: GanttSc
   return out
 }
 
+export interface GanttHeaderSegment {
+  startDay: number
+  label: string
+}
+export interface GanttHeader {
+  /** Top band: the grouping unit — month (day/week scales) or year (month scale). */
+  primary: GanttHeaderSegment[]
+  /** Bottom band: compact sub-ticks — day-of-month numbers, or short month names (month scale). */
+  secondary: GanttTick[]
+}
+
+const dayNum = (day: number) => new Date(day * MS_PER_DAY).getUTCDate()
+
+/**
+ * TL3 — two-tier axis model for a cleaner header. The top band groups columns by
+ * month (day/week) or year (month) so the eye reads "July" once instead of a
+ * date on every column; the bottom band carries compact numbers/short months.
+ * All UTC.
+ */
+export function ganttHeader(rangeStartDay: number, rangeEndDay: number, scale: GanttScale): GanttHeader {
+  const secondary: GanttTick[] = []
+  if (scale === 'day') {
+    for (let d = rangeStartDay; d <= rangeEndDay; d++) secondary.push({ day: d, label: String(dayNum(d)), major: isMonday(d) })
+  } else if (scale === 'week') {
+    let d = rangeStartDay
+    while (d <= rangeEndDay && !isMonday(d)) d++
+    for (; d <= rangeEndDay; d += 7) secondary.push({ day: d, label: String(dayNum(d)), major: true })
+  } else {
+    let d = rangeStartDay
+    while (d <= rangeEndDay && !isFirstOfMonth(d)) d++
+    while (d <= rangeEndDay) {
+      secondary.push({ day: d, label: MONTHS[new Date(d * MS_PER_DAY).getUTCMonth()], major: true })
+      const dt = new Date(d * MS_PER_DAY)
+      d = Math.floor(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1) / MS_PER_DAY)
+    }
+  }
+
+  const primary: GanttHeaderSegment[] = []
+  if (scale === 'month') {
+    const startY = new Date(rangeStartDay * MS_PER_DAY).getUTCFullYear()
+    const endY = new Date(rangeEndDay * MS_PER_DAY).getUTCFullYear()
+    for (let y = startY; y <= endY; y++) {
+      const yearStart = Math.floor(Date.UTC(y, 0, 1) / MS_PER_DAY)
+      primary.push({ startDay: Math.max(yearStart, rangeStartDay), label: String(y) })
+    }
+  } else {
+    const start = new Date(rangeStartDay * MS_PER_DAY)
+    const end = new Date(rangeEndDay * MS_PER_DAY)
+    const startYm = start.getUTCFullYear() * 12 + start.getUTCMonth()
+    const endYm = end.getUTCFullYear() * 12 + end.getUTCMonth()
+    for (let ym = startYm; ym <= endYm; ym++) {
+      const yy = Math.floor(ym / 12)
+      const mm = ym % 12
+      const monthStart = Math.floor(Date.UTC(yy, mm, 1) / MS_PER_DAY)
+      primary.push({ startDay: Math.max(monthStart, rangeStartDay), label: `${MONTHS[mm]} ${yy}` })
+    }
+  }
+  return { primary, secondary }
+}
+
 export type DragKind = 'move' | 'resize-start' | 'resize-end'
 
 /**

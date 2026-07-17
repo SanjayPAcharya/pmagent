@@ -12,6 +12,7 @@ import {
   traySchedule,
   milestoneViewport,
   classifyEdge,
+  ganttHeader,
   PX_PER_DAY,
   type GanttScale,
 } from './gantt'
@@ -159,5 +160,26 @@ describe('gantt date math (3.7 R6)', () => {
     })
     // neither on the chart → nothing to draw
     expect(classifyEdge({ ticketId: 'u8', dependsOnId: 'u9' }, isSched)).toEqual({ kind: 'none' })
+  })
+
+  it('builds a two-tier header grouped by month at the day scale (TL3)', () => {
+    const start = toDayNum('2026-06-29T00:00:00.000Z') // a Monday
+    const end = toDayNum('2026-07-02T00:00:00.000Z')
+    const h = ganttHeader(start, end, 'day')
+    // secondary: one per day, labels are day-of-month numbers, Monday is major
+    expect(h.secondary.map((t) => t.label)).toEqual(['29', '30', '1', '2'])
+    expect(h.secondary[0].major).toBe(true) // 29 Jun is a Monday
+    // primary: the months that group the days, clamped to the range start
+    expect(h.primary.map((p) => p.label)).toEqual(['Jun 2026', 'Jul 2026'])
+    expect(h.primary[0].startDay).toBe(start)
+    expect(h.primary[1].startDay).toBe(toDayNum('2026-07-01T00:00:00.000Z'))
+  })
+
+  it('groups by year with short-month sub-ticks at the month scale (TL3)', () => {
+    const start = toDayNum('2026-11-15T00:00:00.000Z')
+    const end = toDayNum('2027-02-10T00:00:00.000Z')
+    const h = ganttHeader(start, end, 'month')
+    expect(h.primary.map((p) => p.label)).toEqual(['2026', '2027'])
+    expect(h.secondary.map((t) => t.label)).toEqual(['Dec', 'Jan', 'Feb'])
   })
 })

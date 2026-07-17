@@ -7,7 +7,7 @@ import {
   barForTicket,
   classifyEdge,
   dayForX,
-  ticks,
+  ganttHeader,
   toDayNum,
   xForDay,
   PX_PER_DAY,
@@ -122,7 +122,7 @@ export function GanttChart({
     return m ? `${m.key} ${m.title}` : ''
   }
 
-  const tickList = useMemo(() => ticks(range.startDay, range.endDay, scale), [range.startDay, range.endDay, scale])
+  const header = useMemo(() => ganttHeader(range.startDay, range.endDay, scale), [range.startDay, range.endDay, scale])
   const width = (range.endDay - range.startDay + 1) * pxPerDay
   const height = TOP + rows.length * ROW_H
   const rowCenter = (idx: number) => TOP + idx * ROW_H + ROW_H / 2
@@ -255,15 +255,36 @@ export function GanttChart({
                 <rect key={`we-${day}`} x={xOf(day)} y={HEADER_H} width={pxPerDay} height={height - HEADER_H} fill="hsl(var(--muted))" fillOpacity={0.4} />
               ))}
 
-          {/* Gridlines + tick labels */}
-          {tickList.map((tk) => (
+          {/* TL3 — two-tier header. Bottom band: gridlines + compact day/week/month
+              sub-labels. Top band: the month/year that groups them. */}
+          {header.secondary.map((tk) => (
             <g key={`t-${tk.day}`}>
-              <line x1={xOf(tk.day)} y1={HEADER_H} x2={xOf(tk.day)} y2={height} stroke="hsl(var(--border))" strokeOpacity={tk.major ? 1 : 0.5} />
-              <text x={xOf(tk.day) + 4} y={24} fontSize={10} fontWeight={tk.major ? 600 : 400} fill="hsl(var(--muted-foreground))">
+              <line x1={xOf(tk.day)} y1={HEADER_H} x2={xOf(tk.day)} y2={height} stroke="hsl(var(--border))" strokeOpacity={tk.major ? 0.8 : 0.3} />
+              <text x={xOf(tk.day) + 4} y={33} fontSize={10} fontWeight={tk.major ? 600 : 400} fill="hsl(var(--muted-foreground))" className="pointer-events-none">
                 {tk.label}
               </text>
             </g>
           ))}
+          {/* Tier divider */}
+          <line x1={0} y1={HEADER_H / 2} x2={width} y2={HEADER_H / 2} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+          {/* Top band: month (day/week) or year (month), with a stronger boundary
+              line. The label is hidden when its segment is too narrow to fit it
+              (e.g. a partial first month at a compressed scale), so labels never
+              overlap — the boundary line + neighbouring label still orient you. */}
+          {header.primary.map((seg, i) => {
+            const nextStart = header.primary[i + 1]?.startDay ?? range.endDay + 1
+            const segW = xOf(nextStart) - xOf(seg.startDay)
+            return (
+              <g key={`p-${seg.startDay}`}>
+                {i > 0 && <line x1={xOf(seg.startDay)} y1={0} x2={xOf(seg.startDay)} y2={height} stroke="hsl(var(--border))" strokeOpacity={1} />}
+                {segW >= seg.label.length * 7 && (
+                  <text x={xOf(seg.startDay) + 6} y={15} fontSize={11} fontWeight={600} fill="hsl(var(--foreground))" className="pointer-events-none">
+                    {seg.label}
+                  </text>
+                )}
+              </g>
+            )
+          })}
 
           {/* Today marker */}
           {todayVisible && <line x1={xOf(today)} y1={HEADER_H} x2={xOf(today)} y2={height} stroke="hsl(var(--primary))" strokeWidth={2} />}
