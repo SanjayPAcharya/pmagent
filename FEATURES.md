@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-16**.)
+> (Kept up to date as features ship — last updated **2026-07-23**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -174,9 +174,9 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ## Timeline (Gantt)
 - A horizontal **timeline** of every scheduled ticket: each shows as a bar from its start to its due date (a single date shows as a one-day marker), colored by status, with the **ticket's title shown just beside its bar** so even a one-day bar is easy to identify.
 - **Milestones** appear as diamonds with a dashed line across the chart; a **today** line marks the current date; **dependency arrows** connect a ticket to the ones it's waiting on. When a dependency links to a ticket that isn't scheduled (still in the tray), the scheduled bar shows a small dependency dot you can hover to see which ticket it's tied to, and the tray ticket carries the same dot — so no dependency is hidden just because one side has no dates. A short legend under the chart explains the arrow and the dot. A **Milestones** strip above the chart lists every milestone as a chip — click one to jump the timeline to it, and chips for milestones currently off to the side show a small arrow so a far-off target date is never hidden.
-- Switch the zoom between **Day / Week / Month**, jump to **Today**, and filter by assignee, sprint, label, status, or workstream — the filters narrow both the chart and the tray. The date header is a clean **two tiers**: the month (or the year, in Month view) groups the columns on top, with compact day/week/month numbers below.
-- Tickets without any dates sit in a collapsible **Unscheduled** tray at the bottom. Click any bar, row, or chip to open the ticket — it opens in a side panel **over the timeline**, and closing it leaves you right back on the timeline where you were.
-- **Drag to schedule** (on desktop): drag a bar to move it, drag its ends to resize, drag an **Unscheduled** chip onto the timeline to give it a 3-day slot, and drag a milestone diamond to a new date. Every change shows an **Undo** toast. Updates live as the team schedules work.
+- Switch the zoom between **Day / Week / Month** (the timeline stays centred on wherever you were looking as you zoom), jump to **Today**, **search** by title or ticket number, and filter by assignee, sprint, label, status, or workstream — the filters narrow both the chart and the tray. You can also **group the rows** by sprint, assignee, or workstream, and collapse any group you don't need. The date header is a clean **two tiers**: the month (or the year, in Month view) groups the columns on top, with compact day/week/month numbers below, and a short **status legend** under the chart shows what each bar colour means.
+- Click any bar, row, or chip to open the ticket — it opens in a side panel **over the timeline**, and closing it leaves you right back on the timeline where you were. On touch/narrow screens, tickets without dates sit in a collapsible **Unscheduled** tray at the bottom.
+- **Drag to schedule** (on desktop): drag a bar to move it, drag its ends to resize, and drag a milestone diamond to a new date. Tickets without dates appear as faint **ghost rows** right on the chart — draw a bar across one to schedule it. You can even **draw a dependency** by dragging from the end of one bar onto another. Prefer the keyboard? Tab to a bar, use the **arrow keys** to move it a day at a time (Shift+arrow to resize), and Enter to open it. The timeline **auto-scrolls** when you drag near an edge, a floating date chip shows what a drop will mean, every change shows an **Undo** toast (or press **Cmd/Ctrl+Z**), and updates appear live as the team schedules work.
 
 ## Automation (per project, ⚡ menu)
 | Switch | What it does | Default |

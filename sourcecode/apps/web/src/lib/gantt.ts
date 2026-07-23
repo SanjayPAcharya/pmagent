@@ -7,7 +7,7 @@ const MS_PER_DAY = 86_400_000
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export type GanttScale = 'day' | 'week' | 'month'
-export const PX_PER_DAY: Record<GanttScale, number> = { day: 36, week: 12, month: 3 }
+export const PX_PER_DAY: Record<GanttScale, number> = { day: 36, week: 12, month: 4 }
 
 export interface GanttBar {
   startDay: number

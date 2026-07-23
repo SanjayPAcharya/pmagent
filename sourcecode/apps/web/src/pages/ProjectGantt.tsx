@@ -4,14 +4,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, type GanttItem, type GanttPayload } from '@/lib/api'
-import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
-import { barForTicket, computeRange, dayNumToISO, milestoneViewport, toDayNum, traySchedule, xForDay, type GanttScale } from '@/lib/gantt'
+import { ALL_STATUSES, STATUS_COLOR, STATUS_LABEL } from '@/lib/board'
+import { barForTicket, computeRange, dayForX, dayNumToISO, milestoneViewport, toDayNum, traySchedule, xForDay, type GanttScale } from '@/lib/gantt'
 import { useProjectSync } from '@/lib/websocket'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
-import { CalendarRange } from 'lucide-react'
+import { CalendarRange, Search, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
-import { GanttChart } from '@/components/gantt/GanttChart'
+import { GanttChart, type GanttGroup } from '@/components/gantt/GanttChart'
 import { TicketDrawer } from '@/components/TicketDrawer'
 import { cn } from '@/lib/utils'
 
@@ -56,27 +56,63 @@ export default function ProjectGantt() {
   const [label, setLabel] = useLocalStorageState('agentpm-gantt-f-label', '')
   const [status, setStatus] = useLocalStorageState('agentpm-gantt-f-status', '')
   const [workstream, setWorkstream] = useLocalStorageState('agentpm-gantt-f-ws', '')
+  const [groupBy, setGroupBy] = useLocalStorageState<'' | 'sprint' | 'assignee' | 'workstream'>('agentpm-gantt-group', '')
+  const [search, setSearch] = useState('') // ephemeral — a text query shouldn't survive a reload
 
   const payload = gantt.data?.gantt
-  const hasFilters = Boolean(assignee || sprint || label || status || workstream)
+  const hasFilters = Boolean(assignee || sprint || label || status || workstream || search.trim())
   const clearFilters = () => {
-    setAssignee(''); setSprint(''); setLabel(''); setStatus(''); setWorkstream('')
+    setAssignee(''); setSprint(''); setLabel(''); setStatus(''); setWorkstream(''); setSearch('')
   }
 
   const filtered = useMemo(() => {
     const items = payload?.items ?? []
+    const q = search.trim().toLowerCase()
     return items.filter(
       (it: GanttItem) =>
         (!assignee || it.assignedToId === assignee) &&
         (!sprint || it.sprintId === sprint) &&
         (!label || it.labelIds.includes(label)) &&
         (!status || it.status === status) &&
-        (!workstream || it.workstream === workstream),
+        (!workstream || it.workstream === workstream) &&
+        (!q || it.title.toLowerCase().includes(q) || it.key.toLowerCase().includes(q) || String(it.number) === q),
     )
-  }, [payload, assignee, sprint, label, status, workstream])
+  }, [payload, assignee, sprint, label, status, workstream, search])
 
   const scheduled = useMemo(() => filtered.filter((it) => barForTicket(it) !== null), [filtered])
   const unscheduled = useMemo(() => filtered.filter((it) => barForTicket(it) === null), [filtered])
+
+  // TL5 — optional row grouping. Groups are ordered (sprints in list order,
+  // members alphabetically, workstreams fixed), with the "none" bucket last.
+  const groups = useMemo<GanttGroup[] | undefined>(() => {
+    if (!groupBy) return undefined
+    const defs: { key: string; label: string; match: (it: GanttItem) => boolean }[] = []
+    if (groupBy === 'sprint') {
+      for (const s of sprints.data?.sprints ?? []) defs.push({ key: s.id, label: s.name, match: (it) => it.sprintId === s.id })
+      defs.push({ key: 'none', label: t('gantt.noSprint'), match: () => true })
+    } else if (groupBy === 'assignee') {
+      const ms = [...(members.data?.members ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+      for (const m of ms) defs.push({ key: m.userId, label: m.name, match: (it) => it.assignedToId === m.userId })
+      defs.push({ key: 'none', label: t('gantt.unassigned'), match: () => true })
+    } else {
+      defs.push({ key: 'SPRINT', label: t('gantt.workstreamSprint'), match: (it) => it.workstream === 'SPRINT' })
+      defs.push({ key: 'ADHOC', label: t('gantt.workstreamAdhoc'), match: () => true })
+    }
+    const used = new Set<string>()
+    const out: GanttGroup[] = []
+    for (const d of defs) {
+      const its = filtered.filter((it) => !used.has(it.id) && d.match(it))
+      for (const it of its) used.add(it.id)
+      if (its.length > 0) out.push({ key: d.key, label: d.label, items: its })
+    }
+    return out
+  }, [groupBy, filtered, sprints.data, members.data, t])
+
+  const memberName = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const mem of members.data?.members ?? []) m[mem.userId] = mem.name
+    return m
+  }, [members.data])
 
   const today = toDayNum(new Date().toISOString())
   const range = useMemo(() => computeRange(scheduled, payload?.milestones ?? [], today), [scheduled, payload, today])
@@ -89,9 +125,18 @@ export default function ProjectGantt() {
   const drawerTicket = number ? payload?.items.find((it) => it.number === Number(number)) : undefined
   const scrollToDay = (day: number) => {
     const el = scrollRef.current
-    if (el) el.scrollLeft = xForDay(day, range.startDay, scale) - el.clientWidth / 3
+    if (el) el.scrollTo({ left: xForDay(day, range.startDay, scale) - el.clientWidth / 3, behavior: 'smooth' })
   }
   const scrollToToday = () => scrollToDay(today)
+
+  // Keep the date at the viewport's left edge stable across a zoom change, so
+  // switching Day/Week/Month zooms around what you're looking at.
+  const changeScale = (s: GanttScale) => {
+    const el = scrollRef.current
+    const anchorDay = el ? dayForX(el.scrollLeft, range.startDay, scale) : null
+    setScale(s)
+    if (el && anchorDay !== null) requestAnimationFrame(() => { el.scrollLeft = xForDay(anchorDay, range.startDay, s) })
+  }
 
   // B2 — track the chart's horizontal scroll so we can tell which milestones are
   // currently off-screen (their diamonds can sit far past the last bar). The
@@ -146,11 +191,17 @@ export default function ProjectGantt() {
   const patchMilestone = (id: string, date: string) => (old?: { gantt: GanttPayload }) =>
     old ? { gantt: { ...old.gantt, milestones: old.gantt.milestones.map((m) => (m.id === id ? { ...m, date } : m)) } } : old
 
+  // Cmd/Ctrl+Z pops the most recent reschedule (ticket or milestone). Each undo
+  // is itself undoable — pressing again toggles back — which is enough for the
+  // "oops, put it back" case without a full history model.
+  const undoStack = useRef<Array<() => void>>([])
+
   const writeTicketDates = (id: string, startDate: string | null, dueDate: string | null, withUndo = true) => {
     const prev = qc.getQueryData<{ gantt: GanttPayload }>(ganttKey)?.gantt.items.find((i) => i.id === id)
     const prevStart = prev?.startDate ?? null
     const prevDue = prev?.dueDate ?? null
     qc.setQueryData(ganttKey, patchItem(id, { startDate, dueDate }))
+    if (withUndo) undoStack.current.push(() => writeTicketDates(id, prevStart, prevDue))
     api
       .updateTicket(id, { startDate, dueDate })
       .then(() => {
@@ -165,16 +216,53 @@ export default function ProjectGantt() {
       })
   }
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        const el = e.target as HTMLElement | null
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+        const undo = undoStack.current.pop()
+        if (undo) {
+          e.preventDefault()
+          undo()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const onReschedule = (id: string, startDay: number, endDay: number) =>
     writeTicketDates(id, dayNumToISO(startDay), dayNumToISO(endDay))
   const onScheduleFromTray = (id: string, startDay: number) => {
     const bar = traySchedule(startDay)
     writeTicketDates(id, dayNumToISO(bar.startDay), dayNumToISO(bar.endDay))
   }
+  // TL5 — draw-to-schedule on a ghost row: the drawn span is the schedule.
+  const onDrawSchedule = (id: string, startDay: number, endDay: number) =>
+    writeTicketDates(id, dayNumToISO(startDay), dayNumToISO(endDay))
+  // TL5 — dependency drawn on the chart (end of blocker → onto the blocked bar).
+  const onCreateDependency = (blockedId: string, blockerId: string) => {
+    const edges = qc.getQueryData<{ gantt: GanttPayload }>(ganttKey)?.gantt.edges ?? []
+    if (edges.some((e) => e.ticketId === blockedId && e.dependsOnId === blockerId)) return
+    qc.setQueryData(ganttKey, (old?: { gantt: GanttPayload }) =>
+      old ? { gantt: { ...old.gantt, edges: [...old.gantt.edges, { ticketId: blockedId, dependsOnId: blockerId }] } } : old,
+    )
+    api
+      .addDependency(blockedId, blockerId)
+      .then(() =>
+        toast(t('gantt.depCreated', { blocked: ticketMeta[blockedId]?.key ?? '?', blocker: ticketMeta[blockerId]?.key ?? '?' })),
+      )
+      .catch((e: Error) => {
+        qc.invalidateQueries({ queryKey: ganttKey })
+        toast.error(e.message)
+      })
+  }
   const onRescheduleMilestone = (id: string, day: number, withUndo = true) => {
     const prevDate = qc.getQueryData<{ gantt: GanttPayload }>(ganttKey)?.gantt.milestones.find((m) => m.id === id)?.date
     const nextDate = dayNumToISO(day)
     qc.setQueryData(ganttKey, patchMilestone(id, nextDate))
+    if (withUndo && prevDate) undoStack.current.push(() => onRescheduleMilestone(id, toDayNum(prevDate)))
     api
       .updateMilestone(projectId!, id, { date: nextDate })
       .then(() => {
@@ -191,7 +279,7 @@ export default function ProjectGantt() {
 
   const scaleBtn = (s: GanttScale, labelKey: string) => (
     <button
-      onClick={() => setScale(s)}
+      onClick={() => changeScale(s)}
       aria-pressed={scale === s}
       className={cn('h-7 rounded px-2.5 text-xs transition-colors', scale === s ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
     >
@@ -210,6 +298,26 @@ export default function ProjectGantt() {
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('gantt.searchPlaceholder')}
+            aria-label={t('gantt.searchPlaceholder')}
+            className="h-8 w-44 rounded-md border border-input bg-transparent pl-7 pr-7 text-sm placeholder:text-muted-foreground focus:w-56 focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              aria-label={t('gantt.clearSearch')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
         <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={selectCls}>
           <option value="">{t('gantt.allAssignees')}</option>
           {members.data?.members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
@@ -230,6 +338,12 @@ export default function ProjectGantt() {
           <option value="">{t('gantt.allWorkstreams')}</option>
           <option value="SPRINT">{t('gantt.workstreamSprint')}</option>
           <option value="ADHOC">{t('gantt.workstreamAdhoc')}</option>
+        </select>
+        <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as typeof groupBy)} className={selectCls}>
+          <option value="">{t('gantt.groupNone')}</option>
+          <option value="sprint">{t('gantt.groupSprint')}</option>
+          <option value="assignee">{t('gantt.groupAssignee')}</option>
+          <option value="workstream">{t('gantt.groupWorkstream')}</option>
         </select>
         {hasFilters && (
           <button onClick={clearFilters} className="text-sm text-muted-foreground hover:text-foreground">{t('gantt.clearFilters')}</button>
@@ -281,9 +395,11 @@ export default function ProjectGantt() {
 
       {!payload ? (
         <Skeleton className="h-96 rounded-lg" />
-      ) : scheduled.length === 0 ? (
+      ) : filtered.length === 0 || (!interactive && scheduled.length === 0) ? (
         // TL4 — distinguish "filtered to nothing" from "nothing scheduled yet",
-        // and offer a way out when it's the filters.
+        // and offer a way out when it's the filters. When interactive, having
+        // only unscheduled tickets still shows the chart: its ghost rows are how
+        // you draw the first bar.
         <EmptyState
           icon={CalendarRange}
           message={hasFilters ? t('gantt.emptyFiltered') : t('gantt.empty')}
@@ -297,7 +413,7 @@ export default function ProjectGantt() {
         />
       ) : (
         <GanttChart
-          items={scheduled}
+          items={filtered}
           edges={payload.edges}
           ticketMeta={ticketMeta}
           milestones={payload.milestones}
@@ -307,28 +423,44 @@ export default function ProjectGantt() {
           scrollRef={scrollRef}
           interactive={interactive}
           narrow={!interactive}
+          groups={groups}
+          memberName={memberName}
           onOpenTicket={openTicket}
           onReschedule={onReschedule}
           onScheduleFromTray={onScheduleFromTray}
+          onDrawSchedule={onDrawSchedule}
+          onCreateDependency={onCreateDependency}
           onRescheduleMilestone={onRescheduleMilestone}
           onDragActiveChange={(active) => (dragPaused.current = active)}
         />
       )}
 
-      {/* B3 — dependency legend (only when the project has any dependency links) */}
-      {payload && payload.edges.length > 0 && scheduled.length > 0 && (
-        <div className="flex flex-wrap items-center gap-4 px-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden>→</span> {t('gantt.legendDependsOn')}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-2 w-2 rounded-full bg-destructive" aria-hidden /> {t('gantt.legendOffchart')}
-          </span>
+      {/* Legend — status colors actually on the chart, plus the dependency
+          markers when the project has any dependency links (B3). */}
+      {payload && scheduled.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-xs text-muted-foreground">
+          {ALL_STATUSES.filter((s) => scheduled.some((it) => it.status === s)).map((s) => (
+            <span key={s} className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-sm" style={{ background: STATUS_COLOR[s] }} aria-hidden />
+              {STATUS_LABEL[s]}
+            </span>
+          ))}
+          {payload.edges.length > 0 && (
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden>→</span> {t('gantt.legendDependsOn')}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-destructive" aria-hidden /> {t('gantt.legendOffchart')}
+              </span>
+            </>
+          )}
         </div>
       )}
 
-      {/* Unscheduled tray */}
-      {payload && unscheduled.length > 0 && (
+      {/* Unscheduled tray — narrow/touch only; on desktop the chart's ghost rows
+          replace it (draw a bar directly on an unscheduled ticket's row). */}
+      {payload && !interactive && unscheduled.length > 0 && (
         <div className="rounded-lg border bg-card">
           <button
             onClick={() => setTrayOpen((v) => !v)}

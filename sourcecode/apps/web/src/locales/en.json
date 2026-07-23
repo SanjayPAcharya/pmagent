@@ -105,7 +105,16 @@
     "depBlockedBy": "Blocked by {{names}}",
     "depBlocks": "Blocks {{names}}",
     "legendDependsOn": "depends on",
-    "legendOffchart": "dependency off the chart"
+    "legendOffchart": "dependency off the chart",
+    "groupNone": "Group: none",
+    "groupSprint": "Group: sprint",
+    "groupAssignee": "Group: assignee",
+    "groupWorkstream": "Group: workstream",
+    "noSprint": "No sprint",
+    "dragToSchedule": "Drag to set dates",
+    "depCreated": "{{blocked}} now depends on {{blocker}}",
+    "searchPlaceholder": "Search tickets",
+    "clearSearch": "Clear search"
   },
   "overview": {
     "title": "Overview",
@@ -537,7 +546,10 @@
     "completion": "Completion",
     "burndown": "Burndown",
     "burndownRemaining": "{{remaining}} {{unit}} left",
-    "unit": { "points": "pts", "tickets": "tickets" },
+    "unit": {
+      "points": "pts",
+      "tickets": "tickets"
+    },
     "backlog": "Backlog — drag a ticket onto a sprint, or use its dropdown",
     "backlogEmpty": "No unsprinted tickets.",
     "addToSprintPlaceholder": "Add to sprint…",
