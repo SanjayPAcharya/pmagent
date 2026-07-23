@@ -107,9 +107,11 @@ describe('sprints', () => {
     expect(res.json().reports.overall).toEqual({ done: 2, open: 1 })
     expect(res.json().reports.readiness).toEqual([])
 
-    // With an open milestone + a due-dated open ticket, readiness reflects the window.
-    await app.inject({ method: 'POST', url: `/api/projects/${projectId}/milestones`, headers: bearer(owner), payload: { name: 'GA', date: '2026-12-31T00:00:00.000Z' } })
-    await app.inject({ method: 'PATCH', url: `/api/tickets/${t3}`, headers: bearer(owner), payload: { dueDate: '2026-12-01T00:00:00.000Z' } })
+    // 3.8.5 MS-2 — readiness is now done/total over the milestone's LINKED tickets
+    // (not a date window). Link the open ticket t3 to the milestone → 0 of 1 done.
+    const gaRes = await app.inject({ method: 'POST', url: `/api/projects/${projectId}/milestones`, headers: bearer(owner), payload: { name: 'GA', date: '2026-12-31T00:00:00.000Z' } })
+    const gaId = gaRes.json().milestone.id
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${t3}`, headers: bearer(owner), payload: { milestoneId: gaId } })
     const withMs = await app.inject({ method: 'GET', url: `/api/projects/${projectId}/reports`, headers: bearer(owner) })
     const readiness = withMs.json().reports.readiness
     expect(readiness).toHaveLength(1)

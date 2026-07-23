@@ -5,7 +5,7 @@ import { prisma } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.middleware.js'
 import { assertOrgRole } from '../services/authz.js'
 import { projectListStats } from '../services/stats.service.js'
-import { projectReports } from '../services/reports.service.js'
+import { projectReports, milestoneReadiness } from '../services/reports.service.js'
 import { projectOverview } from '../services/overview.service.js'
 import { projectGantt } from '../services/gantt.service.js'
 import { recentActivity } from '../services/activity.service.js'
@@ -195,8 +195,43 @@ const routes: FastifyPluginAsync = async (app) => {
 
   app.get('/:projectId/milestones', async (request) => {
     const project = await loadProjectAuthorized(request, 'MEMBER')
-    const milestones = await prisma.milestone.findMany({ where: { projectId: project.id }, orderBy: { date: 'asc' } })
-    return { milestones }
+    // 3.8.5 MS-2 — attach linked-ticket progress to each milestone.
+    const [milestones, progress] = await Promise.all([
+      prisma.milestone.findMany({ where: { projectId: project.id }, orderBy: { date: 'asc' } }),
+      milestoneReadiness(project.id),
+    ])
+    return { milestones: milestones.map((m) => ({ ...m, progress: progress.get(m.id) ?? { done: 0, total: 0 } })) }
+  })
+
+  // 3.8.5 MS-4 — milestone detail: its linked tickets (status + assignee) and a
+  // progress figure that always matches the visible list.
+  app.get('/:projectId/milestones/:milestoneId', async (request) => {
+    const project = await loadProjectAuthorized(request, 'MEMBER')
+    const { milestoneId } = request.params as { milestoneId: string }
+    const milestone = await loadMilestone(project.id, milestoneId)
+    const tickets = await prisma.ticket.findMany({
+      where: { projectId: project.id, milestoneId, archivedAt: null },
+      orderBy: [{ status: 'asc' }, { number: 'asc' }],
+      select: {
+        id: true,
+        number: true,
+        title: true,
+        status: true,
+        assignedTo: { select: { id: true, name: true, email: true, avatarUrl: true } },
+      },
+    })
+    let done = 0
+    let total = 0
+    for (const t of tickets) {
+      if (t.status === 'CANCELLED') continue
+      total += 1
+      if (t.status === 'DONE') done += 1
+    }
+    return {
+      milestone,
+      progress: { done, total },
+      tickets: tickets.map((t) => ({ ...t, key: `${project.key}-${t.number}` })),
+    }
   })
 
   app.post('/:projectId/milestones', async (request, reply) => {

@@ -1,5 +1,6 @@
 import type { Milestone, Priority, TicketStatus, Workstream } from '@prisma/client'
 import { prisma } from '../db/client.js'
+import { milestoneReadiness } from './reports.service.js'
 
 // 3.7 R6 — flat payload the Gantt view needs in one round trip: dated tickets,
 // their dependency edges, and milestones. All the date math lives in the web
@@ -16,6 +17,7 @@ export interface GanttItem {
   priority: Priority
   assignedToId: string | null
   sprintId: string | null
+  milestoneId: string | null
   workstream: Workstream
   startDate: Date | null
   dueDate: Date | null
@@ -26,10 +28,12 @@ export interface GanttEdge {
   ticketId: string
   dependsOnId: string
 }
+// 3.8.5 MS-3 — milestone carries its linked-ticket progress for the diamond hover.
+export type GanttMilestone = Milestone & { progress: { done: number; total: number } }
 export interface GanttPayload {
   items: GanttItem[]
   edges: GanttEdge[]
-  milestones: Milestone[]
+  milestones: GanttMilestone[]
   truncated: boolean
 }
 
@@ -47,6 +51,7 @@ export async function projectGantt(projectId: string): Promise<GanttPayload> {
       priority: true,
       assignedToId: true,
       sprintId: true,
+      milestoneId: true,
       workstream: true,
       startDate: true,
       dueDate: true,
@@ -59,13 +64,15 @@ export async function projectGantt(projectId: string): Promise<GanttPayload> {
   const sliced = truncated ? rows.slice(0, MAX_ITEMS) : rows
   const ids = new Set(sliced.map((r) => r.id))
 
-  const [deps, milestones] = await Promise.all([
+  const [deps, milestoneRows, progress] = await Promise.all([
     prisma.ticketDependency.findMany({
       where: { ticketId: { in: [...ids] } },
       select: { ticketId: true, dependsOnId: true },
     }),
     prisma.milestone.findMany({ where: { projectId }, orderBy: { date: 'asc' } }),
+    milestoneReadiness(projectId),
   ])
+  const milestones: GanttMilestone[] = milestoneRows.map((m) => ({ ...m, progress: progress.get(m.id) ?? { done: 0, total: 0 } }))
 
   const items: GanttItem[] = sliced.map(({ project, labels, ...r }) => ({
     ...r,

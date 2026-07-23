@@ -215,6 +215,18 @@ export function GanttChart({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  // Track horizontal scroll so the two-tier header's month/year label can stick to
+  // the left edge of the visible timeline instead of scrolling off under the rail.
+  // rAF-throttled: at most one re-render per frame however fast the scroll fires.
+  const [scrollLeft, setScrollLeft] = useState(0)
+  const scrollRaf = useRef(0)
+  const onHScroll = () => {
+    if (scrollRaf.current) return
+    scrollRaf.current = requestAnimationFrame(() => {
+      scrollRaf.current = 0
+      setScrollLeft(scrollElRef.current?.scrollLeft ?? 0) // read the latest, not the frame's first
+    })
+  }
   const endDay = Math.max(range.endDay, range.startDay + Math.ceil(viewportW / pxPerDay) - 1)
 
   const header = useMemo(() => ganttHeader(range.startDay, endDay, scale), [range.startDay, endDay, scale])
@@ -478,6 +490,7 @@ export function GanttChart({
       <div
         ref={setScrollEl}
         className="scrollbar-slim overflow-x-auto"
+        onScroll={onHScroll}
         onDragOver={interactive ? (e) => e.preventDefault() : undefined}
         onDrop={interactive ? onDrop : undefined}
       >
@@ -527,17 +540,23 @@ export function GanttChart({
               slices through a week/day number that lands next to a month start. */}
           {header.primary.map((seg, i) => {
             const nextStart = header.primary[i + 1]?.startDay ?? endDay + 1
-            const segW = xOf(nextStart) - xOf(seg.startDay)
+            const segStartX = xOf(seg.startDay)
+            const segEndX = xOf(nextStart)
+            const segW = segEndX - segStartX
+            const labelW = seg.label.length * 7
+            // Sticky label: pin to the visible left edge while the month is in view,
+            // but let the next boundary push it back out so labels never overlap.
+            const labelX = Math.min(Math.max(segStartX, scrollLeft), segEndX - labelW - 2) + 6
             return (
               <g key={`p-${seg.startDay}`}>
                 {i > 0 && (
                   <>
-                    <line x1={xOf(seg.startDay)} y1={0} x2={xOf(seg.startDay)} y2={HEADER_H / 2} stroke="hsl(var(--border))" strokeOpacity={0.7} />
-                    <line x1={xOf(seg.startDay)} y1={HEADER_H} x2={xOf(seg.startDay)} y2={height} stroke="hsl(var(--border))" strokeOpacity={0.7} />
+                    <line x1={segStartX} y1={0} x2={segStartX} y2={HEADER_H / 2} stroke="hsl(var(--border))" strokeOpacity={0.7} />
+                    <line x1={segStartX} y1={HEADER_H} x2={segStartX} y2={height} stroke="hsl(var(--border))" strokeOpacity={0.7} />
                   </>
                 )}
-                {segW >= seg.label.length * 7 && (
-                  <text x={xOf(seg.startDay) + 6} y={15} fontSize={11} fontWeight={600} fill="hsl(var(--foreground))" className="pointer-events-none">
+                {segW >= labelW && (
+                  <text x={labelX} y={15} fontSize={11} fontWeight={600} fill="hsl(var(--foreground))" className="pointer-events-none">
                     {seg.label}
                   </text>
                 )}
@@ -552,15 +571,22 @@ export function GanttChart({
           {milestones.map((m) => {
             const mDay = milestoneDay(m)
             const mx = xOf(mDay)
-            const color = m.done ? 'hsl(var(--muted-foreground))' : '#f59e0b'
+            // 3.8.5 MS-3 — an incomplete milestone whose date has passed is styled
+            // distinctly (destructive red), so an at-risk target reads at a glance.
+            const p = m.progress
+            const complete = m.done || (p ? p.total > 0 && p.done === p.total : false)
+            const overdue = !complete && mDay < today
+            const color = m.done ? 'hsl(var(--muted-foreground))' : overdue ? 'hsl(var(--destructive))' : '#f59e0b'
             const cy = HEADER_H + MILESTONE_LANE / 2
             const draggingThis = drag?.type === 'milestone' && drag.id === m.id
+            const progressText = !p ? '' : p.total === 0 ? t('gantt.milestoneNoTickets') : t('gantt.milestoneProgress', { done: p.done, total: p.total })
             return (
               <g
                 key={m.id}
                 transform={`translate(${mx} 0)`}
                 style={{ transition: draggingThis ? undefined : 'transform 160ms ease' }}
               >
+                <title>{`${m.name} · ${fmtDay(mDay)}${progressText ? ` · ${progressText}` : ''}${overdue ? ` · ${t('gantt.milestoneOverdue')}` : ''}`}</title>
                 <line x1={0} y1={HEADER_H + MILESTONE_LANE} x2={0} y2={height} stroke={color} strokeOpacity={0.3} strokeDasharray="3 3" />
                 <rect
                   x={-5}

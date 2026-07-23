@@ -224,39 +224,30 @@ export interface MilestoneReadiness {
 }
 
 /**
- * 3.7 R4/R14 — per open-milestone readiness. Tickets are bucketed by `dueDate`
- * into the window (previousOpenMilestoneDate, thisMilestoneDate] (the first
- * window opens at -∞); `total` counts non-archived, non-CANCELLED tickets in the
- * window, `done` those that are DONE. Returned keyed by milestone id.
+ * 3.8.5 Milestones v2 (MS-2) — progress derived from **linked tickets only**.
+ * `total` counts non-archived, non-CANCELLED tickets whose `milestoneId` is this
+ * milestone; `done` those in DONE. Keyed by milestone id; milestones with no
+ * linked tickets are simply absent from the map (callers default to {0,0} and
+ * render a "no tickets linked yet" state). This replaces the earlier date-window
+ * computation (3.7 R4/R14), whose numbers shifted whenever another milestone was
+ * added/re-dated — the beta tester read that as data corruption (BUG-2).
+ *
+ * Note the name is kept (`readiness`) so every call site keeps working; only the
+ * meaning changed. Progress here is stable against changes to other milestones.
  */
 export async function milestoneReadiness(projectId: string): Promise<Map<string, MilestoneReadiness>> {
   const out = new Map<string, MilestoneReadiness>()
-  const milestones = await prisma.milestone.findMany({
-    where: { projectId, done: false },
-    orderBy: { date: 'asc' },
-    select: { id: true, date: true },
+  const grouped = await prisma.ticket.groupBy({
+    by: ['milestoneId', 'status'],
+    where: { projectId, archivedAt: null, status: { not: 'CANCELLED' }, milestoneId: { not: null } },
+    _count: { _all: true },
   })
-  if (milestones.length === 0) return out
-
-  const tickets = await prisma.ticket.findMany({
-    where: { projectId, archivedAt: null, status: { not: 'CANCELLED' }, dueDate: { not: null } },
-    select: { status: true, dueDate: true },
-  })
-
-  let lower = -Infinity
-  for (const m of milestones) {
-    const upper = m.date.getTime()
-    let total = 0
-    let done = 0
-    for (const t of tickets) {
-      const due = t.dueDate!.getTime()
-      if (due > lower && due <= upper) {
-        total += 1
-        if (t.status === 'DONE') done += 1
-      }
-    }
-    out.set(m.id, { done, total })
-    lower = upper
+  for (const g of grouped) {
+    const id = g.milestoneId!
+    const cur = out.get(id) ?? { done: 0, total: 0 }
+    cur.total += g._count._all
+    if (g.status === 'DONE') cur.done += g._count._all
+    out.set(id, cur)
   }
   return out
 }

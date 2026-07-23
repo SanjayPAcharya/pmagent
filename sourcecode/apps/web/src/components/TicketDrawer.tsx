@@ -44,6 +44,7 @@ const SLASH_COMMANDS: { cmd: string; args: string }[] = [
   { cmd: 'status', args: 'done · in progress · blocked …' },
   { cmd: 'assign', args: 'name · none' },
   { cmd: 'sprint', args: 'name · none' },
+  { cmd: 'milestone', args: 'name · none' },
   { cmd: 'due', args: 'today · tomorrow · YYYY-MM-DD' },
   { cmd: 'label', args: 'name' },
 ]
@@ -203,6 +204,14 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
     qc.invalidateQueries({ queryKey: ['sprints', ticket.projectId] })
   }
 
+  // 3.8.5 MS-1 — link/unlink this ticket's milestone. Progress is derived from
+  // linked tickets, so refresh every surface that shows a milestone figure.
+  async function changeMilestone(milestoneId: string | null) {
+    if (!ticket || milestoneId === ticket.milestoneId) return
+    await patch({ milestoneId }, milestoneId ? t('drawer.milestoneSet') : t('drawer.milestoneCleared'))
+    for (const k of ['milestones', 'overview', 'gantt']) qc.invalidateQueries({ queryKey: [k, ticket.projectId] })
+  }
+
   async function remove() {
     if (!window.confirm(t('drawer.deleteConfirm'))) return
     try {
@@ -246,6 +255,12 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
         if (sp) { patch({ sprintId: sp.id }, t('drawer.addedToSprint')); reset(); return true }
         break
       }
+      case 'milestone': {
+        if (argLc === 'none') { changeMilestone(null); reset(); return true }
+        const ms = milestones.data?.milestones.find((x) => x.name.toLowerCase().replace(/\s+/g, '').includes(argLc.replace(/\s+/g, '')))
+        if (ms) { changeMilestone(ms.id); reset(); return true }
+        break
+      }
       case 'due': {
         const d = argLc === 'today' ? new Date() : argLc === 'tomorrow' ? new Date(Date.now() + 86_400_000) : new Date(arg)
         if (!Number.isNaN(d.getTime())) { patch({ dueDate: d.toISOString() }); reset(); return true }
@@ -284,6 +299,11 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
   const sprints = useQuery({
     queryKey: ['sprints', ticket?.projectId],
     queryFn: () => api.listSprints(ticket!.projectId),
+    enabled: Boolean(ticket?.projectId),
+  })
+  const milestones = useQuery({
+    queryKey: ['milestones', ticket?.projectId],
+    queryFn: () => api.listMilestones(ticket!.projectId),
     enabled: Boolean(ticket?.projectId),
   })
   const labels = useQuery({ queryKey: ['labels', orgId], queryFn: () => api.listLabels(orgId), enabled: Boolean(orgId) })
@@ -443,6 +463,7 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
 
   const assignee = members.find((m) => m.userId === ticket?.assignedToId)
   const currentSprint = sprints.data?.sprints.find((s) => s.id === ticket?.sprintId)
+  const currentMilestone = milestones.data?.milestones.find((m) => m.id === ticket?.milestoneId)
   const watchers = (ticket?.watcherIds ?? []).map((id) => members.find((m) => m.userId === id)).filter(Boolean) as Member[]
   const nonWatchers = members.filter((m) => !ticket?.watcherIds.includes(m.userId))
 
@@ -683,6 +704,26 @@ export function TicketDrawer({ ticketId, orgId, members, viewers, onClose, onCha
                 {ticket.workstream === 'SPRINT' && ticket.sprintId && (
                   <p className="mt-1 text-[11px] text-muted-foreground">{t('drawer.adhocClearsSprint')}</p>
                 )}
+              </div>
+              <div>
+                <Label>{t('drawer.milestone')}</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="mt-1 w-full justify-between">
+                      {currentMilestone?.name ?? (ticket.milestoneId ? '…' : t('drawer.noMilestone'))} <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => ticket.milestoneId && changeMilestone(null)}>
+                      {t('drawer.noMilestone')}
+                    </DropdownMenuItem>
+                    {milestones.data?.milestones.map((m) => (
+                      <DropdownMenuItem key={m.id} onClick={() => changeMilestone(m.id)}>
+                        {m.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 

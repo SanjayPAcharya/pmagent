@@ -366,19 +366,25 @@ export default function ProjectGantt() {
           <span className="text-xs font-medium text-muted-foreground">{t('gantt.milestonesLabel')}</span>
           {milestones.map((m) => {
             const dir = offscreenDir(m.id)
+            // MS-3 — progress on the chip + a distinct look when overdue & incomplete.
+            const p = m.progress
+            const complete = m.done || (p ? p.total > 0 && p.done === p.total : false)
+            const overdue = !complete && toDayNum(m.date) < today
+            const progressText = !p ? '' : p.total === 0 ? t('gantt.milestoneNoTickets') : t('gantt.milestoneProgress', { done: p.done, total: p.total })
             return (
               <button
                 key={m.id}
                 onClick={() => scrollToDay(toDayNum(m.date))}
-                title={`${m.name} · ${fmtDate(m.date)}`}
+                title={`${m.name} · ${fmtDate(m.date)}${progressText ? ` · ${progressText}` : ''}${overdue ? ` · ${t('gantt.milestoneOverdue')}` : ''}`}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors hover:border-primary/40',
-                  dir ? 'border-amber-500/50 text-foreground' : 'border-input text-muted-foreground',
+                  overdue ? 'border-destructive/50 text-foreground' : dir ? 'border-amber-500/50 text-foreground' : 'border-input text-muted-foreground',
                 )}
               >
-                <span className={cn('text-[10px]', m.done ? 'text-muted-foreground' : 'text-amber-500')} aria-hidden>◆</span>
+                <span className={cn('text-[10px]', m.done ? 'text-muted-foreground' : overdue ? 'text-destructive' : 'text-amber-500')} aria-hidden>◆</span>
                 <span className={cn('max-w-[12rem] truncate', m.done && 'line-through')}>{m.name}</span>
                 <span className="text-muted-foreground">{fmtDate(m.date)}</span>
+                {p && p.total > 0 && <span className="text-muted-foreground">· {p.done}/{p.total}</span>}
                 {dir === 'left' && <span aria-hidden>←</span>}
                 {dir === 'right' && <span aria-hidden>→</span>}
               </button>

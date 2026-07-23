@@ -46,6 +46,7 @@ const createTicketSchema = z.object({
   labelIds: z.array(z.string().uuid()).optional(),
   dependsOnIds: z.array(z.string().uuid()).optional(),
   parentId: z.string().uuid().optional(),
+  milestoneId: z.string().uuid().optional(),
 })
 
 const updateTicketSchema = z
@@ -64,6 +65,7 @@ const updateTicketSchema = z
     workstream: workstreamEnum,
     position: z.number(),
     sprintId: z.string().uuid().nullable(),
+    milestoneId: z.string().uuid().nullable(),
     assignedToId: z.string().uuid().nullable(),
     labelIds: z.array(z.string().uuid()),
     parentId: z.string().uuid().nullable(),
@@ -77,6 +79,7 @@ const batchSchema = z.object({
       status: statusEnum,
       assignedToId: z.string().uuid().nullable(),
       sprintId: z.string().uuid().nullable(),
+      milestoneId: z.string().uuid().nullable(),
       workstream: workstreamEnum,
       addLabelIds: z.array(z.string().uuid()),
       archived: z.boolean(),
@@ -450,6 +453,7 @@ const routes: FastifyPluginAsync = async (app) => {
     if (patch.status !== undefined) fieldPatch.status = patch.status
     if (patch.assignedToId !== undefined) fieldPatch.assignedToId = patch.assignedToId
     if (patch.sprintId !== undefined) fieldPatch.sprintId = patch.sprintId
+    if (patch.milestoneId !== undefined) fieldPatch.milestoneId = patch.milestoneId
     if (patch.workstream !== undefined) fieldPatch.workstream = patch.workstream
     const hasFieldPatch = Object.keys(fieldPatch).length > 0
 
