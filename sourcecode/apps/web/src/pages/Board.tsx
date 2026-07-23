@@ -9,8 +9,10 @@ import {
   MouseSensor,
   TouchSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -18,7 +20,7 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
 import { api, type AITicketDraft, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
-import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL } from '@/lib/board'
+import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL, workstreamForTab } from '@/lib/board'
 import { MultiSelect } from '@/components/MultiSelect'
 import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { useProjectWebSocket } from '@/lib/websocket'
@@ -36,6 +38,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { fireConfetti } from '@/lib/confetti'
 import { recordVisit } from '@/lib/frecency'
 import { cn } from '@/lib/utils'
+
+// B4 — the board scrolls horizontally, so Blocked/Done are often off-screen and
+// a drag toward them relies on auto-scroll. `closestCorners` could snap the drop
+// to a nearer *visible* column (a card would land one column short of Blocked);
+// `pointerWithin` makes the drop land on the column the pointer is actually over.
+// Fall back to closestCorners when the pointer is over no column (keyboard drag).
+const boardCollision: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args)
+  return pointer.length > 0 ? pointer : closestCorners(args)
+}
 
 // A fractional position between two neighbours (board uses Float positions), so
 // reordering only ever rewrites the one moved card.
@@ -272,7 +284,7 @@ export default function Board() {
         priority: parsed.priority,
         assignedToId: parsed.assignedToId,
         // On the Ad-hoc tab, new work is ad-hoc and never joins a sprint.
-        workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
+        workstream: workstreamForTab(wsTab),
         sprintId: wsTab === 'ADHOC' ? undefined : parsed.sprintId,
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
@@ -298,7 +310,7 @@ export default function Board() {
           ? draft.acceptanceCriteria.map((ac) => `- ${ac}`).join('\n')
           : undefined,
         priority: draft.priority,
-        workstream: wsTab === 'ADHOC' ? 'ADHOC' : undefined,
+        workstream: workstreamForTab(wsTab),
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       toast.success(t('board.ticketCreated'))
@@ -323,6 +335,9 @@ export default function Board() {
         goal: tpl.goal ?? undefined,
         constraints: tpl.constraints ?? undefined,
         labelIds: validLabelIds.length ? validLabelIds : undefined,
+        // B5 — inherit the tab's workstream, like quickAdd/createFromDraft do,
+        // so a template used on the Ad-hoc board makes an ad-hoc ticket.
+        workstream: workstreamForTab(wsTab),
       })
       qc.invalidateQueries({ queryKey: ticketsPrefix })
       navigate(`/orgs/${slug}/projects/${projectSlug}/board/ticket/${ticket.number}`)
@@ -586,7 +601,10 @@ export default function Board() {
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={boardCollision}
+          // B4 — start the horizontal auto-scroll a little earlier so off-screen
+          // columns (Blocked/Done) are reachable mid-drag.
+          autoScroll={{ threshold: { x: 0.25, y: 0.2 } }}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}

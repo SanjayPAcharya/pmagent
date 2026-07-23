@@ -33,6 +33,12 @@ const listMilestones = (t: string, p: string) =>
   app.inject({ method: 'GET', url: `/api/projects/${p}/milestones`, headers: bearer(t) })
 const createMilestone = (t: string, p: string, payload: Record<string, unknown>) =>
   app.inject({ method: 'POST', url: `/api/projects/${p}/milestones`, headers: bearer(t), payload })
+const getMilestone = (t: string, p: string, id: string) =>
+  app.inject({ method: 'GET', url: `/api/projects/${p}/milestones/${id}`, headers: bearer(t) })
+const createTicket = (t: string, payload: Record<string, unknown>) =>
+  app.inject({ method: 'POST', url: '/api/tickets', headers: bearer(t), payload })
+const patchTicket = (t: string, id: string, payload: Record<string, unknown>) =>
+  app.inject({ method: 'PATCH', url: `/api/tickets/${id}`, headers: bearer(t), payload })
 
 const DATE = '2026-09-01T00:00:00.000Z'
 
@@ -125,5 +131,71 @@ describe('milestones (3.7 R2)', () => {
       payload: { done: true },
     })
     expect(patch.statusCode).toBe(404)
+  })
+})
+
+describe('milestones v2 — linked-ticket progress (3.8.5 MS-1/MS-2/MS-4)', () => {
+  it('progress derives from linked tickets and stays stable when another milestone is added', async () => {
+    const owner = await tokenFor('msv2-owner1')
+    const { id: orgId } = await makeOrg(owner, 'MSv2 Co')
+    const projectId = await makeProject(owner, orgId, 'App')
+
+    // Milestone A, plus 4 linked tickets — 3 DONE, 1 open.
+    const a = (await createMilestone(owner, projectId, { name: 'A', date: '2026-10-01T00:00:00.000Z' })).json().milestone.id
+    for (const s of ['DONE', 'DONE', 'DONE', 'TODO']) {
+      const res = await createTicket(owner, { projectId, title: `t-${s}`, status: s, milestoneId: a })
+      expect(res.statusCode).toBe(201)
+      expect(res.json().ticket.milestoneId).toBe(a)
+    }
+
+    const listed = (await listMilestones(owner, projectId)).json().milestones as { id: string; progress: { done: number; total: number } }[]
+    expect(listed.find((m) => m.id === a)!.progress).toEqual({ done: 3, total: 4 })
+
+    // Detail lists exactly those tickets and matches the figure.
+    const detail = await getMilestone(owner, projectId, a)
+    expect(detail.statusCode).toBe(200)
+    expect(detail.json().progress).toEqual({ done: 3, total: 4 })
+    expect(detail.json().tickets).toHaveLength(4)
+
+    // The tester's scenario: add milestone B dated EARLIER than A. Under the old
+    // date-window logic this re-bucketed A's tickets; now A is unchanged and B is empty.
+    const b = (await createMilestone(owner, projectId, { name: 'B', date: '2026-08-01T00:00:00.000Z' })).json().milestone.id
+    const after = (await listMilestones(owner, projectId)).json().milestones as { id: string; progress: { done: number; total: number } }[]
+    expect(after.find((m) => m.id === a)!.progress).toEqual({ done: 3, total: 4 })
+    expect(after.find((m) => m.id === b)!.progress).toEqual({ done: 0, total: 0 })
+  })
+
+  it('deleting a milestone unlinks its tickets (SET NULL) — tickets survive', async () => {
+    const owner = await tokenFor('msv2-owner2')
+    const { id: orgId } = await makeOrg(owner, 'MSv2 Del')
+    const projectId = await makeProject(owner, orgId, 'App')
+
+    const m = (await createMilestone(owner, projectId, { name: 'Doomed', date: DATE })).json().milestone.id
+    const ticketId = (await createTicket(owner, { projectId, title: 'linked', milestoneId: m })).json().ticket.id
+
+    const del = await app.inject({ method: 'DELETE', url: `/api/projects/${projectId}/milestones/${m}`, headers: bearer(owner) })
+    expect(del.statusCode).toBe(204)
+
+    // The ticket is still there, just unlinked.
+    const tk = await app.inject({ method: 'GET', url: `/api/tickets/${ticketId}`, headers: bearer(owner) })
+    expect(tk.statusCode).toBe(200)
+    expect(tk.json().ticket.milestoneId).toBeNull()
+  })
+
+  it('rejects linking a ticket to a milestone from another project (400)', async () => {
+    const owner = await tokenFor('msv2-owner3')
+    const { id: orgId } = await makeOrg(owner, 'MSv2 Cross')
+    const projectA = await makeProject(owner, orgId, 'A')
+    const projectB = await makeProject(owner, orgId, 'B')
+    const mOnB = (await createMilestone(owner, projectB, { name: 'On B', date: DATE })).json().milestone.id
+
+    // Create-time: ticket in A referencing B's milestone.
+    const created = await createTicket(owner, { projectId: projectA, title: 'x', milestoneId: mOnB })
+    expect(created.statusCode).toBe(400)
+
+    // Update-time: a valid A ticket, then try to link B's milestone.
+    const okTicket = (await createTicket(owner, { projectId: projectA, title: 'y' })).json().ticket.id
+    const patched = await patchTicket(owner, okTicket, { milestoneId: mOnB })
+    expect(patched.statusCode).toBe(400)
   })
 })

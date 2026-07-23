@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Archive, ChevronUp, CircleDot, Layers, Loader2, Rocket, Tag, UserPlus, X } from 'lucide-react'
+import { Archive, ChevronUp, CircleDot, Flag, Layers, Loader2, Rocket, Tag, UserPlus, X } from 'lucide-react'
 import { api, type BatchPatch, type Label, type Member, type Sprint, type TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, STATUS_LABEL } from '@/lib/board'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -24,6 +24,8 @@ export function BulkBar({ selectedIds, projectId, members, sprints, labels, onCl
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState(false)
+  // 3.8.5 MS-1 — milestones for the bulk "Set milestone" action (both Board + List).
+  const milestones = useQuery({ queryKey: ['milestones', projectId], queryFn: () => api.listMilestones(projectId) })
 
   // Auto-disarm the archive confirm after a few seconds so a stray first click
   // doesn't leave it armed indefinitely (alongside the onBlur reset).
@@ -41,6 +43,8 @@ export function BulkBar({ selectedIds, projectId, members, sprints, labels, onCl
       toast.success(okMsg.replace('{n}', String(updated)))
       void qc.invalidateQueries({ queryKey: ['tickets', projectId] })
       void qc.invalidateQueries({ queryKey: ['my-work'] })
+      // A bulk change can move milestone/sprint membership → refresh derived views.
+      for (const k of ['milestones', 'overview', 'gantt']) void qc.invalidateQueries({ queryKey: [k, projectId] })
       onClear()
     } catch (e) {
       toast.error((e as Error).message)
@@ -94,6 +98,18 @@ export function BulkBar({ selectedIds, projectId, members, sprints, labels, onCl
           {sprints.map((s) => (
             <DropdownMenuItem key={s.id} onClick={() => apply({ sprintId: s.id }, t('bulk.updated'))}>
               {s.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{menuBtn(<Flag className="h-4 w-4" />, t('bulk.milestone'))}</DropdownMenuTrigger>
+        <DropdownMenuContent side="top">
+          <DropdownMenuItem onClick={() => apply({ milestoneId: null }, t('bulk.updated'))}>{t('drawer.noMilestone')}</DropdownMenuItem>
+          {(milestones.data?.milestones ?? []).map((m) => (
+            <DropdownMenuItem key={m.id} onClick={() => apply({ milestoneId: m.id }, t('bulk.updated'))}>
+              {m.name}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>

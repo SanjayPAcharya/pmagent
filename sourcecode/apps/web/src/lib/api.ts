@@ -190,6 +190,7 @@ export interface Ticket {
   key: string
   projectId: string
   sprintId: string | null
+  milestoneId: string | null
   title: string
   description: string | null
   acceptanceCriteria: string | null
@@ -255,6 +256,7 @@ export interface BatchPatch {
   status?: TicketStatus
   assignedToId?: string | null
   sprintId?: string | null
+  milestoneId?: string | null
   workstream?: Workstream
   addLabelIds?: string[]
   archived?: boolean
@@ -299,6 +301,15 @@ export interface Milestone {
   description: string | null
   date: string
   done: boolean
+  // 3.8.5 MS-2 — done/total over linked tickets (present on list/gantt responses).
+  progress?: { done: number; total: number }
+}
+
+// 3.8.5 MS-4 — milestone detail: linked tickets with status + assignee.
+export interface MilestoneDetail {
+  milestone: Milestone
+  progress: { done: number; total: number }
+  tickets: { id: string; number: number; key: string; title: string; status: TicketStatus; assignedTo: User | null }[]
 }
 export interface SprintCounts {
   total: number
@@ -371,6 +382,7 @@ export interface GanttItem {
   priority: Priority
   assignedToId: string | null
   sprintId: string | null
+  milestoneId: string | null
   workstream: Workstream
   startDate: string | null
   dueDate: string | null
@@ -431,6 +443,7 @@ export interface CreateTicketInput {
   sprintId?: string
   storyPoints?: number
   parentId?: string
+  milestoneId?: string
   workstream?: Workstream
   startDate?: string | null
   dueDate?: string | null
@@ -450,6 +463,7 @@ export interface UpdateTicketInput {
   workstream?: Workstream
   position?: number
   sprintId?: string | null
+  milestoneId?: string | null
   assignedToId?: string | null
   labelIds?: string[]
   parentId?: string | null
@@ -513,6 +527,9 @@ export const api = {
   // Milestones (3.7 R2)
   listMilestones: (projectId: string) =>
     request<{ milestones: Milestone[] }>('GET', `/api/projects/${projectId}/milestones`),
+  // 3.8.5 MS-4 — milestone detail with its linked tickets.
+  getMilestone: (projectId: string, id: string) =>
+    request<MilestoneDetail>('GET', `/api/projects/${projectId}/milestones/${id}`),
   createMilestone: (projectId: string, body: { name: string; description?: string; date: string }) =>
     request<{ milestone: Milestone }>('POST', `/api/projects/${projectId}/milestones`, body),
   updateMilestone: (projectId: string, id: string, body: { name?: string; description?: string | null; date?: string; done?: boolean }) =>

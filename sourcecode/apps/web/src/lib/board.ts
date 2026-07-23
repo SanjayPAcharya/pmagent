@@ -1,7 +1,15 @@
-import type { Priority, TicketStatus } from './api'
+import type { Priority, TicketStatus, Workstream } from './api'
 
 // Columns shown on the kanban (CANCELLED is reachable from the drawer only).
 export const BOARD_COLUMNS: TicketStatus[] = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'DONE']
+
+// B5 — a new ticket inherits the board's workstream tab: created ad-hoc on the
+// Ad-hoc tab, otherwise left to the server default (sprint-work). Shared by every
+// board create path (quick-add, template, AI draft) so they all behave the same.
+export type WorkstreamTab = 'all' | 'SPRINT' | 'ADHOC'
+export function workstreamForTab(wsTab: WorkstreamTab): Workstream | undefined {
+  return wsTab === 'ADHOC' ? 'ADHOC' : undefined
+}
 
 export const ALL_STATUSES: TicketStatus[] = [...BOARD_COLUMNS, 'CANCELLED']
 
@@ -24,14 +32,16 @@ export const WIP_LIMITS: Partial<Record<TicketStatus, number>> = {
 }
 
 // 3.7 R7 — fixed status hues for SVG fills (Gantt bars). Read on light + dark.
+// The four chromatic states are CVD-validated all-pairs on both surfaces;
+// not-started/cancelled stay neutral so active work carries the color.
 export const STATUS_COLOR: Record<TicketStatus, string> = {
-  BACKLOG: '#94a3b8', // slate-400
-  TODO: '#64748b', // slate-500
-  IN_PROGRESS: '#3b82f6', // blue-500
-  IN_REVIEW: '#a855f7', // purple-500
-  BLOCKED: '#ef4444', // red-500
-  DONE: '#10b981', // emerald-500
-  CANCELLED: '#6b7280', // gray-500
+  BACKLOG: '#94a3b8', // neutral — not committed
+  TODO: '#64748b', // neutral, one step firmer
+  IN_PROGRESS: '#2a78d6', // blue
+  IN_REVIEW: '#c98500', // gold — waiting on someone
+  BLOCKED: '#e34948', // red
+  DONE: '#1baf7a', // green
+  CANCELLED: '#cbd5e1', // recedes to the surface
 }
 
 export const PRIORITIES: Priority[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']

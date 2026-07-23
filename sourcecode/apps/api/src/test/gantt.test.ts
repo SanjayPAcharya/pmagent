@@ -64,6 +64,30 @@ describe('project gantt (3.7 R6)', () => {
     expect(g.milestones[0].name).toBe('GA')
   })
 
+  it('keeps a dependency edge when the depends-on ticket has no dates (B3)', async () => {
+    // The Timeline draws an off-chart glyph for deps touching an unscheduled
+    // ticket, so the payload must still carry the edge (and the undated ticket).
+    const owner = await tokenFor('gantt-owner-b3')
+    const orgId = await makeOrg(owner, 'Gantt Deps')
+    const { id: projectId } = await makeProject(owner, orgId, 'Timeline')
+
+    const scheduled = await mkTicket(owner, projectId, {
+      title: 'Scheduled',
+      startDate: '2026-07-04T00:00:00.000Z',
+      dueDate: '2026-07-10T00:00:00.000Z',
+    })
+    const undated = await mkTicket(owner, projectId, { title: 'No dates' })
+    // scheduled depends on the undated ticket
+    await app.inject({ method: 'POST', url: `/api/tickets/${scheduled}/dependencies`, headers: bearer(owner), payload: { dependsOnId: undated } })
+
+    const res = await app.inject({ method: 'GET', url: `/api/projects/${projectId}/gantt`, headers: bearer(owner) })
+    const g = res.json().gantt
+    // Both tickets present (undated included), and the edge survives.
+    expect(g.items).toHaveLength(2)
+    expect(g.items.some((i: { id: string }) => i.id === undated)).toBe(true)
+    expect(g.edges).toEqual([{ ticketId: scheduled, dependsOnId: undated }])
+  })
+
   it('rejects an outsider with 403', async () => {
     const owner = await tokenFor('gantt-owner2')
     const orgId = await makeOrg(owner, 'Gantt Private')

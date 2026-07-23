@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-13**.)
+> (Kept up to date as features ship — last updated **2026-07-23**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -104,7 +104,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - **Status** — open vs. done counts, a to-do/in-progress/done bar, and a sprint-vs-ad-hoc split.
 - **Active sprint** — progress bar, days left, and the burndown chart; a prompt to start one if none is active.
 - **Blockers** — the top blocked tickets (either marked Blocked or waiting on unfinished dependencies); click one to open it.
-- **Milestones** — your next target dates with a readiness ring (how many of the tickets due before each are done). Add one inline (name + date) and tick it off when reached. Click the **pencil** to manage all of them: rename, change a date, or delete one (deleting is limited to admins).
+- **Milestones** — your next target dates with a readiness ring. **Link tickets to a milestone** (from a ticket, or in bulk from the list) and its progress is counted straight from those tickets — "*N of M tickets done*", or "*No tickets linked yet*" when none are — so the number always explains itself and never shifts just because you added another milestone. **Click a milestone to expand it** and see exactly which tickets it contains, each with its status and assignee. Add one inline (name + date) and tick it off when reached. Click the **pencil** to manage all of them: rename, change a date, or delete one (deleting is limited to admins, and it just unlinks its tickets — it never deletes them).
 - **Capacity** — open tickets per teammate plus a recent-velocity estimate.
 - **Recent activity** across the project, and a **Project summary** card (Beta — the AI-written digest arrives with the agent release).
 - Every card updates live as teammates make changes — no refresh needed.
@@ -118,6 +118,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - Cards show a small **subtask counter** (e.g. "1/3") when a ticket has subtasks, so you can see progress without opening it.
 
 ## Sprint vs ad-hoc work
+- On the Board, a card that belongs to a sprint shows a small **sprint chip** (highlighted when it's the active sprint), so you can tell at a glance which cards are in the current sprint even on the "All" view.
 - Every ticket is either **Sprint work** (planned into sprints) or **Ad-hoc** (operational work that lives outside sprints). Set it in the ticket drawer's **Workstream** field.
 - The board and list have an **All / Sprint work / Ad-hoc** tab so you can focus on one lane; creating a ticket while on the Ad-hoc tab makes it ad-hoc automatically.
 - Switching a ticket to **Ad-hoc** removes it from its sprint (a hint warns you first); the **bulk** menu can change the workstream of several tickets at once.
@@ -129,6 +130,7 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 - **Choose your columns** — a *Columns* button toggles Status, Priority, Assignee, Sprint, Workstream, Start, Points, and Updated on/off (Key + Title always show). **Drag a column's edge to resize it.** Both your column choices and widths are remembered. (CSV export always includes every column, regardless of what's shown.)
 - **Export CSV** of exactly what your filters show; **Import CSV** with a preview and Jira-compatible headers (Summary, Issue Type, Story Points…). Imports now bring **labels and the assignee** along too — labels match by name (separate several with `;`), the assignee by their email or exact display name; anything that doesn't match is simply skipped, never an error. Not sure of the format? Click **Sample CSV** to download a ready-made example you can open, edit, and re-import.
 - **Archived** (link in the List toolbar) opens a page of tickets you've archived (bulk-archived off the board). **Restore** any of them back to the board, or **delete one permanently** (admins only; a two-click confirm) when you're sure you won't need it again.
+- When a ticket has more than three labels, the extra ones are no longer hidden silently — a **"+N" chip** shows how many more there are, and hovering it lists their names.
 
 ## Tickets
 - Slide-in panel with a **pinned header** (number, title, status, priority, type) and an **expand-width** ⤢ button (two-column layout on big screens).
@@ -162,18 +164,19 @@ That's the core loop. Everything else below is detail you'll discover as you go.
   - **Velocity** — story points completed per finished sprint, as a bar chart. Complete sprints and the trend builds itself. (Velocity stays sprint-based; ad-hoc work isn't counted here.)
   - **Cycle & lead time** — how long tickets take: *cycle* is start-of-work to done, *lead* is created to done. Shown as typical (median) and slow-end (p85) numbers over the last 90 days, plus a weekly trend line.
   - **Workload** — open tickets per person (including unassigned), with a small **sprint vs ad-hoc** split, so you can spot overload at a glance.
-  - **Release readiness** — a completion donut for the whole project plus, for each upcoming milestone, how many of the tickets due before it are done (and how many are still open). Add milestones on the Overview page to populate it.
+  - **Release readiness** — a completion donut for the whole project plus, for each upcoming milestone, how many of its **linked tickets** are done (and how many are still open). Add milestones on the Overview page and link tickets to them to populate it.
 
 ## Sprints
+- The **sprints show above the backlog** (the active one first), so a sprint is always in reach — no scrolling past a long backlog to find it. Add a backlog ticket to a sprint either by **dragging** it, or from the ticket's **"Add to sprint…" dropdown** — no dragging required.
 - Goal + dates, start/complete lifecycle, capacity view, **burndown chart**, recorded velocity.
 - **Editable goal** inline (click the pencil), and an **expandable ticket list** you can manage without opening each ticket: change **status** and **assignee**, see priority and points at a glance, jump to a ticket, or move it to another sprint/backlog. A small **assignee/status filter** narrows a big sprint. Everything updates live for the whole team.
 
 ## Timeline (Gantt)
-- A horizontal **timeline** of every scheduled ticket: each shows as a bar from its start to its due date (a single date shows as a one-day marker), colored by status.
-- **Milestones** appear as diamonds with a dashed line across the chart; a **today** line marks the current date; **dependency arrows** connect a ticket to the ones it's waiting on.
-- Switch the zoom between **Day / Week / Month**, jump to **Today**, and filter by assignee, sprint, label, status, or workstream — the filters narrow both the chart and the tray.
-- Tickets without any dates sit in a collapsible **Unscheduled** tray at the bottom. Click any bar, row, or chip to open the ticket.
-- **Drag to schedule** (on desktop): drag a bar to move it, drag its ends to resize, drag an **Unscheduled** chip onto the timeline to give it a 3-day slot, and drag a milestone diamond to a new date. Every change shows an **Undo** toast. Updates live as the team schedules work.
+- A horizontal **timeline** of every scheduled ticket: each shows as a bar from its start to its due date (a single date shows as a one-day marker), colored by status, with the **ticket's title shown just beside its bar** so even a one-day bar is easy to identify.
+- **Milestones** appear as diamonds with a dashed line across the chart; a **today** line marks the current date; **dependency arrows** connect a ticket to the ones it's waiting on. When a dependency links to a ticket that isn't scheduled (still in the tray), the scheduled bar shows a small dependency dot you can hover to see which ticket it's tied to, and the tray ticket carries the same dot — so no dependency is hidden just because one side has no dates. A short legend under the chart explains the arrow and the dot. A **Milestones** strip above the chart lists every milestone as a chip — click one to jump the timeline to it, and chips for milestones currently off to the side show a small arrow so a far-off target date is never hidden. **Hover a milestone** (chip or diamond) to see its progress ("*N of M tickets done*"), and a milestone whose date has passed while it's still incomplete is flagged in red so an at-risk target stands out.
+- Switch the zoom between **Day / Week / Month** (the timeline stays centred on wherever you were looking as you zoom), jump to **Today**, **search** by title or ticket number, and filter by assignee, sprint, label, status, or workstream — the filters narrow both the chart and the tray. You can also **group the rows** by sprint, assignee, or workstream, and collapse any group you don't need. The date header is a clean **two tiers**: the month (or the year, in Month view) groups the columns on top, with compact day/week/month numbers below, and a short **status legend** under the chart shows what each bar colour means.
+- Click any bar, row, or chip to open the ticket — it opens in a side panel **over the timeline**, and closing it leaves you right back on the timeline where you were. On touch/narrow screens, tickets without dates sit in a collapsible **Unscheduled** tray at the bottom.
+- **Drag to schedule** (on desktop): drag a bar to move it, drag its ends to resize, and drag a milestone diamond to a new date. Tickets without dates appear as faint **ghost rows** right on the chart — draw a bar across one to schedule it. You can even **draw a dependency** by dragging from the end of one bar onto another. Prefer the keyboard? Tab to a bar, use the **arrow keys** to move it a day at a time (Shift+arrow to resize), and Enter to open it. The timeline **auto-scrolls** when you drag near an edge, a floating date chip shows what a drop will mean, every change shows an **Undo** toast (or press **Cmd/Ctrl+Z**), and updates appear live as the team schedules work.
 
 ## Automation (per project, ⚡ menu)
 | Switch | What it does | Default |

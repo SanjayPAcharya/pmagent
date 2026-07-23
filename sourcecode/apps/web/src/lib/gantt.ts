@@ -7,7 +7,7 @@ const MS_PER_DAY = 86_400_000
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export type GanttScale = 'day' | 'week' | 'month'
-export const PX_PER_DAY: Record<GanttScale, number> = { day: 36, week: 12, month: 3 }
+export const PX_PER_DAY: Record<GanttScale, number> = { day: 36, week: 12, month: 4 }
 
 export interface GanttBar {
   startDay: number
@@ -124,6 +124,66 @@ export function ticks(rangeStartDay: number, rangeEndDay: number, scale: GanttSc
   return out
 }
 
+export interface GanttHeaderSegment {
+  startDay: number
+  label: string
+}
+export interface GanttHeader {
+  /** Top band: the grouping unit — month (day/week scales) or year (month scale). */
+  primary: GanttHeaderSegment[]
+  /** Bottom band: compact sub-ticks — day-of-month numbers, or short month names (month scale). */
+  secondary: GanttTick[]
+}
+
+const dayNum = (day: number) => new Date(day * MS_PER_DAY).getUTCDate()
+
+/**
+ * TL3 — two-tier axis model for a cleaner header. The top band groups columns by
+ * month (day/week) or year (month) so the eye reads "July" once instead of a
+ * date on every column; the bottom band carries compact numbers/short months.
+ * All UTC.
+ */
+export function ganttHeader(rangeStartDay: number, rangeEndDay: number, scale: GanttScale): GanttHeader {
+  const secondary: GanttTick[] = []
+  if (scale === 'day') {
+    for (let d = rangeStartDay; d <= rangeEndDay; d++) secondary.push({ day: d, label: String(dayNum(d)), major: isMonday(d) })
+  } else if (scale === 'week') {
+    let d = rangeStartDay
+    while (d <= rangeEndDay && !isMonday(d)) d++
+    for (; d <= rangeEndDay; d += 7) secondary.push({ day: d, label: String(dayNum(d)), major: true })
+  } else {
+    let d = rangeStartDay
+    while (d <= rangeEndDay && !isFirstOfMonth(d)) d++
+    while (d <= rangeEndDay) {
+      secondary.push({ day: d, label: MONTHS[new Date(d * MS_PER_DAY).getUTCMonth()], major: true })
+      const dt = new Date(d * MS_PER_DAY)
+      d = Math.floor(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1) / MS_PER_DAY)
+    }
+  }
+
+  const primary: GanttHeaderSegment[] = []
+  if (scale === 'month') {
+    const startY = new Date(rangeStartDay * MS_PER_DAY).getUTCFullYear()
+    const endY = new Date(rangeEndDay * MS_PER_DAY).getUTCFullYear()
+    for (let y = startY; y <= endY; y++) {
+      const yearStart = Math.floor(Date.UTC(y, 0, 1) / MS_PER_DAY)
+      primary.push({ startDay: Math.max(yearStart, rangeStartDay), label: String(y) })
+    }
+  } else {
+    const start = new Date(rangeStartDay * MS_PER_DAY)
+    const end = new Date(rangeEndDay * MS_PER_DAY)
+    const startYm = start.getUTCFullYear() * 12 + start.getUTCMonth()
+    const endYm = end.getUTCFullYear() * 12 + end.getUTCMonth()
+    for (let ym = startYm; ym <= endYm; ym++) {
+      const yy = Math.floor(ym / 12)
+      const mm = ym % 12
+      const monthStart = Math.floor(Date.UTC(yy, mm, 1) / MS_PER_DAY)
+      primary.push({ startDay: Math.max(monthStart, rangeStartDay), label: `${MONTHS[mm]} ${yy}` })
+    }
+  }
+  return { primary, secondary }
+}
+
 export type DragKind = 'move' | 'resize-start' | 'resize-end'
 
 /**
@@ -139,4 +199,64 @@ export function applyDrag(bar: GanttBar, kind: DragKind, deltaDays: number): Gan
 /** Default bar when an unscheduled ticket is dropped on `day`: a 3-day span. */
 export function traySchedule(day: number): GanttBar {
   return { startDay: day, endDay: day + 2 }
+}
+
+export type EdgeRender =
+  | { kind: 'arrow' } // both ends are scheduled bars — draw the connector
+  | { kind: 'glyph'; onId: string; role: 'blocked' | 'blocks'; otherId: string } // one end off-chart
+  | { kind: 'none' } // neither end is on the chart — nothing to anchor to
+
+/**
+ * B3 — how to render a dependency edge on the Timeline. `ticketId` is the
+ * blocked ticket, `dependsOnId` the one it waits on. Both scheduled ⇒ an arrow.
+ * Exactly one scheduled ⇒ a glyph on that scheduled bar: if the blocked ticket
+ * is the scheduled one it is `blocked` (by an off-chart ticket); if the blocker
+ * is scheduled it `blocks` an off-chart ticket. Neither scheduled ⇒ nothing to
+ * draw on the chart (the tray shows those). This is what lets a dependency
+ * touching an unscheduled ticket stay visible instead of silently vanishing.
+ */
+export function classifyEdge(
+  edge: { ticketId: string; dependsOnId: string },
+  isScheduled: (id: string) => boolean,
+): EdgeRender {
+  const blockedSched = isScheduled(edge.ticketId)
+  const blockerSched = isScheduled(edge.dependsOnId)
+  if (blockedSched && blockerSched) return { kind: 'arrow' }
+  if (blockedSched) return { kind: 'glyph', onId: edge.ticketId, role: 'blocked', otherId: edge.dependsOnId }
+  if (blockerSched) return { kind: 'glyph', onId: edge.dependsOnId, role: 'blocks', otherId: edge.ticketId }
+  return { kind: 'none' }
+}
+
+export interface MilestoneViewport {
+  /** ids of milestones whose diamond falls inside the horizontal viewport */
+  visibleIds: string[]
+  /** milestones scrolled out of view, and which way to scroll to reach them */
+  offscreen: { id: string; dir: 'left' | 'right' }[]
+}
+
+/**
+ * B2 — classify each milestone as visible in the horizontal viewport or
+ * off-screen (and which direction), from the chart's scroll offset. Works in
+ * the same pixel space as the chart (`xForDay`): a milestone counts as visible
+ * when its diamond x is within `[scrollLeft, scrollLeft + clientWidth]`. Before
+ * the container is measured (`clientWidth <= 0`) everything is treated as
+ * visible, so no chip flashes a stale off-screen arrow on first paint.
+ */
+export function milestoneViewport(
+  milestones: { id: string; date: string }[],
+  rangeStartDay: number,
+  scale: GanttScale,
+  scrollLeft: number,
+  clientWidth: number,
+): MilestoneViewport {
+  const visibleIds: string[] = []
+  const offscreen: { id: string; dir: 'left' | 'right' }[] = []
+  if (clientWidth <= 0) return { visibleIds: milestones.map((m) => m.id), offscreen }
+  for (const m of milestones) {
+    const x = xForDay(toDayNum(m.date), rangeStartDay, scale)
+    if (x < scrollLeft) offscreen.push({ id: m.id, dir: 'left' })
+    else if (x > scrollLeft + clientWidth) offscreen.push({ id: m.id, dir: 'right' })
+    else visibleIds.push(m.id)
+  }
+  return { visibleIds, offscreen }
 }

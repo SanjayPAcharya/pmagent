@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
-import { Eye, MoreHorizontal, ListPlus, ListTodo } from 'lucide-react'
+import { Eye, MoreHorizontal, ListPlus, ListTodo, Rocket } from 'lucide-react'
 import { BlockedBadge } from '@/components/BlockedBadge'
 import type { Member, Ticket, TicketStatus } from '@/lib/api'
 import { ALL_STATUSES, BOARD_COLUMNS, PRIORITY_CLASS, STATUS_LABEL } from '@/lib/board'
@@ -18,7 +18,20 @@ import {
 import { cn } from '@/lib/utils'
 
 /** Pure visual — reused by the draggable card and the drag overlay. */
-export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; dragging?: boolean; viewers?: Member[] }) {
+export function TicketCardBody({
+  ticket,
+  dragging,
+  viewers,
+  sprintName,
+  sprintActive,
+}: {
+  ticket: Ticket
+  dragging?: boolean
+  viewers?: Member[]
+  /** U2 — the ticket's sprint name, so "which cards are in the sprint" is answerable at a glance. */
+  sprintName?: string
+  sprintActive?: boolean
+}) {
   const { t } = useTranslation()
   return (
     <div
@@ -55,6 +68,17 @@ export function TicketCardBody({ ticket, dragging, viewers }: { ticket: Ticket; 
           <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', PRIORITY_CLASS[ticket.priority])}>
             {ticket.priority}
           </span>
+          {sprintName && (
+            <span
+              className={cn(
+                'flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium',
+                sprintActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+              )}
+              title={sprintActive ? t('board.inActiveSprint', { name: sprintName }) : t('board.inSprint', { name: sprintName })}
+            >
+              <Rocket className="h-2.5 w-2.5" /> {sprintName}
+            </span>
+          )}
           {(ticket.blockedBy ?? 0) > 0 && (
             <BlockedBadge title={t('list.blockedHint', { count: ticket.blockedBy })} />
           )}
@@ -110,9 +134,12 @@ interface TicketCardProps {
   /** 3.1 bulk: multi-select checkbox state. */
   selected?: boolean
   onToggleSelect?: (id: string) => void
+  /** U2 — this ticket's sprint name + whether that sprint is active. */
+  sprintName?: string
+  sprintActive?: boolean
 }
 
-export function TicketCard({ ticket, onOpen, onStatusChange, onAddSubtask, dimmed, viewers, selected, onToggleSelect }: TicketCardProps) {
+export function TicketCard({ ticket, onOpen, onStatusChange, onAddSubtask, dimmed, viewers, selected, onToggleSelect, sprintName, sprintActive }: TicketCardProps) {
   const { t } = useTranslation()
   // useSortable gives within-column reordering (cards shift to make room) plus
   // cross-column moves. The 5px activation distance (set on the board) lets a
@@ -181,7 +208,7 @@ export function TicketCard({ ticket, onOpen, onStatusChange, onAddSubtask, dimme
         dimmed && 'opacity-30 hover:opacity-100',
       )}
     >
-      <TicketCardBody ticket={ticket} viewers={viewers} />
+      <TicketCardBody ticket={ticket} viewers={viewers} sprintName={sprintName} sprintActive={sprintActive} />
       {onToggleSelect && (
         <div
           className={cn(

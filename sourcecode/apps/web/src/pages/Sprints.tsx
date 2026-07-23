@@ -448,6 +448,13 @@ export default function Sprints() {
     sprints.data?.sprints.forEach((s) => qc.invalidateQueries({ queryKey: ['sprint', s.id] }))
   }
 
+  // U1 — active sprint first, otherwise the API's newest-first order; the backlog
+  // "add to sprint" control offers only sprints you can still add to (not COMPLETED).
+  const orderedSprints = [...(sprints.data?.sprints ?? [])].sort(
+    (a, b) => Number(b.status === 'ACTIVE') - Number(a.status === 'ACTIVE'),
+  )
+  const openSprints = (sprints.data?.sprints ?? []).filter((s) => s.status !== 'COMPLETED')
+
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex items-center justify-between">
@@ -473,15 +480,23 @@ export default function Sprints() {
       </form>
 
       <DndContext sensors={sensors} onDragStart={(e) => setDragId(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setDragId(null)}>
-        <BacklogZone tickets={backlog} />
-
+        {/* U1 — sprints render above the backlog (active first) so a new sprint is
+            reachable without scrolling past a full-screen backlog. */}
         <div className="space-y-3">
           {projectId &&
-            sprints.data?.sprints.map((s) => (
+            orderedSprints.map((s) => (
               <SprintRow key={s.id} sprint={s} projectId={projectId} allSprints={sprints.data!.sprints} slug={slug} projectSlug={projectSlug} onChanged={refresh} />
             ))}
           {sprints.data?.sprints.length === 0 && <EmptyState icon={Rocket} message={t('sprints.empty')} />}
         </div>
+
+        {/* U1 — each backlog ticket also carries an "add to sprint" select so no
+            long drag is ever required. */}
+        <BacklogZone
+          tickets={backlog}
+          sprints={openSprints}
+          onAdd={(sprintId, ticketId) => move(() => api.addToSprint(sprintId, [ticketId]), t('sprints.movedToSprint'))}
+        />
 
         <DragOverlay>{activeTicket ? <TicketChip ticket={activeTicket} /> : null}</DragOverlay>
       </DndContext>
@@ -490,7 +505,17 @@ export default function Sprints() {
 }
 
 // F2 — droppable backlog strip of unsprinted tickets to drag into sprints.
-function BacklogZone({ tickets }: { tickets: Ticket[] }) {
+// U1 — each chip also gets an "add to sprint" select (a sibling of the draggable,
+// so it never starts a drag) so long drags onto a sprint are never required.
+function BacklogZone({
+  tickets,
+  sprints,
+  onAdd,
+}: {
+  tickets: Ticket[]
+  sprints: Sprint[]
+  onAdd: (sprintId: string, ticketId: string) => void
+}) {
   const { t } = useTranslation()
   const { setNodeRef, isOver } = useDroppable({ id: 'backlog' })
   return (
@@ -507,7 +532,24 @@ function BacklogZone({ tickets }: { tickets: Ticket[] }) {
       ) : (
         <div className="flex flex-wrap gap-2">
           {tickets.map((tk) => (
-            <TicketChip key={tk.id} ticket={tk} />
+            <div key={tk.id} className="flex items-center gap-1">
+              <TicketChip ticket={tk} />
+              {sprints.length > 0 && (
+                <select
+                  className={selectCls}
+                  value=""
+                  aria-label={t('sprints.addToSprintPlaceholder')}
+                  onChange={(e) => e.target.value && onAdd(e.target.value, tk.id)}
+                >
+                  <option value="">{t('sprints.addToSprintPlaceholder')}</option>
+                  {sprints.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           ))}
         </div>
       )}

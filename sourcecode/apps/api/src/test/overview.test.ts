@@ -39,9 +39,9 @@ describe('project overview (3.7 R4)', () => {
     const orgId = await makeOrg(owner, 'Overview Co')
     const projectId = await makeProject(owner, orgId, 'Dash')
 
-    // Mixed statuses + workstreams; two due-dated tickets feed the milestone.
-    await mkTicket(owner, projectId, { title: 'Done+due', status: 'DONE', dueDate: '2026-08-01T00:00:00.000Z' })
-    await mkTicket(owner, projectId, { title: 'Todo+due+adhoc', status: 'TODO', workstream: 'ADHOC', dueDate: '2026-08-15T00:00:00.000Z' })
+    // Mixed statuses + workstreams; two tickets (one DONE) will be linked to the milestone.
+    const t1 = await mkTicket(owner, projectId, { title: 'Done+due', status: 'DONE', dueDate: '2026-08-01T00:00:00.000Z' })
+    const t2 = await mkTicket(owner, projectId, { title: 'Todo+due+adhoc', status: 'TODO', workstream: 'ADHOC', dueDate: '2026-08-15T00:00:00.000Z' })
     await mkTicket(owner, projectId, { title: 'Blocked', status: 'BLOCKED' })
     const t4 = await mkTicket(owner, projectId, { title: 'In progress', status: 'IN_PROGRESS' })
     const t5 = await mkTicket(owner, projectId, { title: 'Dependency', status: 'TODO' })
@@ -50,8 +50,10 @@ describe('project overview (3.7 R4)', () => {
     const dep = await app.inject({ method: 'POST', url: `/api/tickets/${t4}/dependencies`, headers: bearer(owner), payload: { dependsOnId: t5 } })
     expect(dep.statusCode).toBe(201)
 
-    // One open milestone after both due dates.
-    await app.inject({ method: 'POST', url: `/api/projects/${projectId}/milestones`, headers: bearer(owner), payload: { name: 'GA', date: '2026-09-01T00:00:00.000Z' } })
+    // 3.8.5 MS-2 — readiness derives from linked tickets: link t1 (DONE) + t2 (open).
+    const gaRes = await app.inject({ method: 'POST', url: `/api/projects/${projectId}/milestones`, headers: bearer(owner), payload: { name: 'GA', date: '2026-09-01T00:00:00.000Z' } })
+    const gaId = gaRes.json().milestone.id
+    for (const id of [t1, t2]) await app.inject({ method: 'PATCH', url: `/api/tickets/${id}`, headers: bearer(owner), payload: { milestoneId: gaId } })
 
     const res = await overview(owner, projectId)
     expect(res.statusCode).toBe(200)
@@ -77,7 +79,7 @@ describe('project overview (3.7 R4)', () => {
     expect(blocked).toBeTruthy()
     expect(blocked.openBlockerCount).toBe(0)
 
-    // ── Milestones + readiness (both due-dated tickets in window; one DONE) ──
+    // ── Milestones + readiness (two linked tickets; one DONE) ──
     expect(o.milestones).toHaveLength(1)
     expect(o.milestones[0].name).toBe('GA')
     expect(o.milestones[0].readiness).toEqual({ done: 1, total: 2 })

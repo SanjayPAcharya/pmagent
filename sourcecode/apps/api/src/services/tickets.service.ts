@@ -30,6 +30,7 @@ type Db = PrismaClient | Prisma.TransactionClient
 export const ticketInclude = {
   project: { select: { id: true, name: true, slug: true, key: true } },
   sprint: true,
+  milestone: { select: { id: true, name: true, date: true, done: true } }, // 3.8.5 — current link
   assignedTo: { select: { id: true, name: true, email: true, avatarUrl: true } },
   createdBy: { select: { id: true, name: true, email: true, avatarUrl: true } },
   labels: { include: { label: true } },
@@ -84,6 +85,12 @@ async function assertSprintInProject(db: Db, projectId: string, sprintId: string
     throw new ApiError(400, 'Sprint does not belong to this project', 'CROSS_SCOPE')
 }
 
+async function assertMilestoneInProject(db: Db, projectId: string, milestoneId: string) {
+  const m = await db.milestone.findUnique({ where: { id: milestoneId } })
+  if (!m || m.projectId !== projectId)
+    throw new ApiError(400, 'Milestone does not belong to this project', 'CROSS_SCOPE')
+}
+
 async function assertTicketsInProject(db: Db, projectId: string, ticketIds: string[], label: string) {
   if (ticketIds.length === 0) return
   const found = await db.ticket.count({ where: { id: { in: ticketIds }, projectId } })
@@ -113,6 +120,7 @@ export interface CreateTicketInput {
   labelIds?: string[]
   dependsOnIds?: string[]
   parentId?: string
+  milestoneId?: string
 }
 
 // Both dates present and start after due is a caller error (create + update).
@@ -145,6 +153,7 @@ export async function createTicket(orgId: string, createdById: string, input: Cr
     if (input.assignedToId) await assertOrgMember(tx, orgId, input.assignedToId, 'Assignee')
     await assertLabelsInOrg(tx, orgId, labelIds)
     if (input.sprintId) await assertSprintInProject(tx, input.projectId, input.sprintId)
+    if (input.milestoneId) await assertMilestoneInProject(tx, input.projectId, input.milestoneId)
     if (input.parentId) await assertTicketsInProject(tx, input.projectId, [input.parentId], 'Parent ticket')
     await assertTicketsInProject(tx, input.projectId, dependsOnIds, 'Dependencies')
 
@@ -187,6 +196,7 @@ export async function createTicket(orgId: string, createdById: string, input: Cr
         workstream: input.workstream ?? undefined,
         assignedToId: input.assignedToId,
         assignedAgentType: input.assignedAgentType,
+        milestoneId: input.milestoneId,
         parentId: input.parentId,
         position,
         createdById,
@@ -223,6 +233,7 @@ export interface UpdateTicketInput {
   workstream?: 'SPRINT' | 'ADHOC'
   position?: number
   sprintId?: string | null
+  milestoneId?: string | null
   assignedToId?: string | null
   labelIds?: string[]
   parentId?: string | null
@@ -255,6 +266,7 @@ export async function updateTicket(
 
     if (input.assignedToId) await assertOrgMember(tx, orgId, input.assignedToId, 'Assignee')
     if (input.sprintId) await assertSprintInProject(tx, before.projectId, input.sprintId)
+    if (input.milestoneId) await assertMilestoneInProject(tx, before.projectId, input.milestoneId)
     if (has('labelIds')) await assertLabelsInOrg(tx, orgId, input.labelIds ?? [])
 
     // Workstream ⇄ sprint invariant (R1). Compute the effective final values, then
@@ -325,6 +337,7 @@ export async function updateTicket(
         dueDate: has('dueDate') ? (input.dueDate ? new Date(input.dueDate) : null) : undefined,
         startDate: has('startDate') ? (input.startDate ? new Date(input.startDate) : null) : undefined,
         sprintId: effSprintId !== before.sprintId ? effSprintId : undefined,
+        milestoneId: has('milestoneId') ? input.milestoneId : undefined,
         workstream: effWorkstream !== before.workstream ? effWorkstream : undefined,
         parentId: has('parentId') ? input.parentId : undefined,
         assignedToId: has('assignedToId') ? input.assignedToId : undefined,

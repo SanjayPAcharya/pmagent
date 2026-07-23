@@ -10,6 +10,9 @@ import {
   ticks,
   applyDrag,
   traySchedule,
+  milestoneViewport,
+  classifyEdge,
+  ganttHeader,
   PX_PER_DAY,
   type GanttScale,
 } from './gantt'
@@ -115,5 +118,68 @@ describe('gantt date math (3.7 R6)', () => {
     expect(traySchedule(200)).toEqual({ startDay: 200, endDay: 202 })
     const b = traySchedule(200)
     expect(b.endDay - b.startDay + 1).toBe(3)
+  })
+
+  it('classifies milestones by horizontal viewport (B2)', () => {
+    // day scale ⇒ x = day * 36. Range starts at day 0.
+    const ms = [
+      { id: 'a', date: dayNumToISO(2) }, //   x = 72  (left of window)
+      { id: 'b', date: dayNumToISO(100) }, // x = 3600 (right of window)
+      { id: 'c', date: dayNumToISO(5) }, //   x = 180 (inside window)
+    ]
+    const vp = milestoneViewport(ms, 0, 'day', 100, 200) // visible x ∈ [100, 300]
+    expect(vp.visibleIds).toEqual(['c'])
+    expect(vp.offscreen).toEqual([
+      { id: 'a', dir: 'left' },
+      { id: 'b', dir: 'right' },
+    ])
+    // Before the container is measured, everything counts as visible (no arrows).
+    const pre = milestoneViewport(ms, 0, 'day', 0, 0)
+    expect(pre.visibleIds).toEqual(['a', 'b', 'c'])
+    expect(pre.offscreen).toEqual([])
+  })
+
+  it('classifies dependency edges by which ends are scheduled (B3)', () => {
+    const sched = new Set(['s1', 's2'])
+    const isSched = (id: string) => sched.has(id)
+    // both scheduled → arrow
+    expect(classifyEdge({ ticketId: 's1', dependsOnId: 's2' }, isSched)).toEqual({ kind: 'arrow' })
+    // blocked ticket scheduled, blocker off-chart → glyph on the blocked bar
+    expect(classifyEdge({ ticketId: 's1', dependsOnId: 'u9' }, isSched)).toEqual({
+      kind: 'glyph',
+      onId: 's1',
+      role: 'blocked',
+      otherId: 'u9',
+    })
+    // blocker scheduled, blocked ticket off-chart → glyph on the blocker bar
+    expect(classifyEdge({ ticketId: 'u9', dependsOnId: 's2' }, isSched)).toEqual({
+      kind: 'glyph',
+      onId: 's2',
+      role: 'blocks',
+      otherId: 'u9',
+    })
+    // neither on the chart → nothing to draw
+    expect(classifyEdge({ ticketId: 'u8', dependsOnId: 'u9' }, isSched)).toEqual({ kind: 'none' })
+  })
+
+  it('builds a two-tier header grouped by month at the day scale (TL3)', () => {
+    const start = toDayNum('2026-06-29T00:00:00.000Z') // a Monday
+    const end = toDayNum('2026-07-02T00:00:00.000Z')
+    const h = ganttHeader(start, end, 'day')
+    // secondary: one per day, labels are day-of-month numbers, Monday is major
+    expect(h.secondary.map((t) => t.label)).toEqual(['29', '30', '1', '2'])
+    expect(h.secondary[0].major).toBe(true) // 29 Jun is a Monday
+    // primary: the months that group the days, clamped to the range start
+    expect(h.primary.map((p) => p.label)).toEqual(['Jun 2026', 'Jul 2026'])
+    expect(h.primary[0].startDay).toBe(start)
+    expect(h.primary[1].startDay).toBe(toDayNum('2026-07-01T00:00:00.000Z'))
+  })
+
+  it('groups by year with short-month sub-ticks at the month scale (TL3)', () => {
+    const start = toDayNum('2026-11-15T00:00:00.000Z')
+    const end = toDayNum('2027-02-10T00:00:00.000Z')
+    const h = ganttHeader(start, end, 'month')
+    expect(h.primary.map((p) => p.label)).toEqual(['2026', '2027'])
+    expect(h.secondary.map((t) => t.label)).toEqual(['Dec', 'Jan', 'Feb'])
   })
 })

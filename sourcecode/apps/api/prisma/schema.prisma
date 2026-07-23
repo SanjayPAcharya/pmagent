@@ -141,6 +141,7 @@ model Ticket {
   id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   projectId          String       @db.Uuid
   sprintId           String?      @db.Uuid
+  milestoneId        String?      @db.Uuid // 3.8.5 — at most one milestone per ticket
   number             Int          // per-project, displayed as <Project.key>-<number>
   title              String
   description        String?
@@ -171,6 +172,7 @@ model Ticket {
 
   project      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sprint       Sprint?            @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  milestone    Milestone?         @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
   assignedTo   User?              @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
   createdBy    User               @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   parent       Ticket?            @relation("Subtasks", fields: [parentId], references: [id], onDelete: SetNull)
@@ -188,6 +190,7 @@ model Ticket {
   @@index([projectId, archivedAt])
   @@index([projectId, workstream])
   @@index([sprintId])
+  @@index([milestoneId])
   @@index([assignedToId])
 }
 
@@ -310,7 +313,8 @@ model Milestone {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tickets Ticket[] // 3.8.5 Milestones v2 — tickets linked to this milestone
 
   @@index([projectId, date])
 }

@@ -3,8 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2, Loader2, ChevronDown } from 'lucide-react'
 import { BlockedBadge } from '@/components/BlockedBadge'
+import { STATUS_LABEL, STATUS_COLOR } from '@/lib/board'
 import { api, type AIProjectSummary, type WorkloadRow } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useAIHealth, aiButtonState, aiErrorKey } from '@/lib/useAIHealth'
@@ -30,7 +31,7 @@ const initialsOf = (name: string) => {
 }
 
 /** Small donut showing milestone readiness (done/total). */
-function ReadinessDonut({ done, total }: { done: number; total: number }) {
+function ReadinessDonut({ done, total, title }: { done: number; total: number; title?: string }) {
   const size = 22
   const stroke = 3
   const r = size / 2 - stroke
@@ -39,6 +40,7 @@ function ReadinessDonut({ done, total }: { done: number; total: number }) {
   const color = total === 0 ? 'text-muted-foreground/40' : done === total ? 'text-green-500' : 'text-amber-500'
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={cn('shrink-0', color)} role="img" aria-label={`${done}/${total}`}>
+      {title && <title>{title}</title>}
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeOpacity={0.2} strokeWidth={stroke} />
       <circle
         cx={size / 2}
@@ -53,6 +55,40 @@ function ReadinessDonut({ done, total }: { done: number; total: number }) {
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
       />
     </svg>
+  )
+}
+
+/** 3.8.5 MS-4 — the linked tickets behind a milestone's progress figure. */
+function MilestoneLinkedTickets({ projectId, milestoneId, onOpen }: { projectId: string; milestoneId: string; onOpen: (n: number) => void }) {
+  const { t } = useTranslation()
+  const detail = useQuery({
+    queryKey: ['milestone', projectId, milestoneId],
+    queryFn: () => api.getMilestone(projectId, milestoneId),
+  })
+  if (detail.isLoading) return <p className="py-1 pl-8 text-xs text-muted-foreground">{t('common.loading')}</p>
+  const tickets = detail.data?.tickets ?? []
+  if (tickets.length === 0) return <p className="py-1 pl-8 text-xs text-muted-foreground">{t('overview.milestoneNoTickets')}</p>
+  return (
+    <ul className="space-y-1 border-l pl-3 ml-3">
+      {tickets.map((tk) => (
+        <li key={tk.id}>
+          <button
+            onClick={() => onOpen(tk.number)}
+            className="flex w-full items-center gap-2 rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
+          >
+            <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: STATUS_COLOR[tk.status] }} title={STATUS_LABEL[tk.status]} aria-hidden />
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{tk.key}</span>
+            <span className="min-w-0 flex-1 truncate text-foreground">{tk.title}</span>
+            {tk.assignedTo && (
+              <Avatar className="h-4 w-4 shrink-0">
+                <AvatarImage src={tk.assignedTo.avatarUrl ?? undefined} />
+                <AvatarFallback className="text-[8px]">{tk.assignedTo.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+            )}
+          </button>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -202,6 +238,7 @@ export default function ProjectOverview() {
   })
   const [msName, setMsName] = useState('')
   const [msDate, setMsDate] = useState('')
+  const [expandedMs, setExpandedMs] = useState<string | null>(null) // MS-4 — which milestone's linked tickets are shown
   const addMilestone = useMutation({
     mutationFn: () => api.createMilestone(projectId!, { name: msName.trim(), date: new Date(msDate).toISOString() }),
     onSuccess: () => {
@@ -413,24 +450,42 @@ export default function ProjectOverview() {
               ) : (
                 <ul className="space-y-2">
                   {data.milestones.map((m) => (
-                    <li key={m.id} className="flex items-center gap-2.5">
-                      <ReadinessDonut done={m.readiness.done} total={m.readiness.total} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-foreground">{m.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {fmtDate(m.date)} · {t('overview.milestoneReadiness', { done: m.readiness.done, total: m.readiness.total })}
-                        </div>
+                    <li key={m.id}>
+                      <div className="flex items-center gap-2.5">
+                        <ReadinessDonut done={m.readiness.done} total={m.readiness.total} title={t('overview.milestoneReadinessHint')} />
+                        <button
+                          onClick={() => setExpandedMs((cur) => (cur === m.id ? null : m.id))}
+                          aria-expanded={expandedMs === m.id}
+                          title={t('overview.milestoneShowTickets')}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="flex items-center gap-1 truncate text-sm font-medium text-foreground">
+                            {m.name}
+                            <ChevronDown className={cn('h-3 w-3 shrink-0 text-muted-foreground transition-transform', expandedMs === m.id && 'rotate-180')} />
+                          </div>
+                          <div className="text-xs text-muted-foreground" title={t('overview.milestoneReadinessHint')}>
+                            {fmtDate(m.date)} ·{' '}
+                            {m.readiness.total === 0
+                              ? t('overview.milestoneNoDue')
+                              : t('overview.milestoneReadiness', { done: m.readiness.done, total: m.readiness.total })}
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => toggleMilestone.mutate(m)}
+                          aria-label={t('overview.toggleDone')}
+                          className={cn(
+                            'shrink-0 rounded-full border p-1 text-muted-foreground hover:text-foreground',
+                            m.done && 'border-green-500 bg-green-500/10 text-green-500',
+                          )}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => toggleMilestone.mutate(m)}
-                        aria-label={t('overview.toggleDone')}
-                        className={cn(
-                          'shrink-0 rounded-full border p-1 text-muted-foreground hover:text-foreground',
-                          m.done && 'border-green-500 bg-green-500/10 text-green-500',
-                        )}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
+                      {expandedMs === m.id && (
+                        <div className="mt-1.5">
+                          <MilestoneLinkedTickets projectId={projectId!} milestoneId={m.id} onOpen={(n) => navigate(`${base}/board/ticket/${n}`)} />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

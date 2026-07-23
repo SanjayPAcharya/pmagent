@@ -14,5 +14,12 @@
   "devDependencies": {
     "turbo": "^2.3.0",
     "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "//overrides": "Transitive-dep CVE bumps (patch within the same major, safe). brace-expansion GHSA-3jxr-9vmj-r5cp (DoS); fast-uri GHSA-v2hh-gcrm-f6hx + GHSA-4c8g-83qw-93j6 (host confusion). Pulled in via @fastify/swagger(-ui) and fastify's ajv. Remove an entry once the parent ships a fixed range.",
+    "overrides": {
+      "brace-expansion@5": "^5.0.7",
+      "fast-uri@3": "^3.1.4"
+    }
   }
 }
