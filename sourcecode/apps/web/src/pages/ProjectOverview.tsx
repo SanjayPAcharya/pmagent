@@ -3,10 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2, Loader2, ChevronDown } from 'lucide-react'
-import { BlockedBadge } from '@/components/BlockedBadge'
+import { Sparkles, Plus, Check, Rocket, LayoutGrid, Pencil, Trash2, Loader2, ChevronDown, AlertTriangle, Ban, CalendarClock, UserX, Flag, type LucideIcon } from 'lucide-react'
 import { STATUS_LABEL, STATUS_COLOR } from '@/lib/board'
-import { api, type AIProjectSummary, type WorkloadRow } from '@/lib/api'
+import { api, type AIProjectSummary, type WorkloadRow, type NeedsAttention, type AttentionTicket, type AttentionMilestone } from '@/lib/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useAIHealth, aiButtonState, aiErrorKey } from '@/lib/useAIHealth'
 import { useListReveal, useTextReveal } from '@/lib/aiReveal'
@@ -89,6 +88,120 @@ function MilestoneLinkedTickets({ projectId, milestoneId, onOpen }: { projectId:
         </li>
       ))}
     </ul>
+  )
+}
+
+// 3.8.6 DEC-2 — the "Needs attention" triage the Overview now leads with.
+function AttentionHead({ icon: Icon, iconClass, label, total }: { icon: LucideIcon; iconClass: string; label: string; total: number }) {
+  return (
+    <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <Icon className={cn('h-3.5 w-3.5', iconClass)} />
+      {label}
+      <span className="font-normal text-muted-foreground/70">{total}</span>
+    </div>
+  )
+}
+
+function AttentionTicketRow({ tk, onClick, trailing }: { tk: AttentionTicket; onClick: () => void; trailing?: React.ReactNode }) {
+  return (
+    <li>
+      <button onClick={onClick} className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-accent">
+        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{tk.key}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{tk.title}</span>
+        {trailing}
+      </button>
+    </li>
+  )
+}
+
+function NeedsAttentionCard({ na, base, navigate }: { na: NeedsAttention; base: string; navigate: (to: string) => void }) {
+  const { t } = useTranslation()
+  const openTicket = (n: number) => navigate(`${base}/board/ticket/${n}`)
+  const More = ({ total, shown, href }: { total: number; shown: number; href: string }) =>
+    total > shown ? (
+      <button onClick={() => navigate(href)} className="mt-1 pl-2 text-xs text-muted-foreground hover:text-foreground">
+        {t('overview.attentionMore', { count: total - shown })}
+      </button>
+    ) : null
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          {t('overview.attentionTitle')}
+          {na.total > 0 && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">{na.total}</span>}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {na.total === 0 ? (
+          <p className="py-2 text-sm text-muted-foreground">{t('overview.attentionEmpty')}</p>
+        ) : (
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+            {na.blocked.total > 0 && (
+              <div>
+                <AttentionHead icon={Ban} iconClass="text-destructive" label={t('overview.attentionBlocked')} total={na.blocked.total} />
+                <ul className="space-y-0.5">
+                  {na.blocked.items.map((tk) => (
+                    <AttentionTicketRow key={tk.id} tk={tk} onClick={() => openTicket(tk.number)} />
+                  ))}
+                </ul>
+                <More total={na.blocked.total} shown={na.blocked.items.length} href={`${base}/board`} />
+              </div>
+            )}
+            {na.overdue.total > 0 && (
+              <div>
+                <AttentionHead icon={CalendarClock} iconClass="text-amber-500" label={t('overview.attentionOverdue')} total={na.overdue.total} />
+                <ul className="space-y-0.5">
+                  {na.overdue.items.map((tk) => (
+                    <AttentionTicketRow
+                      key={tk.id}
+                      tk={tk}
+                      onClick={() => openTicket(tk.number)}
+                      trailing={tk.dueDate ? <span className="shrink-0 text-[11px] text-destructive">{fmtDate(tk.dueDate)}</span> : undefined}
+                    />
+                  ))}
+                </ul>
+                <More total={na.overdue.total} shown={na.overdue.items.length} href={`${base}/list`} />
+              </div>
+            )}
+            {na.unassignedInSprint.total > 0 && (
+              <div>
+                <AttentionHead icon={UserX} iconClass="text-sky-500" label={t('overview.attentionUnassigned')} total={na.unassignedInSprint.total} />
+                <ul className="space-y-0.5">
+                  {na.unassignedInSprint.items.map((tk) => (
+                    <AttentionTicketRow key={tk.id} tk={tk} onClick={() => openTicket(tk.number)} />
+                  ))}
+                </ul>
+                <More total={na.unassignedInSprint.total} shown={na.unassignedInSprint.items.length} href={`${base}/board`} />
+              </div>
+            )}
+            {na.milestonesAtRisk.total > 0 && (
+              <div>
+                <AttentionHead icon={Flag} iconClass="text-destructive" label={t('overview.attentionMilestones')} total={na.milestonesAtRisk.total} />
+                <ul className="space-y-0.5">
+                  {na.milestonesAtRisk.items.map((m: AttentionMilestone) => (
+                    <li key={m.id}>
+                      <button
+                        onClick={() => navigate(`${base}/gantt`)}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-accent"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{m.name}</span>
+                        <span className="shrink-0 text-[11px] text-destructive">{fmtDate(m.date)}</span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {m.progress.total > 0 ? `${m.progress.done}/${m.progress.total}` : '—'}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <More total={na.milestonesAtRisk.total} shown={na.milestonesAtRisk.items.length} href={`${base}/gantt`} />
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -277,7 +390,10 @@ export default function ProjectOverview() {
           <Skeleton className="h-44 rounded-xl" />
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <>
+          {/* DEC-2 — Overview leads with an actionable triage */}
+          <NeedsAttentionCard na={data.needsAttention} base={base} navigate={navigate} />
+          <div className="grid gap-4 lg:grid-cols-2">
           {/* Status */}
           <Card>
             <CardHeader className="pb-2">
@@ -333,33 +449,6 @@ export default function ProjectOverview() {
                     {t('overview.noActiveSprintHint')}
                   </Link>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Blockers */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">{t('overview.blockersTitle')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {data.blockers.length === 0 ? (
-                <p className="py-4 text-sm text-muted-foreground">{t('overview.blockersEmpty')}</p>
-              ) : (
-                <ul className="space-y-1">
-                  {data.blockers.map((b) => (
-                    <li key={b.id}>
-                      <button
-                        onClick={() => navigate(`${base}/board/ticket/${b.number}`)}
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-accent"
-                      >
-                        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{b.key}</span>
-                        <span className="min-w-0 flex-1 truncate text-sm text-foreground">{b.title}</span>
-                        {b.openBlockerCount > 0 && <BlockedBadge count={b.openBlockerCount} />}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
               )}
             </CardContent>
           </Card>
@@ -589,7 +678,8 @@ export default function ProjectOverview() {
               </div>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Activity — full width below the grid */}

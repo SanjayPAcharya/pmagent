@@ -1,7 +1,7 @@
 # PMAgent — Product Guide
 
 > A plain-language guide to PMAgent. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-07-23**.)
+> (Kept up to date as features ship — last updated **2026-07-24**.)
 
 PMAgent is a project-management tool built for teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -101,15 +101,16 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 
 ## Overview (project landing page)
 - Opening a project now lands on its **Overview** — a manager's-eye dashboard. The sidebar's **Board** and **List** leaves are one click away.
+- **Needs attention** — the Overview now **leads with what needs you**: tickets that are **blocked**, tickets that are **overdue**, tickets in the active sprint with **no assignee**, and **milestones at risk** (past their date and not finished). Every item links straight to the ticket or milestone, and when there's nothing to do it just says you're all caught up.
 - **Status** — open vs. done counts, a to-do/in-progress/done bar, and a sprint-vs-ad-hoc split.
 - **Active sprint** — progress bar, days left, and the burndown chart; a prompt to start one if none is active.
-- **Blockers** — the top blocked tickets (either marked Blocked or waiting on unfinished dependencies); click one to open it.
 - **Milestones** — your next target dates with a readiness ring. **Link tickets to a milestone** (from a ticket, or in bulk from the list) and its progress is counted straight from those tickets — "*N of M tickets done*", or "*No tickets linked yet*" when none are — so the number always explains itself and never shifts just because you added another milestone. **Click a milestone to expand it** and see exactly which tickets it contains, each with its status and assignee. Add one inline (name + date) and tick it off when reached. Click the **pencil** to manage all of them: rename, change a date, or delete one (deleting is limited to admins, and it just unlinks its tickets — it never deletes them).
 - **Capacity** — open tickets per teammate plus a recent-velocity estimate.
 - **Recent activity** across the project, and a **Project summary** card (Beta — the AI-written digest arrives with the agent release).
 - Every card updates live as teammates make changes — no refresh needed.
 
 ## Board
+- **Scoped to your current sprint.** When a sprint is running, the Board opens showing just that sprint's tickets — so you see "what I'm working on now" without hunting for a filter — with a one-click **All tickets** toggle to see everything. Your choice sticks, and it travels in the page link so a shared URL opens to the same view.
 - Columns: Backlog · To Do · In Progress · In Review · Blocked · Done, with drag & drop and within-column reordering.
 - **WIP limits** — In Progress and In Review pulse when overloaded.
 - Filters (search / priority / type / assignee / sprint) — each is **multi-select** (tick several priorities, people, or sprints at once) — plus sort options and the **"My tickets"** focus dim (`f`).

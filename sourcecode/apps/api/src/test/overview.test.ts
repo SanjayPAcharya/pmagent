@@ -84,12 +84,46 @@ describe('project overview (3.7 R4)', () => {
     expect(o.milestones[0].name).toBe('GA')
     expect(o.milestones[0].readiness).toEqual({ done: 1, total: 2 })
 
+    // ── Needs attention (3.8.6 DEC-2): the two blockers surface; no active
+    // sprint here so unassigned-in-sprint is empty. (Date-sensitive categories
+    // are covered deterministically in the dedicated test below.) ──
+    expect(o.needsAttention.blocked.total).toBe(2)
+    expect(o.needsAttention.blocked.items.map((b: { number: number }) => b.number)).toContain(o.blockers[0].number)
+    expect(o.needsAttention.unassignedInSprint.total).toBe(0)
+    expect(o.needsAttention.total).toBeGreaterThanOrEqual(2)
+
     // ── Capacity: one unassigned bucket, no completed sprints ──
     expect(o.capacity.recentVelocityAvg).toBeNull()
     expect(o.capacity.rows).toHaveLength(1)
     expect(o.capacity.rows[0].userId).toBeNull()
     expect(o.capacity.rows[0].openCount).toBe(4)
     expect(o.capacity.rows[0].inProgressCount).toBe(1)
+  })
+
+  it('needsAttention surfaces overdue tickets and at-risk milestones (3.8.6 DEC-2)', async () => {
+    const owner = await tokenFor('ov-owner3')
+    const orgId = await makeOrg(owner, 'Attention Co')
+    const projectId = await makeProject(owner, orgId, 'Dash')
+
+    // Deterministic dates: 2020 is always past, 2999 always future.
+    const overdue = await mkTicket(owner, projectId, { title: 'Overdue', status: 'TODO', dueDate: '2020-01-01T00:00:00.000Z' })
+    await mkTicket(owner, projectId, { title: 'Not due yet', status: 'TODO', dueDate: '2999-01-01T00:00:00.000Z' })
+    await mkTicket(owner, projectId, { title: 'Done + past due', status: 'DONE', dueDate: '2020-02-01T00:00:00.000Z' }) // closed ⇒ not overdue
+
+    // Milestone at risk: past date, not done, with an open linked ticket (0/1 done).
+    const msRes = await app.inject({ method: 'POST', url: `/api/projects/${projectId}/milestones`, headers: bearer(owner), payload: { name: 'Past', date: '2020-06-01T00:00:00.000Z' } })
+    const msId = msRes.json().milestone.id
+    await app.inject({ method: 'PATCH', url: `/api/tickets/${overdue}`, headers: bearer(owner), payload: { milestoneId: msId } })
+
+    const o = (await overview(owner, projectId)).json().overview
+
+    expect(o.needsAttention.overdue.total).toBe(1) // only the open, past-due ticket
+    expect(o.needsAttention.overdue.items[0].key).toMatch(/-\d+$/)
+    expect(o.needsAttention.overdue.items[0].dueDate).toBeTruthy()
+
+    expect(o.needsAttention.milestonesAtRisk.total).toBe(1)
+    expect(o.needsAttention.milestonesAtRisk.items[0].name).toBe('Past')
+    expect(o.needsAttention.milestonesAtRisk.items[0].progress).toEqual({ done: 0, total: 1 })
   })
 
   it('rejects an outsider with 403', async () => {

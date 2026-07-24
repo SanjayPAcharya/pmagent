@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
@@ -18,6 +18,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { api, type AITicketDraft, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL, workstreamForTab } from '@/lib/board'
@@ -112,16 +113,45 @@ export default function Board() {
   // 3.7 R11 — sprint vs ad-hoc lens (a filter, not a fork; server rules from R1).
   const [wsTab, setWsTab] = useLocalStorageState<'all' | 'SPRINT' | 'ADHOC'>(`agentpm-board-ws-${projectId ?? ''}`, 'all')
 
+  // 3.8.6 DEC-1 — scoped Board. When a sprint is running the Board defaults to
+  // it (so a new user sees "my current sprint" without hunting for the filter),
+  // with a one-click "All" escape. Scope lives in the URL so deep links preserve
+  // it, and persists to localStorage so a fresh visit restores the last choice.
+  const activeSprint = sprints.data?.sprints.find((s) => s.status === 'ACTIVE') ?? null
+  const [storedScope, setStoredScope] = useLocalStorageState<'active' | 'all'>(`agentpm-board-scope-${projectId ?? ''}`, 'active')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const urlScope = searchParams.get('scope')
+  const scope: 'active' | 'all' = urlScope === 'all' || urlScope === 'active' ? urlScope : storedScope
+  const setScope = (s: 'active' | 'all') => {
+    setStoredScope(s)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('scope', s)
+        return next
+      },
+      { replace: true },
+    )
+  }
+  // Effective sprint constraint: an explicit multi-select filter wins; otherwise
+  // the active-sprint scope applies when one is running and scope is "active".
+  const scopedToActive = scope === 'active' && Boolean(activeSprint) && sprintFilter.length === 0
+  const activeSprintId = activeSprint?.id
+  const effectiveSprintIds = useMemo(
+    () => (sprintFilter.length ? sprintFilter : scopedToActive && activeSprintId ? [activeSprintId] : []),
+    [sprintFilter, scopedToActive, activeSprintId],
+  )
+
   const params = useMemo(() => {
     const p: Record<string, string> = { sort }
     if (qDebounced) p.q = qDebounced
     if (priority.length) p.priority = priority.join(',')
     if (type.length) p.type = type.join(',')
     if (assignedToId.length) p.assignedToId = assignedToId.join(',')
-    if (sprintFilter.length) p.sprintId = sprintFilter.join(',')
+    if (effectiveSprintIds.length) p.sprintId = effectiveSprintIds.join(',')
     if (wsTab !== 'all') p.workstream = wsTab
     return p
-  }, [sort, qDebounced, priority, type, assignedToId, sprintFilter, wsTab])
+  }, [sort, qDebounced, priority, type, assignedToId, effectiveSprintIds, wsTab])
 
   const ticketsPrefix = useMemo(() => ['tickets', projectId], [projectId])
   const ticketsKey = useMemo(() => ['tickets', projectId, params], [projectId, params])
@@ -506,6 +536,38 @@ export default function Board() {
           <NotificationBell slug={slug} projectSlug={projectSlug} />
         </div>
       </div>
+
+      {/* DEC-1 — scoped Board: prominent Active-sprint / All lens (only when a
+          sprint is running). Clicking a scope clears any advanced sprint filter
+          so this control is authoritative. */}
+      {activeSprint && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
+            <button
+              onClick={() => { setScope('active'); setSprintFilter([]) }}
+              aria-pressed={scopedToActive}
+              className={cn(
+                'inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-xs transition-colors',
+                scopedToActive ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Rocket className="h-3.5 w-3.5" />
+              {t('board.scopeActiveSprint', { name: activeSprint.name })}
+            </button>
+            <button
+              onClick={() => { setScope('all'); setSprintFilter([]) }}
+              aria-pressed={scope === 'all' && sprintFilter.length === 0}
+              className={cn(
+                'h-7 rounded px-2.5 text-xs transition-colors',
+                scope === 'all' && sprintFilter.length === 0 ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t('board.scopeAll')}
+            </button>
+          </div>
+          {sprintFilter.length > 0 && <span className="text-xs text-muted-foreground">{t('board.scopeFilterOverride')}</span>}
+        </div>
+      )}
 
       {/* completion bar */}
       <div className="mb-4">

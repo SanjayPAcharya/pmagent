@@ -415,6 +415,31 @@ export interface OverviewMilestone {
   done: boolean
   readiness: { done: number; total: number }
 }
+// 3.8.6 DEC-2 — "Needs attention" triage.
+export interface AttentionTicket {
+  id: string
+  number: number
+  key: string
+  title: string
+  dueDate?: string | null
+}
+export interface AttentionMilestone {
+  id: string
+  name: string
+  date: string
+  progress: { done: number; total: number }
+}
+export interface AttentionGroup<T> {
+  items: T[]
+  total: number
+}
+export interface NeedsAttention {
+  blocked: AttentionGroup<AttentionTicket>
+  overdue: AttentionGroup<AttentionTicket>
+  unassignedInSprint: AttentionGroup<AttentionTicket>
+  milestonesAtRisk: AttentionGroup<AttentionMilestone>
+  total: number
+}
 export interface ProjectOverview {
   status: {
     byStatus: Partial<Record<TicketStatus, number>>
@@ -423,6 +448,7 @@ export interface ProjectOverview {
     byWorkstream: { SPRINT: number; ADHOC: number }
   }
   activeSprint: { id: string; name: string; endDate: string | null; total: number; done: number } | null
+  needsAttention: NeedsAttention
   blockers: OverviewBlocker[]
   milestones: OverviewMilestone[]
   capacity: { rows: WorkloadRow[]; recentVelocityAvg: number | null }
