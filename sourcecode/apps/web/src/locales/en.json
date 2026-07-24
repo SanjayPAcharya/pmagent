@@ -69,6 +69,18 @@
     "summaryEmpty": "Generate an AI status digest from this project's current metrics.",
     "risks": "Risks"
   },
+  "filters": {
+    "button": "Filters",
+    "clear": "Clear",
+    "clearAll": "Clear all ({{count}})",
+    "assignee": "Assignee",
+    "sprint": "Sprint",
+    "label": "Label",
+    "status": "Status",
+    "priority": "Priority",
+    "type": "Type",
+    "workstream": "Workstream"
+  },
   "nav": {
     "overview": "Overview",
     "board": "Board",

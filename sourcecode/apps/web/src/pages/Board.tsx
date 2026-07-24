@@ -20,9 +20,9 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { Rocket } from 'lucide-react'
 import { toast } from 'sonner'
-import { api, type AITicketDraft, type Member, type Ticket, type TicketStatus, type TicketType, type TicketTemplate } from '@/lib/api'
+import { api, type AITicketDraft, type Member, type Ticket, type TicketStatus, type TicketTemplate } from '@/lib/api'
 import { BOARD_COLUMNS, PRIORITIES, STATUS_LABEL, workstreamForTab } from '@/lib/board'
-import { MultiSelect } from '@/components/MultiSelect'
+import { FilterBar, type FilterGroup } from '@/components/FilterBar'
 import { type ParsedQuickCreate } from '@/lib/parseQuickCreate'
 import { useProjectWebSocket } from '@/lib/websocket'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
@@ -467,6 +467,13 @@ export default function Board() {
 
   const pct = counts.total ? Math.round((counts.done / counts.total) * 100) : 0
 
+  const filterGroups: FilterGroup[] = [
+    { key: 'priority', label: t('filters.priority'), selected: priority, onChange: setPriority, options: PRIORITIES.map((p) => ({ value: p, label: p })) },
+    { key: 'type', label: t('filters.type'), selected: type, onChange: setType, options: ['FEATURE', 'BUG', 'CHORE', 'SPIKE'].map((ty) => ({ value: ty, label: ty })) },
+    { key: 'assignee', label: t('filters.assignee'), selected: assignedToId, onChange: setAssignedToId, options: (members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name })) },
+    { key: 'sprint', label: t('filters.sprint'), selected: sprintFilter, onChange: setSprintFilter, options: (sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name })) },
+  ]
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -588,30 +595,7 @@ export default function Board() {
           placeholder={t('board.search')}
           className="h-8 w-56 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
-        <MultiSelect
-          placeholder={t('board.priorityAny')}
-          selected={priority}
-          onChange={setPriority}
-          options={PRIORITIES.map((p) => ({ value: p, label: p }))}
-        />
-        <MultiSelect
-          placeholder={t('board.typeAny')}
-          selected={type}
-          onChange={setType}
-          options={(['FEATURE', 'BUG', 'CHORE', 'SPIKE'] as TicketType[]).map((ty) => ({ value: ty, label: ty }))}
-        />
-        <MultiSelect
-          placeholder={t('board.assigneeAny')}
-          selected={assignedToId}
-          onChange={setAssignedToId}
-          options={(members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name }))}
-        />
-        <MultiSelect
-          placeholder={t('board.sprintAny')}
-          selected={sprintFilter}
-          onChange={setSprintFilter}
-          options={(sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name }))}
-        />
+        <FilterBar groups={filterGroups} />
         <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label={t('board.sortLabel')} className="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
           <option value="position">{t('board.sortManual')}</option>
           <option value="-updatedAt">{t('board.sortUpdated')}</option>

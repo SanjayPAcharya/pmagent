@@ -6,7 +6,7 @@ import { ArrowUp, ArrowDown, Columns3, Inbox, Filter } from 'lucide-react'
 import { BlockedBadge } from '@/components/BlockedBadge'
 import { EmptyState } from '@/components/EmptyState'
 import { api, type Ticket, type TicketType } from '../lib/api'
-import { MultiSelect } from '../components/MultiSelect'
+import { FilterBar, type FilterGroup } from '../components/FilterBar'
 import { ALL_STATUSES, PRIORITIES, PRIORITY_CLASS, STATUS_LABEL } from '../lib/board'
 import { cn } from '../lib/utils'
 import { formatRelative } from '../lib/time'
@@ -207,6 +207,16 @@ export default function ProjectList() {
     if (sortKey) return (<span className="inline-flex cursor-pointer select-none items-center hover:text-foreground" onClick={() => toggleSort(sortKey)}>{label}{sortIcon(sortKey)}</span>)
     return label
   }
+  const filterGroups: FilterGroup[] = [
+    { key: 'status', label: t('filters.status'), selected: status, onChange: setStatus, options: ALL_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })) },
+    { key: 'priority', label: t('filters.priority'), selected: priority, onChange: setPriority, options: PRIORITIES.map((p) => ({ value: p, label: p })) },
+    { key: 'type', label: t('filters.type'), selected: type, onChange: setType, options: TYPES.map((tp) => ({ value: tp, label: tp })) },
+    { key: 'assignee', label: t('filters.assignee'), selected: assignedToId, onChange: setAssignedToId, options: (members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name })) },
+    { key: 'sprint', label: t('filters.sprint'), selected: sprintFilter, onChange: setSprintFilter, options: (sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name })) },
+    { key: 'label', label: t('filters.label'), selected: labelFilter, onChange: setLabelFilter, options: (labels.data?.labels ?? []).map((l) => ({ value: l.id, label: l.name })) },
+    { key: 'workstream', label: t('filters.workstream'), selected: workstreamFilter, onChange: setWorkstreamFilter, options: [{ value: 'SPRINT', label: t('drawer.workstreamSprint') }, { value: 'ADHOC', label: t('drawer.workstreamAdhoc') }] },
+  ]
+
   const renderCell = (c: ColId, tk: Ticket) => {
     switch (c) {
       case 'select':
@@ -341,51 +351,7 @@ export default function ProjectList() {
           placeholder={t('board.search')}
           className="h-8 w-48 rounded-md border border-input bg-transparent px-2 text-sm"
         />
-        <MultiSelect
-          placeholder={t('list.allStatuses')}
-          selected={status}
-          onChange={setStatus}
-          options={ALL_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
-        />
-        <MultiSelect
-          placeholder={t('board.priorityAny')}
-          selected={priority}
-          onChange={setPriority}
-          options={PRIORITIES.map((p) => ({ value: p, label: p }))}
-        />
-        <MultiSelect
-          placeholder={t('board.typeAny')}
-          selected={type}
-          onChange={setType}
-          options={TYPES.map((tp) => ({ value: tp, label: tp }))}
-        />
-        <MultiSelect
-          placeholder={t('board.assigneeAny')}
-          selected={assignedToId}
-          onChange={setAssignedToId}
-          options={(members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name }))}
-        />
-        <MultiSelect
-          placeholder={t('board.sprintAny')}
-          selected={sprintFilter}
-          onChange={setSprintFilter}
-          options={(sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name }))}
-        />
-        <MultiSelect
-          placeholder={t('list.allLabels')}
-          selected={labelFilter}
-          onChange={setLabelFilter}
-          options={(labels.data?.labels ?? []).map((l) => ({ value: l.id, label: l.name }))}
-        />
-        <MultiSelect
-          placeholder={t('gantt.allWorkstreams')}
-          selected={workstreamFilter}
-          onChange={setWorkstreamFilter}
-          options={[
-            { value: 'SPRINT', label: t('drawer.workstreamSprint') },
-            { value: 'ADHOC', label: t('drawer.workstreamAdhoc') },
-          ]}
-        />
+        <FilterBar groups={filterGroups} />
         {hasFilters && (
           <button onClick={clearFilters} className="text-sm text-muted-foreground hover:text-foreground">
             {t('board.clearFilters')}

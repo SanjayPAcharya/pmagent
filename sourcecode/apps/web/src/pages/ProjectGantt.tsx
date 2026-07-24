@@ -11,6 +11,7 @@ import { useLocalStorageState } from '@/lib/useLocalStorage'
 import { CalendarRange, Search, X, Download } from 'lucide-react'
 import { downloadCsv } from '@/lib/csv'
 import { exportGanttPng, ganttRowsToCsv } from '@/lib/ganttExport'
+import { FilterBar, type FilterGroup } from '@/components/FilterBar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { GanttChart, type GanttGroup } from '@/components/gantt/GanttChart'
@@ -53,18 +54,20 @@ export default function ProjectGantt() {
 
   const [scale, setScale] = useLocalStorageState<GanttScale>('agentpm-gantt-scale', 'week')
   const [trayOpen, setTrayOpen] = useLocalStorageState('agentpm-gantt-tray', true)
-  const [assignee, setAssignee] = useLocalStorageState('agentpm-gantt-f-assignee', '')
-  const [sprint, setSprint] = useLocalStorageState('agentpm-gantt-f-sprint', '')
-  const [label, setLabel] = useLocalStorageState('agentpm-gantt-f-label', '')
-  const [status, setStatus] = useLocalStorageState('agentpm-gantt-f-status', '')
-  const [workstream, setWorkstream] = useLocalStorageState('agentpm-gantt-f-ws', '')
+  // Multi-select filters (shared FilterBar). New localStorage keys so old
+  // single-string values aren't parsed as arrays.
+  const [assignee, setAssignee] = useLocalStorageState<string[]>('agentpm-gantt-fa', [])
+  const [sprint, setSprint] = useLocalStorageState<string[]>('agentpm-gantt-fsp', [])
+  const [label, setLabel] = useLocalStorageState<string[]>('agentpm-gantt-fl', [])
+  const [status, setStatus] = useLocalStorageState<string[]>('agentpm-gantt-fst', [])
+  const [workstream, setWorkstream] = useLocalStorageState<string[]>('agentpm-gantt-fws', [])
   const [groupBy, setGroupBy] = useLocalStorageState<'' | 'sprint' | 'assignee' | 'workstream'>('agentpm-gantt-group', '')
   const [search, setSearch] = useState('') // ephemeral — a text query shouldn't survive a reload
 
   const payload = gantt.data?.gantt
-  const hasFilters = Boolean(assignee || sprint || label || status || workstream || search.trim())
+  const hasFilters = Boolean(assignee.length || sprint.length || label.length || status.length || workstream.length || search.trim())
   const clearFilters = () => {
-    setAssignee(''); setSprint(''); setLabel(''); setStatus(''); setWorkstream(''); setSearch('')
+    setAssignee([]); setSprint([]); setLabel([]); setStatus([]); setWorkstream([]); setSearch('')
   }
 
   const filtered = useMemo(() => {
@@ -72,11 +75,11 @@ export default function ProjectGantt() {
     const q = search.trim().toLowerCase()
     return items.filter(
       (it: GanttItem) =>
-        (!assignee || it.assignedToId === assignee) &&
-        (!sprint || it.sprintId === sprint) &&
-        (!label || it.labelIds.includes(label)) &&
-        (!status || it.status === status) &&
-        (!workstream || it.workstream === workstream) &&
+        (!assignee.length || (it.assignedToId != null && assignee.includes(it.assignedToId))) &&
+        (!sprint.length || (it.sprintId != null && sprint.includes(it.sprintId))) &&
+        (!label.length || it.labelIds.some((l) => label.includes(l))) &&
+        (!status.length || status.includes(it.status)) &&
+        (!workstream.length || workstream.includes(it.workstream)) &&
         (!q || it.title.toLowerCase().includes(q) || it.key.toLowerCase().includes(q) || String(it.number) === q),
     )
   }, [payload, assignee, sprint, label, status, workstream, search])
@@ -115,6 +118,14 @@ export default function ProjectGantt() {
     for (const mem of members.data?.members ?? []) m[mem.userId] = mem.name
     return m
   }, [members.data])
+
+  const filterGroups: FilterGroup[] = [
+    { key: 'assignee', label: t('filters.assignee'), selected: assignee, onChange: setAssignee, options: (members.data?.members ?? []).map((m) => ({ value: m.userId, label: m.name })) },
+    { key: 'sprint', label: t('filters.sprint'), selected: sprint, onChange: setSprint, options: (sprints.data?.sprints ?? []).map((s) => ({ value: s.id, label: s.name })) },
+    { key: 'label', label: t('filters.label'), selected: label, onChange: setLabel, options: (labels.data?.labels ?? []).map((l) => ({ value: l.id, label: l.name })) },
+    { key: 'status', label: t('filters.status'), selected: status, onChange: setStatus, options: ALL_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] })) },
+    { key: 'workstream', label: t('filters.workstream'), selected: workstream, onChange: setWorkstream, options: [{ value: 'SPRINT', label: t('gantt.workstreamSprint') }, { value: 'ADHOC', label: t('gantt.workstreamAdhoc') }] },
+  ]
 
   const today = toDayNum(new Date().toISOString())
   const range = useMemo(() => computeRange(scheduled, payload?.milestones ?? [], today), [scheduled, payload, today])
@@ -340,27 +351,7 @@ export default function ProjectGantt() {
             </button>
           )}
         </div>
-        <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={selectCls}>
-          <option value="">{t('gantt.allAssignees')}</option>
-          {members.data?.members.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
-        </select>
-        <select value={sprint} onChange={(e) => setSprint(e.target.value)} className={selectCls}>
-          <option value="">{t('gantt.allSprints')}</option>
-          {sprints.data?.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        <select value={label} onChange={(e) => setLabel(e.target.value)} className={selectCls}>
-          <option value="">{t('gantt.allLabels')}</option>
-          {labels.data?.labels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls}>
-          <option value="">{t('gantt.allStatuses')}</option>
-          {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-        </select>
-        <select value={workstream} onChange={(e) => setWorkstream(e.target.value)} className={selectCls}>
-          <option value="">{t('gantt.allWorkstreams')}</option>
-          <option value="SPRINT">{t('gantt.workstreamSprint')}</option>
-          <option value="ADHOC">{t('gantt.workstreamAdhoc')}</option>
-        </select>
+        <FilterBar groups={filterGroups} />
         <select value={groupBy} onChange={(e) => setGroupBy(e.target.value as typeof groupBy)} className={selectCls}>
           <option value="">{t('gantt.groupNone')}</option>
           <option value="sprint">{t('gantt.groupSprint')}</option>
