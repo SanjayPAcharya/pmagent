@@ -8,7 +8,9 @@ import { ALL_STATUSES, STATUS_COLOR, STATUS_LABEL } from '@/lib/board'
 import { barForTicket, computeRange, dayForX, dayNumToISO, milestoneViewport, toDayNum, traySchedule, xForDay, type GanttScale } from '@/lib/gantt'
 import { useProjectSync } from '@/lib/websocket'
 import { useLocalStorageState } from '@/lib/useLocalStorage'
-import { CalendarRange, Search, X } from 'lucide-react'
+import { CalendarRange, Search, X, Download } from 'lucide-react'
+import { downloadCsv } from '@/lib/csv'
+import { exportGanttPng, ganttRowsToCsv } from '@/lib/ganttExport'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { GanttChart, type GanttGroup } from '@/components/gantt/GanttChart'
@@ -128,6 +130,26 @@ export default function ProjectGantt() {
     if (el) el.scrollTo({ left: xForDay(day, range.startDay, scale) - el.clientWidth / 3, behavior: 'smooth' })
   }
   const scrollToToday = () => scrollToDay(today)
+
+  // FEAT-2 — Timeline export. PNG rasterizes the live SVG (current zoom/filter,
+  // milestone diamonds included); CSV is the visible rows, Excel-openable.
+  const exportBase = `${projectSlug || 'project'}-timeline`
+  const onExportPng = async () => {
+    const svg = scrollRef.current?.querySelector('svg')
+    if (!svg) return
+    try {
+      await exportGanttPng(svg as SVGSVGElement, `${exportBase}.png`)
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+  const onExportCsv = () => {
+    const sprintName: Record<string, string> = {}
+    for (const s of sprints.data?.sprints ?? []) sprintName[s.id] = s.name
+    const milestoneName: Record<string, string> = {}
+    for (const m of payload?.milestones ?? []) milestoneName[m.id] = m.name
+    downloadCsv(`${exportBase}.csv`, ganttRowsToCsv(filtered, { memberName, sprintName, milestoneName }))
+  }
 
   // Keep the date at the viewport's left edge stable across a zoom change, so
   // switching Day/Week/Month zooms around what you're looking at.
@@ -349,6 +371,22 @@ export default function ProjectGantt() {
           <button onClick={clearFilters} className="text-sm text-muted-foreground hover:text-foreground">{t('gantt.clearFilters')}</button>
         )}
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={onExportPng}
+            disabled={!payload || filtered.length === 0}
+            title={t('gantt.exportPngHint')}
+            className="inline-flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+          >
+            <Download className="h-3.5 w-3.5" /> {t('gantt.exportPng')}
+          </button>
+          <button
+            onClick={onExportCsv}
+            disabled={!payload || filtered.length === 0}
+            title={t('gantt.exportCsvHint')}
+            className="inline-flex h-7 items-center gap-1 rounded-md border px-2.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+          >
+            <Download className="h-3.5 w-3.5" /> {t('gantt.exportCsv')}
+          </button>
           <button onClick={scrollToToday} className="h-7 rounded-md border px-2.5 text-xs text-muted-foreground hover:text-foreground">{t('gantt.today')}</button>
           <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
             {scaleBtn('day', 'gantt.scaleDay')}
