@@ -21,9 +21,11 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu'
+import { toast } from 'sonner'
 import { useProjectSync } from '../lib/websocket'
 
 const TYPES: TicketType[] = ['FEATURE', 'BUG', 'CHORE', 'SPIKE']
@@ -36,6 +38,9 @@ type ColId = 'select' | 'key' | 'title' | 'status' | 'priority' | 'assignee' | '
 const COL_ORDER: ColId[] = ['select', 'key', 'title', 'status', 'priority', 'assignee', 'sprint', 'workstream', 'start', 'due', 'points', 'updated']
 const ALWAYS: ColId[] = ['select', 'key', 'title']
 const TOGGLEABLE: ColId[] = ['status', 'priority', 'assignee', 'sprint', 'workstream', 'start', 'due', 'points', 'updated']
+// FEAT-1 — the high-frequency columns editable in place; the rest open the drawer.
+const EDITABLE = new Set<ColId>(['status', 'priority', 'assignee', 'sprint'])
+const inlineSelect = 'w-full cursor-pointer rounded border-0 bg-transparent px-1 py-0.5 text-xs text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 const DEFAULT_VISIBLE: Record<string, boolean> = { status: true, priority: true, assignee: true, sprint: true, workstream: true, start: false, due: false, points: true, updated: true }
 const DEFAULT_WIDTHS: Record<ColId, number> = { select: 40, key: 92, title: 340, status: 120, priority: 104, assignee: 168, sprint: 148, workstream: 124, start: 116, due: 116, points: 60, updated: 116 }
 const COL_LABEL: Record<ColId, string> = {
@@ -149,6 +154,18 @@ export default function ProjectList() {
   const base = `/orgs/${slug}/projects/${projectSlug}`
   const closeDrawer = () => navigate(`${base}/list`)
 
+  // FEAT-1 — inline edits. Mirrors the Sprint-view `act` idiom: run the mutation,
+  // refresh the list, toast; WS sync carries the change to other open views.
+  const act = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn()
+      qc.invalidateQueries({ queryKey: ['tickets', projectId] })
+      toast.success(ok)
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
   const th = 'px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground'
 
   // R13 — column visibility + resizable widths, both persisted.
@@ -216,21 +233,73 @@ export default function ProjectList() {
           </div>
         )
       case 'status':
-        return <span className="text-muted-foreground">{STATUS_LABEL[tk.status]}</span>
+        // FEAT-1 — inline status select (persists immediately).
+        return (
+          <select
+            value={tk.status}
+            aria-label={t('list.colStatus')}
+            onChange={(e) => act(() => api.updateTicketStatus(tk.id, e.target.value as Ticket['status']), t('list.updated'))}
+            className={inlineSelect}
+          >
+            {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+          </select>
+        )
       case 'priority':
-        return <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', PRIORITY_CLASS[tk.priority])}>{tk.priority}</span>
+        // FEAT-1 — inline priority select, keeping the coloured pill look.
+        return (
+          <select
+            value={tk.priority}
+            aria-label={t('list.colPriority')}
+            onChange={(e) => act(() => api.updateTicket(tk.id, { priority: e.target.value as Ticket['priority'] }), t('list.updated'))}
+            className={cn('cursor-pointer rounded-full border-0 px-2 py-0.5 text-[11px] font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring', PRIORITY_CLASS[tk.priority])}
+          >
+            {PRIORITIES.map((p) => <option key={p} value={p} className="bg-background text-foreground">{p}</option>)}
+          </select>
+        )
       case 'assignee':
-        return tk.assignedTo ? (
-          <span className="flex items-center gap-1.5">
-            <Avatar className="h-5 w-5">
-              {tk.assignedTo.avatarUrl && <AvatarImage src={tk.assignedTo.avatarUrl} />}
-              <AvatarFallback className="text-[10px]">{tk.assignedTo.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <span className="truncate text-xs text-muted-foreground">{tk.assignedTo.name}</span>
-          </span>
-        ) : (<span className="text-xs text-muted-foreground">—</span>)
+        // FEAT-1 — inline assignee via a dropdown (keeps the avatar affordance).
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-accent" title={tk.assignedTo?.name ?? t('drawer.unassigned')}>
+                {tk.assignedTo ? (
+                  <>
+                    <Avatar className="h-5 w-5">
+                      {tk.assignedTo.avatarUrl && <AvatarImage src={tk.assignedTo.avatarUrl} />}
+                      <AvatarFallback className="text-[10px]">{tk.assignedTo.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-xs text-muted-foreground">{tk.assignedTo.name}</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => act(() => api.updateTicket(tk.id, { assignedToId: null }), t('list.updated'))}>
+                {t('drawer.unassigned')}
+              </DropdownMenuItem>
+              {members.data?.members.map((m) => (
+                <DropdownMenuItem key={m.userId} onClick={() => act(() => api.updateTicket(tk.id, { assignedToId: m.userId }), t('list.updated'))}>
+                  {m.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
       case 'sprint':
-        return <span className="text-xs text-muted-foreground">{sprints.data?.sprints.find((s) => s.id === tk.sprintId)?.name ?? '—'}</span>
+        // FEAT-1 — inline sprint select ("" = no sprint).
+        return (
+          <select
+            value={tk.sprintId ?? ''}
+            aria-label={t('list.colSprint')}
+            onChange={(e) => act(() => api.updateTicket(tk.id, { sprintId: e.target.value || null }), t('list.updated'))}
+            className={inlineSelect}
+          >
+            <option value="">{t('drawer.noSprint')}</option>
+            {sprints.data?.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        )
       case 'workstream':
         return <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{tk.workstream === 'ADHOC' ? t('drawer.workstreamAdhoc') : t('drawer.workstreamSprint')}</span>
       case 'start':
@@ -396,7 +465,7 @@ export default function ProjectList() {
                       {shownCols.map((c) => (
                         <td
                           key={c}
-                          onClick={c === 'select' ? (e) => e.stopPropagation() : undefined}
+                          onClick={c === 'select' || EDITABLE.has(c) ? (e) => e.stopPropagation() : undefined}
                           className={cn('overflow-hidden px-3 py-2', c !== 'title' && 'whitespace-nowrap', c === 'points' && 'text-right')}
                         >
                           {renderCell(c, tk)}
