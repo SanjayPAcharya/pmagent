@@ -4,24 +4,24 @@
    on <html>, set by an early script from the shared `pmagent-theme` cookie. */
 
 :root {
-  --pm-bg: 210 40% 96.1%;
+  --pm-bg: 213 60% 96%;
   --pm-card: 0 0% 100%;
-  --pm-fg: 222.2 84% 4.9%;
-  --pm-muted-fg: 215.4 16.3% 46.9%;
+  --pm-fg: 213 73% 13%;
+  --pm-muted-fg: 215 20% 40%;
   --pm-border: 214.3 31.8% 91.4%;
-  --pm-primary: 222.2 47.4% 11.2%;
-  --pm-primary-fg: 210 40% 98%;
-  --pm-ring: 222.2 84% 4.9%;
+  --pm-primary: 211 100% 48%;
+  --pm-primary-fg: 0 0% 100%;
+  --pm-ring: 211 100% 50%;
 }
 .dark {
-  --pm-bg: 222.2 47% 8%;
-  --pm-card: 222.2 84% 4.9%;
+  --pm-bg: 213 56% 9%;
+  --pm-card: 212 50% 13%;
   --pm-fg: 210 40% 98%;
-  --pm-muted-fg: 215 20.2% 65.1%;
-  --pm-border: 217.2 32.6% 17.5%;
-  --pm-primary: 210 40% 98%;
-  --pm-primary-fg: 222.2 47.4% 11.2%;
-  --pm-ring: 212.7 26.8% 83.9%;
+  --pm-muted-fg: 213 25% 68%;
+  --pm-border: 213 40% 20%;
+  --pm-primary: 211 100% 50%;
+  --pm-primary-fg: 0 0% 100%;
+  --pm-ring: 211 100% 50%;
 }
 
 /* ── Page ── */
@@ -72,7 +72,7 @@ body,
   margin: 0 auto 0.25rem;
   text-align: center;
 }
-#pmagent-logo svg { height: 38px; width: auto; }
+#pmagent-logo svg { height: 44px; width: auto; max-width: 100%; }
 
 /* Page title ("Sign in to your account" / "Register") — small + muted. */
 #kc-page-title {

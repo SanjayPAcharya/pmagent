@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "PMAgent",
+    "appName": "PmAgent",
     "create": "Create",
     "save": "Save",
     "cancel": "Cancel",
@@ -198,7 +198,7 @@
   },
   "landing": {
     "headline": "Project management, built for AI agents.",
-    "subtitle": "PMAgent gives your team and your AI agents one shared board — plan, assign, and ship without the busywork.",
+    "subtitle": "PmAgent by Buildenics gives your team and your AI agents one shared board — plan, assign, and ship without the busywork.",
     "cardHint": "Choose how you'd like to continue.",
     "signIn": "Sign in",
     "signInEmail": "Sign in with email",
@@ -309,7 +309,7 @@
     "accentSaved": "Accent updated"
   },
   "invite": {
-    "title": "You’ve been invited to PMAgent",
+    "title": "You’ve been invited to PmAgent",
     "joining": "Joining the organization…",
     "signInToAccept": "Sign in or create an account to accept this invitation.",
     "signInButton": "Sign in to accept",
@@ -401,7 +401,7 @@
     "watching": "Watching",
     "emptyAssigned": "Nothing assigned to you right now.",
     "emptyWatching": "You're not watching any other tickets.",
-    "noOrgsTitle": "Welcome to PMAgent",
+    "noOrgsTitle": "Welcome to PmAgent by Buildenics",
     "noOrgsHint": "You're not part of any organization yet. Create one — it takes a few seconds — and your work will show up here.",
     "goCreate": "Create your organization"
   },

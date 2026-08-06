@@ -1,6 +1,13 @@
-<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PMAgent">
-  <rect width="64" height="64" rx="14" fill="#0f172a"/>
-  <text x="32" y="43" text-anchor="middle"
-        font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-        font-size="30" font-weight="800" fill="#ffffff">PM</text>
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PmAgent by Buildenics">
+  <rect width="64" height="64" rx="14" fill="#0A2540"/>
+  <!-- Stacked Blocks 'B' + Arrow Logo Mark -->
+  <g transform="translate(6, 6) scale(0.52)">
+    <!-- Spine connection -->
+    <path d="M 14 16 L 30 16 L 30 84 L 14 84 Z" fill="#ffffff" />
+    <!-- Top block & central arrow (Vibrant Blue) -->
+    <path d="M 30 16 L 68 16 L 82 30 L 30 30 Z" fill="#007AFF" />
+    <path d="M 14 37 L 68 37 L 88 50 L 68 63 L 14 63 Z" fill="#007AFF" />
+    <!-- Bottom block -->
+    <path d="M 30 70 L 68 70 L 82 84 L 30 84 Z" fill="#ffffff" />
+  </g>
 </svg>

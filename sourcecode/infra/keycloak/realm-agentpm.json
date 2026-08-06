@@ -1,7 +1,7 @@
 {
   "realm": "agentpm",
-  "displayName": "PMAgent",
-  "displayNameHtml": "PMAgent",
+  "displayName": "PmAgent by Buildenics",
+  "displayNameHtml": "PmAgent by Buildenics",
   "loginTheme": "pmagent",
   "enabled": true,
   "registrationAllowed": true,
@@ -13,7 +13,7 @@
   "clients": [
     {
       "clientId": "agentpm-web",
-      "name": "PMAgent Web (SPA)",
+      "name": "PmAgent Web (Buildenics)",
       "rootUrl": "http://localhost:3000",
       "baseUrl": "http://localhost:3000/",
       "enabled": true,
@@ -41,7 +41,7 @@
     },
     {
       "clientId": "agentpm-api",
-      "name": "PMAgent API (resource server)",
+      "name": "PmAgent API (resource server)",
       "enabled": true,
       "bearerOnly": true,
       "publicClient": false,

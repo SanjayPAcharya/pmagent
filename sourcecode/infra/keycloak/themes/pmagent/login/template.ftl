@@ -68,9 +68,20 @@
         <#if client?? && client.baseUrl?has_content>
             <a id="pmagent-back" href="${client.baseUrl}">&#8249;&nbsp;Back</a>
         </#if>
-        <div id="pmagent-logo" role="img" aria-label="PMAgent">
-            <svg viewBox="0 0 240 56" xmlns="http://www.w3.org/2000/svg">
-                <text x="120" y="41" text-anchor="middle" font-size="40" letter-spacing="-1" fill="currentColor" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"><tspan font-weight="800">PM</tspan><tspan font-weight="500" opacity="0.62">Agent</tspan></text>
+        <div id="pmagent-logo" role="img" aria-label="PmAgent by Buildenics">
+            <svg viewBox="0 0 280 64" xmlns="http://www.w3.org/2000/svg">
+                <g transform="translate(4, 6) scale(0.52)">
+                    <path d="M 12 16 L 30 16 L 30 84 L 12 84 Z" fill="currentColor" opacity="0.9" />
+                    <path d="M 30 16 L 68 16 L 82 30 L 30 30 Z" fill="#007AFF" />
+                    <path d="M 12 37 L 68 37 L 88 50 L 68 63 L 12 63 Z" fill="#007AFF" />
+                    <path d="M 30 70 L 68 70 L 82 84 L 30 84 Z" fill="currentColor" opacity="0.9" />
+                </g>
+                <text x="64" y="38" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="34" letter-spacing="-0.5">
+                    <tspan font-weight="800" fill="currentColor">Pm</tspan><tspan font-weight="700" fill="#007AFF">Agent</tspan>
+                </text>
+                <text x="65" y="53" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="2.5" fill="currentColor" opacity="0.5">
+                    BY BUILDENICS
+                </text>
             </svg>
         </div>
         <header class="${properties.kcFormHeaderClass!}">

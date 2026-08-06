@@ -12,6 +12,7 @@ import { initialsOf } from '../lib/utils'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import Logo from '@/components/Logo'
 import { OrgTree } from '@/components/OrgTree'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { CommandPalette } from '@/components/CommandPalette'
@@ -61,8 +62,8 @@ export default function Layout() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <Link to="/" className="shrink-0 text-lg font-semibold text-foreground">
-            {t('common.appName')}
+          <Link to="/" className="shrink-0 flex items-center gap-2 text-foreground">
+            <Logo className="h-7 w-auto" />
           </Link>
           <Breadcrumbs />
           <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground sm:gap-3">

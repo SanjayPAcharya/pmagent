@@ -1,0 +1,11 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Buildenics Logo Mark">
+  <!-- Left vertical spine connection -->
+  <path d="M 12 16 L 30 16 L 30 84 L 12 84 Z" fill="#0A2540" />
+
+  <!-- Top horizontal block & Arrow (Vibrant Blue #007AFF) -->
+  <path d="M 30 16 L 68 16 L 82 30 L 30 30 Z" fill="#007AFF" />
+  <path d="M 12 37 L 68 37 L 88 50 L 68 63 L 12 63 Z" fill="#007AFF" />
+
+  <!-- Bottom horizontal block (Dark Navy #0A2540) -->
+  <path d="M 30 70 L 68 70 L 82 84 L 30 84 Z" fill="#0A2540" />
+</svg>
