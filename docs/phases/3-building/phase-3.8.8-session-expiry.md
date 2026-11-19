@@ -1,6 +1,6 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `dev` · **Next role:** Product Developer · **Branch:** none yet (changes are uncommitted on `dev`) · **Size:** S
+> **Stage:** `dev` · **Next role:** Product Developer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
 > Built on 2026-08-06 outside the pipeline and never reviewed. The Developer puts the work on a branch, closes the known gaps (§3), then hands it to the Reviewer.
 
 ## 1. Why — *Product Planning*
@@ -49,7 +49,7 @@
 - [ ] **AC9 (no regression)** — Signing in, signing out, a token refresh while active, the ⌘K palette and the `?` help overlay all still work.
 
 ## 5. Build steps — *PM writes · Developer ticks* (one step = one commit)
-- [ ] **S0** — Package the existing work. Run `git switch -c feat/3.8.8-session-expiry` (it carries the uncommitted changes), then commit only the eight files in §3, as built: `feat(3.8.8 S0): session-expired prompt + Remember me (as built 2026-08-06)`.
+- [x] **S0** — Package the existing work. Run `git switch -c feat/3.8.8-session-expiry` (it carries the uncommitted changes), then commit only the eight files in §3, as built: `feat(3.8.8 S0): session-expired prompt + Remember me (as built 2026-08-06)`.
 - [ ] **S1** — Close gaps 1–6: apply the realm settings via `keycloak-init` and `prod-bootstrap.sh`; remove the dead exports and the unused key; make the websocket decision; restore `verifyEmail`; fix focus and copy. Keep the full-screen prompt (decision 2).
 - [ ] **S2** — Add unit tests for the event bus (fires once, only when authenticated). Describe both features in `docs/product/features.md` in plain language and refresh its date.
 

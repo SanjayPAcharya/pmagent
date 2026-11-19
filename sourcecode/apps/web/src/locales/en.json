@@ -17,6 +17,12 @@
     "beta": "Beta",
     "betaTooltip": "Arrives with the agent release"
   },
+  "auth": {
+    "sessionExpiredTitle": "Session Expired",
+    "sessionExpiredBody": "Your session has expired due to inactivity. Please log in again to continue working.",
+    "reloginButton": "Log in again",
+    "rememberMe": "Remember me"
+  },
   "beta": {
     "draftWithAI": "Draft with AI",
     "autoFill": "Auto-fill from prompt"

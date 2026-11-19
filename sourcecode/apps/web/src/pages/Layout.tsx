@@ -18,6 +18,8 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { CommandPalette } from '@/components/CommandPalette'
 import { KeyboardHelp } from '@/components/KeyboardHelp'
 
+import { SessionExpiredModal } from '@/components/SessionExpiredModal'
+
 export default function Layout() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
   const { theme, cycle } = useTheme()
@@ -131,6 +133,7 @@ export default function Layout() {
 
       <CommandPalette />
       <KeyboardHelp />
+      <SessionExpiredModal />
     </div>
   )
 }

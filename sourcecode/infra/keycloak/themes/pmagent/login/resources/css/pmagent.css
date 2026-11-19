@@ -179,9 +179,24 @@ input[type="submit"] {
 
 /* ── Options row (remember me / forgot password) ── */
 #kc-form-options {
-  margin: 0.25rem 0 0.75rem;
-  font-size: 0.8125rem;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin: 0.5rem 0 1rem !important;
+  font-size: 0.8125rem !important;
   background: transparent !important;
+}
+#kc-form-options .checkbox {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  margin: 0 !important;
+}
+#kc-form-options input[type="checkbox"] {
+  accent-color: hsl(var(--pm-primary)) !important;
+  width: 14px !important;
+  height: 14px !important;
+  cursor: pointer !important;
 }
 
 /* ── Links ── */

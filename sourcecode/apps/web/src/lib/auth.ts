@@ -30,3 +30,33 @@ export function register() {
 export function logout() {
   return keycloak.logout({ redirectUri: window.location.origin })
 }
+
+// Session expiration event bus. Listened to by SessionExpiredModal.
+type ExpiryListener = () => void
+const expiryListeners = new Set<ExpiryListener>()
+let isExpiredState = false
+
+export function onSessionExpired(listener: ExpiryListener): () => void {
+  expiryListeners.add(listener)
+  // If already expired when mounting, notify immediately
+  if (isExpiredState) listener()
+  return () => {
+    expiryListeners.delete(listener)
+  }
+}
+
+export function notifySessionExpired() {
+  // Only trigger session expired modal if user was previously authenticated or has a session token
+  if (keycloak.authenticated || keycloak.token) {
+    isExpiredState = true
+    expiryListeners.forEach((fn) => fn())
+  }
+}
+
+export function isSessionExpired(): boolean {
+  return isExpiredState
+}
+
+export function resetSessionExpiredState() {
+  isExpiredState = false
+}
