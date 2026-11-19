@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `changes-requested` · **Next role:** Product Developer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch, closed the known gaps (§3) and handed it to the Reviewer, who sent it back for one blocking fix (§7).
+> **Stage:** `review` · **Next role:** Product / Code Reviewer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back for one blocking fix (§7), and the fix is in `3e09228`, ready for re-review.
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -93,18 +93,18 @@ The core is sound. The once-only bus gated on `watchSession()` fixes the real bu
 
 **For the Developer:** fix #1. #2, #3 and #5 are small and in scope, so fold them in if you can. Whatever is still open at re-review gets logged in BACKLOG.md.
 
-**Developer response** (2026-11-19, all in one commit, `R1_SHA`):
-- **#1 — fixed in `R1_SHA`.** I used both of your suggestions together.
+**Developer response** (2026-11-19, all in one commit, `3e09228`):
+- **#1 — fixed in `3e09228`.** I used both of your suggestions together.
   - The prompt is now a Radix Dialog, like `?` help. Radix's focus-scope stack pauses the drawer's or palette's trap, `aria-hidden`s it, blocks clicks on it, and loops Tab inside the prompt. Esc and outside clicks are blocked.
   - Every `<body>` child except the prompt's own two nodes (overlay + content, marked `data-session-expired`) goes inert, so the drawer can't take focus even from code. Why both: in the browser pane, a forced `focus()` into the open ⌘K input still slipped text in with Radix alone; with the inert sweep it can't.
   - The capture-phase key guard stays, so ⌘K / `?` can't open a fresh, non-inert layer.
   - New, found while checking: a click on the backdrop or card text dropped focus to `<body>`, where Enter did nothing. A capture-phase `mousedown` guard now keeps focus on "Log in again".
   - Tests: `SessionExpiredModal.test.tsx` gained an "open ticket drawer" suite (a real `Sheet` with an input). It checks focus moves to the button, stays there after Tab, Shift+Tab and a forced `focus()` into the drawer, and that the drawer is inert, `aria-hidden` and not closed by Esc. Both drawer tests fail against the old prompt (I ran them against `087a3dc`'s file) and pass now. There's also a test for the click case.
   - Browser (this session, e2e user): opened ⌘K (the same Radix Dialog as the drawer), typed into it, then ended the session with kcadm and forced a refresh. Focus went to "Log in again" and stayed there after Tab, Shift+Tab, typing, Esc and clicks on the backdrop and card. The palette text was unchanged, and Enter opened the Keycloak login. The e2e user's projects have no tickets, so I used ⌘K rather than create test data.
-- **#2 — fixed in `R1_SHA`.** The import is gone from `Layout.tsx` along with the mount (#3), so `Layout.tsx` now matches `dev` exactly.
-- **#3 — fixed in `R1_SHA`.** `<SessionExpiredModal />` is mounted once in `App`, inside `BrowserRouter` after `<Routes>`, so `/invite/:token` is covered. `watchSession()` still keeps it off signed-out pages.
+- **#2 — fixed in `3e09228`.** The import is gone from `Layout.tsx` along with the mount (#3), so `Layout.tsx` now matches `dev` exactly.
+- **#3 — fixed in `3e09228`.** `<SessionExpiredModal />` is mounted once in `App`, inside `BrowserRouter` after `<Routes>`, so `/invite/:token` is covered. `watchSession()` still keeps it off signed-out pages.
 - **#4 — won't fix in this item.** Agreed it's backlog material: retry once while `keycloak.token` is still set. Left for you to log in BACKLOG.md at re-review, as §7 says.
-- **#5 — fixed in `R1_SHA`.** `api.test.ts` has two new tests. Two parallel 401s plus a refused refresh fire the bus once, and both calls reject. A 401 plus a good refresh retries quietly with no prompt.
+- **#5 — fixed in `3e09228`.** `api.test.ts` has two new tests. Two parallel 401s plus a refused refresh fire the bus once, and both calls reject. A 401 plus a good refresh retries quietly with no prompt.
 
 **What I ran** (this session, on `feat/3.8.8-session-expiry` at `3284e32`, clean tree):
 - `pnpm typecheck --force`: 4/4 tasks green, none cached.
@@ -167,3 +167,28 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
 - **State:** branch `feat/3.8.8-session-expiry`, reviewed at `3284e32`, with no product code changed. Ran: typecheck 4/4 (uncached), web 87/87, api 123/123, web build OK. Read-only kcadm shows the dev realm already has remember-me on with 30-day lifetimes.
 - **Next role should:** fix §7 #1, so an open ticket drawer, ⌘K or `?` can't keep focus or input away from the prompt. Add a test with an open `Sheet` behind it. Fold in #2, #3 and #5 if cheap. Then hand back to the Reviewer.
 - **Watch out for:** jsdom doesn't implement `inert`. If you take the `inert` route, test that the attribute is set on the `<body>` children, and check the focus behaviour in the browser pane. The Radix Dialog route can be tested in jsdom directly: check that focus lands on "Log in again" with a `Sheet` open.
+
+### 2026-11-19 · Product Developer → Product / Code Reviewer
+- **Did:** fixed §7 #1 and nits #2, #3 and #5 in [`3e09228`]. #4 is left for the backlog. Each finding has its answer inline in §7.
+  - #1: the prompt is now a Radix Dialog, and every other `<body>` child goes inert while it's up.
+  - New: a click elsewhere no longer drops focus to `<body>`.
+  - #2/#3: the prompt is mounted in `App`, and `Layout.tsx` is back to matching `dev`.
+- **State:** branch `feat/3.8.8-session-expiry`, head `3e09228` before this handoff commit. Ran in this session:
+  - `pnpm typecheck --force`: 4/4, 0 cached.
+  - web tests: 92/92. That's 87 plus 5 new: 3 prompt tests (2 drawer, 1 click) and 2 `authedFetch` 401 tests.
+  - api tests: 123/123.
+  - web build: OK.
+  - The two drawer tests fail against the old prompt (`087a3dc`) and pass now.
+- **How to see it:**
+  1. Sign in as the e2e user and press ⌘K. (The drawer works the same way; the e2e user's projects have no tickets.) Type something.
+  2. End the session (admin console, or kcadm `users/<id>/logout`) and wait for the next refresh, or force one.
+  3. Expect: focus jumps to "Log in again" and stays there through Tab, Shift+Tab, typing, Esc and clicks on the backdrop. Enter opens the Keycloak login.
+  4. Without an expiry, ⌘K, `?` help and Sign out work as before.
+  - I checked all of this in the browser pane in this session.
+- **Migrations / realm / env:** none new. The realm settings from S1 are unchanged and still applied.
+- **Next role should:** re-review `3e09228`, mainly `SessionExpiredModal.tsx`: the Radix Dialog, the inert sweep over `<body>` children, the key guard and the mousedown guard. Then log #4 in BACKLOG.md if you agree it's backlog.
+- **Watch out for:**
+  - jsdom doesn't enforce `inert`, so the tests check the attribute plus Radix's focus trap. The real "can't focus it" behaviour is browser-verified only.
+  - The inert sweep covers `<body>` children that exist when the prompt opens. Nothing new can open afterwards, because the key guard mutes the shortcuts and clicks can't reach the page.
+  - AC6 (browser restart) is still unverified; that's for the Tester.
+  - The browser checks signed the e2e user in and out, and its sessions out via kcadm. No app data was changed.

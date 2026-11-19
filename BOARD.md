@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-dev`.** It fixes the Reviewer's blocking finding on 3.8.8 (the Building row, §7 #1: an open ticket drawer keeps keyboard focus away from the session-expired prompt) on `feat/3.8.8-session-expiry`, then hands back to `/pmagent-review`. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-review`.** It re-reviews 3.8.8 (the Building row) on `feat/3.8.8-session-expiry`: the §7 #1 fix and nits in `3e09228`. Then it approves it for the Tester or sends it back. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
 >
 > **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
 > **Waiting to push:** nothing yet.
@@ -21,7 +21,7 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Stage | Next role | Branch | Updated | Notes |
 |---|---|---|---|---|---|---|
-| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `changes-requested` | **Product Developer** | `feat/3.8.8-session-expiry` | 2026-11-19 | Review: changes requested (1 blocking, 4 nits; §7). An open ticket drawer, ⌘K or `?` keeps keyboard focus away from the prompt, which fails AC8. Re-ran suites: web 87/87, api 123/123, typecheck and build green. |
+| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `review` | **Product / Code Reviewer** | `feat/3.8.8-session-expiry` | 2026-11-19 | Re-review. §7 #1 fixed in `3e09228`: the prompt is now a Radix Dialog and the rest of the page goes inert, so an open drawer or ⌘K can't keep focus. Nits #2, #3 and #5 fixed; #4 is for the backlog. Tests: web 92/92, api 123/123. |
 
 ## ✅ Reviewed — ready to build — [docs/phases/2-ready/](docs/phases/2-ready/)
 
