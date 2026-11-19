@@ -1,4 +1,4 @@
-import { keycloak } from './auth'
+import { keycloak, notifySessionExpired } from './auth'
 
 const API_URL = import.meta.env.VITE_API_URL as string
 
@@ -33,7 +33,11 @@ async function authedFetch(method: string, path: string, body?: unknown, signal?
   let res = await doFetch()
   if (res.status === 401) {
     const refreshed = await keycloak.updateToken(-1).then(() => true).catch(() => false)
-    if (refreshed) res = await doFetch()
+    if (refreshed) {
+      res = await doFetch()
+    } else {
+      notifySessionExpired()
+    }
   }
   return res
 }

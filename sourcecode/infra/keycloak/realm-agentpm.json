@@ -9,6 +9,9 @@
   "loginWithEmailAllowed": true,
   "resetPasswordAllowed": true,
   "verifyEmail": false,
+  "rememberMe": true,
+  "ssoSessionIdleTimeoutRememberMe": 2592000,
+  "ssoSessionMaxLifespanRememberMe": 2592000,
   "sslRequired": "none",
   "clients": [
     {

@@ -57,6 +57,12 @@ services:
         upsert_idp microsoft microsoft "$$MICROSOFT_CLIENT_ID" "$$MICROSOFT_CLIENT_SECRET"
         upsert_idp github    github    "$$GITHUB_CLIENT_ID"    "$$GITHUB_CLIENT_SECRET"
 
+        # ── Phase 3.8.8: "Remember me" with 30-day sessions. The realm JSON only
+        #    seeds a new Keycloak (--import-realm skips an existing realm). ──
+        $$kc update realms/agentpm -s rememberMe=true \
+          -s ssoSessionIdleTimeoutRememberMe=2592000 -s ssoSessionMaxLifespanRememberMe=2592000 \
+          && echo "keycloak-init: remember-me on (30-day sessions)"
+
         # Seamless first social login: disable the "Review Profile" step.
         rp=$$($$kc get "authentication/flows/first%20broker%20login/executions" -r agentpm \
               --fields id,displayName --format csv 2>/dev/null | grep -i "review profile" \

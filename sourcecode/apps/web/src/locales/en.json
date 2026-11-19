@@ -17,6 +17,11 @@
     "beta": "Beta",
     "betaTooltip": "Arrives with the agent release"
   },
+  "auth": {
+    "sessionExpiredTitle": "Session expired",
+    "sessionExpiredBody": "You've been signed out, so changes can't be saved right now. Log in again to keep working.",
+    "reloginButton": "Log in again"
+  },
   "beta": {
     "draftWithAI": "Draft with AI",
     "autoFill": "Auto-fill from prompt"

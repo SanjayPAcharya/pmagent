@@ -1,11 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
-import { keycloak } from './lib/auth'
+import { keycloak, watchSession } from './lib/auth'
 import { applyTheme, getInitialTheme } from './lib/theme'
 import './lib/i18n'
 import App from './App'
+import { AppToaster } from './components/AppToaster'
 import './index.css'
 
 // Apply the saved/OS theme before first paint to avoid a flash.
@@ -28,16 +28,14 @@ keycloak
     silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
   })
   .then((authenticated) => {
-    if (authenticated) {
-      keycloak.onTokenExpired = () => {
-        void keycloak.updateToken(30).catch(() => keycloak.login())
-      }
-    }
+    // 3.8.8: a session that ends later shows the session-expired prompt
+    // instead of redirecting mid-task.
+    if (authenticated) watchSession()
     root.render(
       <React.StrictMode>
         <QueryClientProvider client={queryClient}>
           <App />
-          <Toaster richColors position="bottom-right" theme="system" />
+          <AppToaster />
         </QueryClientProvider>
       </React.StrictMode>,
     )

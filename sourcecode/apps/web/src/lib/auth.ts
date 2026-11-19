@@ -7,6 +7,21 @@ export const keycloak = new Keycloak({
   clientId: import.meta.env.VITE_KEYCLOAK_CLIENT as string,
 })
 
+// 3.8.8: session-ending hooks, attached here, *before* main.tsx calls init(), on
+// purpose. keycloak-js arms its expiry timer only when it stores a token while
+// `onTokenExpired` is already set. Attached after init(), the first token of
+// every page load got no timer, so an idle tab never noticed its session had
+// ended. On a signed-out page there's no token, so nothing is armed, and the
+// bus below stays silent until watchSession() anyway.
+//
+// The access token is about to lapse: refresh it. If Keycloak refuses, the session is over.
+keycloak.onTokenExpired = () => {
+  void keycloak.updateToken(30).catch(() => notifySessionExpired())
+}
+// keycloak-js clears its own tokens when the SSO session ends (a refused
+// refresh, or its login-iframe check). A normal logout() just navigates away.
+keycloak.onAuthLogout = () => notifySessionExpired()
+
 export function getToken(): string | undefined {
   return keycloak.token
 }
@@ -29,4 +44,40 @@ export function register() {
 
 export function logout() {
   return keycloak.logout({ redirectUri: window.location.origin })
+}
+
+// ── 3.8.8 Session expiry ────────────────────────────────────────────────────
+// One page-wide "you've been signed out" signal, raised by a failed token
+// refresh, an API 401 that can't refresh, or a websocket whose token is refused.
+// <SessionExpiredModal /> shows it. It fires only for a page that started signed
+// in (never on the landing page), and only once: further failures while the
+// prompt is up are no-ops, so prompts never stack.
+type ExpiryListener = () => void
+const expiryListeners = new Set<ExpiryListener>()
+let hadSession = false
+let expired = false
+
+/**
+ * Called once from main.tsx when keycloak.init() comes back signed in. From
+ * then on, a session that ends raises the prompt. (The keycloak-js hooks that
+ * detect it are attached at the top of this file, before init().)
+ */
+export function watchSession() {
+  hadSession = true
+}
+
+export function onSessionExpired(listener: ExpiryListener): () => void {
+  expiryListeners.add(listener)
+  if (expired) listener() // mounted after the session had already ended
+  return () => {
+    expiryListeners.delete(listener)
+  }
+}
+
+export function notifySessionExpired() {
+  // Gate on hadSession, not keycloak.authenticated: by the time a refresh has
+  // failed, keycloak-js has usually cleared the token and `authenticated` already.
+  if (!hadSession || expired) return
+  expired = true
+  expiryListeners.forEach((fn) => fn())
 }

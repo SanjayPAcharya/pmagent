@@ -1,7 +1,7 @@
 # PmAgent by Buildenics — Product Guide
 
 > A plain-language guide to PmAgent by Buildenics. **Part 1** walks you through the app in the order you'll actually use it — each step tells you what to do next. **Part 2** is the full feature reference.
-> (Kept up to date as features ship — last updated **2026-08-06**.)
+> (Kept up to date as features ship — last updated **2026-11-19**.)
 
 PmAgent by Buildenics is a project-management tool built for software teams — and designed from day one so that AI agents can eventually pick up tickets and work alongside you. You organize work into **Organizations → Projects → Tickets**, move tickets across a board, and collaborate with comments, mentions, and notifications in real time.
 
@@ -16,6 +16,8 @@ PmAgent by Buildenics is a project-management tool built for software teams — 
 On the welcome screen, either:
 - click **Continue with Google / Microsoft / GitHub** (one tap), or
 - click **Sign in with email** → **Register** to create an email + password account.
+
+On your own computer, tick **Remember me** on the email sign-in page and you'll stay signed in for up to 30 days, even after closing the browser.
 
 You'll land on your home screen — empty for now.
 
@@ -81,6 +83,10 @@ That's the core loop. Everything else below is detail you'll discover as you go.
 ---
 
 # Part 2 — Feature reference
+
+## Signing in & staying signed in
+- **Remember me** (on the email sign-in page): keeps you signed in on this computer for up to 30 days, even if you close the browser. Leave it unticked on a shared computer: you're then signed out after 30 minutes without activity, and after 10 hours at most.
+- **When your sign-in runs out** (the time limit was reached, or you signed out in another tab), PmAgent doesn't bounce you to the login page mid-task. A **Session expired** message covers the page instead, because nothing can be saved until you're back. Click **Log in again** (or press Enter) and you return to the app.
 
 ## Organizations & members
 - Roles: **Owner** (full control), **Admin** (manage members, projects, templates), **Member** (day-to-day work). The last Owner can never be accidentally removed.
