@@ -1,7 +1,7 @@
 name: CI/CD
 
 # Test on PRs + pushes to main. On push to main: build images → push to GHCR →
-# deploy to the EC2 box (pull new images, migrate, up). See agentpm-plan Phase 3.
+# deploy to the EC2 box (pull new images, migrate, up). See docs/phases/4-completed/phase-3-dev-deployment-cicd.md.
 on:
   push:
     branches: [main]

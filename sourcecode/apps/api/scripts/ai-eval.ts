@@ -6,7 +6,7 @@
  * Calls BedrockProvider.generateDetailed() DIRECTLY — no HTTP, no Keycloak, no
  * Fastify plugin — against the real prompts in src/services/ai.prompts.ts and the
  * synthetic fixtures in scripts/ai-eval-fixtures.json, then scores each run and
- * writes release-doc/ai-eval-report.md.
+ * writes docs/reports/ai-eval-report.md.
  *
  * ⚠️ THIS SPENDS REAL BEDROCK TOKENS. It is deliberately NOT a vitest test and is
  *    never wired into CI (CI has no AWS credentials). Run it by hand when tuning.
@@ -31,7 +31,7 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ENV_PATH = resolve(HERE, '../../../.env') // sourcecode/.env
 const FIXTURES_PATH = resolve(HERE, 'ai-eval-fixtures.json')
-const REPORT_PATH = resolve(HERE, '../../../../release-doc/ai-eval-report.md') // repo-root/release-doc
+const REPORT_PATH = resolve(HERE, '../../../../docs/reports/ai-eval-report.md') // repo-root/docs/reports
 
 // Approximate Bedrock prices (USD per 1M tokens) — REFRESH at run time; here only
 // to print a ballpark. INR at ~83/USD. Keyed by a substring of the model id.

@@ -17,7 +17,7 @@ import type { JsonSchema } from './ai.service.js'
 // v2 (3.8.1 A2): testable-AC directive + anti-thin-input rule + "don't echo
 // verbatim"; per-endpoint temperature/maxTokens. A few-shot exemplar per endpoint
 // was measured and DROPPED — on Nova Micro it cost ~+23% input tokens with no
-// scorecard gain and two regressions (see release-doc/ai-eval-report.md).
+// scorecard gain and two regressions (see docs/reports/ai-eval-report.md).
 // v3 (3.8.3): added the sprint-goal / subtasks / quick-parse registry entries.
 // The three original prompts are unchanged; the bump keeps eval scorecards and
 // the A6 telemetry line attributable as the registry grows.

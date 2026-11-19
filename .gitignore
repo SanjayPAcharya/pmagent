@@ -6,8 +6,10 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Claude Code local settings (machine-specific)
-.claude/
+# Claude Code: keep machine-specific settings local, but share the role launchers
+# (.claude/commands/role-*.md) that start each pipeline session.
+.claude/*
+!.claude/commands/
 
 # Env files — defense in depth (sourcecode/.gitignore also covers these).
 # Only the committed *.example files are tracked.

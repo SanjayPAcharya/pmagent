@@ -23,7 +23,7 @@ export interface AppConfig {
 /**
  * Dev / Docker Compose: values come from the environment (.env).
  * In production this is where a secrets-manager loader hydrates process.env
- * before reading — see agentpm-plan/references/05-environment-secrets.md.
+ * before reading — see docs/reference/05-environment-secrets.md.
  */
 export function loadConfig(): AppConfig {
   return {

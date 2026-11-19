@@ -3,8 +3,8 @@
 This is the **pnpm workspace root** for AgentPM. All application code, infra-as-config, and Docker/Compose files live here. Run all `pnpm` / `docker compose` commands from this directory.
 
 **Meta lives one level up, in the repo root (`../`):**
-- [`../agentpm-plan/`](../agentpm-plan/README.md) — the spec (what to build, per phase)
-- [`../PROGRESS.md`](../PROGRESS.md) — live build status (update after every step)
+- [`../BOARD.md`](../BOARD.md) — live status of every work item
+- [`../docs/`](../docs/README.md) — workflow, phase specs, reference docs; to run this stack see [`../docs/reference/00-local-runbook.md`](../docs/reference/00-local-runbook.md)
 
 ## Layout (filled in during Phase 1)
 

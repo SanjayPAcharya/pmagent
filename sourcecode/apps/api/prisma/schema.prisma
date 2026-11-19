@@ -1,6 +1,6 @@
 // Phase 1 + Phase 2 (PM core) data models.
 // Phase 4 adds AgentAction/AutonomySettings/Approval/Integration + the Ticket
-// agentActions relation. See ../../../agentpm-plan/references/03-data-models.md.
+// agentActions relation. See ../../../docs/reference/03-data-models.md.
 
 generator client {
   provider = "prisma-client-js"

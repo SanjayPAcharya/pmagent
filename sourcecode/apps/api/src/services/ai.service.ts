@@ -13,7 +13,7 @@ import { ApiError } from '../lib/errors.js'
 // Phase 3.8 — AI provider seam.
 //
 // This is the SINGLE future switch point for the product's AI tiers (owner
-// strategy, see agentpm-plan/phases/phase-3.8-ai-tickets.md):
+// strategy, see docs/phases/4-completed/phase-3.8-ai-tickets.md):
 //   • v1  — Amazon Bedrock (BedrockProvider). Model is config: Nova Micro by
 //           default; flip BEDROCK_MODEL_ID to a Claude global.* profile for
 //           higher quality without touching routes or UI.

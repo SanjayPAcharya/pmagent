@@ -1,0 +1,29 @@
+# Phase 5.5 — Agent-First Surfaces (lands with Phase 5)
+
+> **Stage:** `parked` · **Next role:** — (unparks together with Phase 5) · **Branch:** — · **Size:** M
+
+> **Sequencing: all agent-related work happens AFTER [Phase 3](../4-completed/phase-3-dev-deployment-cicd.md) (deployment + CI/CD).** These items land **with [Phase 5](phase-5-github-code-agent.md)** (Code Agent) — hence renumbered **5.5** (was "2.7" while it sat parked in the 2.x line). Build deployment first; agent surfaces follow.
+
+> **Status: PARKED — to discuss.** Split out of [Phase 2.6](../4-completed/phase-2.6-ux-delight.md) on 2026-06-25. These are the "agent-first" delight items: their **UI** can ship before the Code/Spec agent exists, but their **action** only lights up once **[Phase 5](phase-5-github-code-agent.md)** lands. Parked here so 2.6 stays pure UX-on-existing-primitives, and so we can decide the agent UX deliberately rather than stubbing it piecemeal.
+>
+> Note: **A1 (ticket readiness meter)** already shipped in Phase 2.6 Slice 1 — it's pure derived UI over `goal`/`acceptanceCriteria`/`constraints` with no agent dependency, so it stayed in 2.6. The items below are the ones that imply an actual agent.
+
+## Items
+
+### A2. `@agent` as a first-class mention / assignee — M, Phase 5-dep
+Add CODE/SPEC agents to the existing `@mention` picker (comment box) and the assignee picker. Mentioning `@code` or assigning an agent is wired in the UI now; the trigger fires once Phase 5 lands. Reuses `assignedAgentType` (already on the schema) + the mention flow.
+**Open questions:** how do agents appear in member lists (synthetic members vs a separate group)? One agent per type per project, or per org? What does assigning to an agent *mean* before Phase 5 — disabled with a "coming soon" affordance, or hidden?
+
+### A3. "Draft with agent" skeleton — M, Phase 5-dep
+A subtle button in the drawer that asks an agent to expand a one-line title into `goal` + `acceptanceCriteria` + `constraints`, streamed in as editable placeholder text. Pairs naturally with the readiness meter (A1) — "draft" fills the ring.
+**Open questions:** streaming UX (placeholder vs inline diff), where the call goes (API proxy to the model), cost/billing guard, undo/accept model.
+
+### A4. Agent swimlane / badge on the board — S–M, Phase 5-dep
+A faint "🤖 in progress by agent" treatment (badge first, optional swimlane later) so human vs. agent work reads at a glance. Fed by the same `ticket.updated` WS event + the agent scalar columns.
+**Open questions:** badge vs full swimlane; how it interacts with the existing presence avatars; whether a human + agent can both be "on" a ticket.
+
+## Why parked (not dropped)
+- Each item's *value* is the agent doing something; a UI-only stub risks teaching a flow we'll redesign once the agent's real shape (run model, streaming, approval gate, cost) is known in Phase 5.
+- The schema already anticipates them (`assignedAgentType` scalar), so there's no migration debt in waiting.
+
+**Decision needed:** build the UI now as Phase-5-ready affordances, or fold these into Phase 5 itself so UI + behaviour land together. Revisit alongside the [Phase 5 plan](phase-5-github-code-agent.md).
