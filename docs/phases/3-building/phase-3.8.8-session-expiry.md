@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `dev` · **Next role:** Product Developer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline and never reviewed. The Developer puts the work on a branch, closes the known gaps (§3), then hands it to the Reviewer.
+> **Stage:** `review` · **Next role:** Product / Code Reviewer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch, closed the known gaps (§3) and handed it to the Reviewer.
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -98,3 +98,31 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
   - Decision 2 (keep the full-screen prompt) is made.
 - **Next role should:** do S0 so the work is on `feat/3.8.8-session-expiry`, then S1–S2, then hand to the Reviewer.
 - **Watch out for:** the eight files in §3 are the only ones S0 should commit; don't stage anything else.
+
+### 2026-11-19 · Product Developer → Product / Code Reviewer
+- **Did:** built S0–S2, one commit each.
+  - S0 [`9889365`]: the eight 2026-08-06 files, committed as built.
+  - S1 [`378fce5`]: closed gaps 1–6 (how and why for each is under S1 in §5). Also fixed a bug: the prompt never showed in the real case, because keycloak-js clears the token before the old check ran.
+  - S2 [`087a3dc`]: 12 new web tests and the `features.md` update. Gap 7 is done in S2, and gap 8 is re-run below.
+- **State:** branch `feat/3.8.8-session-expiry`, head `087a3dc` before this handoff commit. Ran in this session:
+  - `pnpm typecheck`: 4/4 green.
+  - web tests: 87/87 (75 + 12 new).
+  - api tests: 123/123.
+  - `pnpm --filter @agentpm/web build`: OK.
+- **How to see it:**
+  1. Open http://localhost:3000 signed out: the landing page shows and there's no prompt.
+  2. Click **Sign in with email**: the login page shows the styled "Remember me" checkbox.
+  3. Sign in as the e2e user, then end the session from Keycloak (admin console → Users → the user → Sessions → Sign out, or `kcadm create users/<id>/logout -r agentpm`).
+  4. The prompt appears at the next token refresh. Then: focus is on "Log in again", ⌘K and `?` do nothing, Enter opens the Keycloak login, and signing in returns you to the app.
+  5. A normal **Sign out** goes to the landing page with no prompt.
+  - I checked all of the above in the browser pane in this session. I forced the refresh with `keycloak.updateToken(-1)` instead of waiting it out.
+- **Migrations / realm / env:**
+  - No migrations, env vars or dependencies.
+  - Realm: `keycloak-init` and `prod-bootstrap.sh` now set `rememberMe=true` and both RememberMe lifetimes to 2592000. Already applied to the running dev Keycloak (re-ran `keycloak-init`; kcadm read-back shows `true`/`2592000`/`2592000`). Prod is parked and untouched.
+  - `docker-compose.override.yml` changed (the `keycloak-init` script). It's the one file outside §3's list, and S1 names it.
+- **Next role should:** review the three commits, starting with `lib/auth.ts` (`watchSession` + the once-only gate) and `SessionExpiredModal.tsx` (portal, `inert` on `#root`, capture-phase key guard).
+- **Watch out for:**
+  - **Timing for the Tester (AC1–AC3):** after an admin sign-out the prompt doesn't appear right away. The API checks tokens locally (JWKS), so calls keep working until the 5-minute access token (`accessTokenLifespan` 300) needs a refresh. Wait up to 5 minutes, or force a refresh. Signing out in *another tab* shows it within about 5 seconds, through keycloak-js's login-status iframe. That's a side effect, not the "sync across tabs" non-goal.
+  - **Edge case, not handled:** if the ⌘K palette or `?` help is open at the moment the session ends, Radix's own focus trap may keep focus in it. The prompt still sits on top (`z-[60]`, `pointer-events-auto`) and can be clicked. Rare, so I left it.
+  - **AC6** (survives a browser restart) isn't verified yet; it needs a real restart or a cookie check.
+  - My browser checks signed the e2e user in and out (and signed its sessions out once via kcadm). No app data was changed.

@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-dev`.** It finishes 3.8.8 (the Building row) first: it puts the work on a branch, closes the known gaps, and hands off to the Reviewer. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-review`.** It reviews 3.8.8 (the Building row) on `feat/3.8.8-session-expiry`, then approves it for the Tester or sends it back. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
 >
 > **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
 > **Waiting to push:** nothing yet.
@@ -21,7 +21,7 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Stage | Next role | Branch | Updated | Notes |
 |---|---|---|---|---|---|---|
-| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `dev` | **Product Developer** | none yet (uncommitted on `dev`) | 2026-11-19 | Built 2026-08-06, never reviewed. Developer: put the work on a branch, close the known gaps listed in the item, then hand to the Reviewer. |
+| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `review` | **Product / Code Reviewer** | `feat/3.8.8-session-expiry` | 2026-11-19 | S0–S2 built, one commit each. The prompt didn't fire in the real case; that's fixed. Remember me is applied to the dev realm. Tests: web 87/87, api 123/123. |
 
 ## ✅ Reviewed — ready to build — [docs/phases/2-ready/](docs/phases/2-ready/)
 
