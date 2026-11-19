@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `test` · **Next role:** Product Tester · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back once (§7, fixed in `3e09228`, approved). The Tester sent it back once (§8 AC1: an idle tab never showed the prompt). That is fixed in `90e81b0`, and the Reviewer approved the fix for the Tester's re-run.
+> **Stage:** `release` · **Next role:** Product DevOps · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back once (§7, fixed in `3e09228`, approved). The Tester sent it back once (§8 AC1: an idle tab never showed the prompt). That is fixed in `90e81b0`, the Reviewer approved the fix, and the Tester's re-run passed (§8, round 2).
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -159,7 +159,9 @@ The fix is right. I read `keycloak-js@26.2.4` `#setToken` (`lib/keycloak.js:1575
 - Not run by me: the 5-minute idle-tab browser check. The Developer ran it; the Tester re-runs it.
 
 ## 8. Test report — *Tester*
-**Verdict: Fail** (2026-11-19). AC1 fails in its main case, an idle tab (repro below). Every other AC passes. Two checks couldn't be done in the browser pane and are marked: the VoiceOver part of AC8, and a real browser restart for AC6, which was checked through the cookies as §6 allows.
+**Round 2 verdict: Pass** (2026-11-19, at `ec95616`). See [Round 2](#round-2--re-test-of-the-ac1-fix) at the end of this section.
+
+**Round 1 verdict: Fail** (2026-11-19). AC1 fails in its main case, an idle tab (repro below). Every other AC passes. Two checks couldn't be done in the browser pane and are marked: the VoiceOver part of AC8, and a real browser restart for AC6, which was checked through the cookies as §6 allows.
 
 **Environment**
 - Branch `feat/3.8.8-session-expiry` at `2d6ce99`, clean tree. Ran `docker compose restart api keycloak`, then `docker compose up keycloak-init` (the realm step from the Handoff log).
@@ -237,6 +239,40 @@ The fix is right. I read `keycloak-js@26.2.4` `#setToken` (`lib/keycloak.js:1575
 - AC7's temporary `rememberMe=false` and `0` lifetimes were put back by `keycloak-init` itself. I read back the full set at the end: unchanged from the start.
 - Ended every e2e-user Keycloak session, including the two from the cookie check and the e2e run's own. `agentpm-web` direct-access grants are still off, and no realm timeout was shortened.
 - No owner data ("Oracle") was touched.
+
+### Round 2 — re-test of the AC1 fix
+**Verdict: Pass** (2026-11-19). AC1 now passes on my own round 1 repro: a fresh page, an idle tab, and no forced refresh. The regression pass over the other ACs and the core flow found nothing. The same two checks as round 1 can't be done in the pane: VoiceOver (AC8), and a real browser restart (AC6, checked through the cookies and Keycloak's session flag).
+
+**Environment**
+- Branch `feat/3.8.8-session-expiry` at `ec95616`, clean tree. Ran `docker compose restart api`. Health: api `/health` and `/ready` 200, web 200, Keycloak 200. No realm step was needed: `90e81b0` has no realm or env changes.
+- `pnpm typecheck --force`: 4/4 tasks, 0 cached.
+- `pnpm --filter @agentpm/api test`: 22 files, **123/123**.
+- `pnpm --filter @agentpm/web test`: 19 files, **98/98**.
+- `pnpm --filter @agentpm/web build`: OK.
+- `pnpm --filter @agentpm/web test:e2e`: **1 passed, 2 skipped.** The a11y spec passed with the new `AppToaster` in the tree. Core-flow skips itself (BACKLOG T6), so I did the core flow by hand.
+- Browser: the in-app pane (hidden, so it ran as a background page), signed in as the seeded e2e user.
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC1 | **pass** | My round 1 repro, with no forced refresh.<br>• **Setup:** a fresh full page load straight onto `/…/board/ticket/2` (a test ticket I created). The session was restored silently (check-sso). `tokenTimeoutHandle` was **set at once**; in round 1 it was empty.<br>• **The wait:** I typed "idle draft" into the drawer's comment box, then ended the session with kcadm `users/<id>/logout` at 18:38:00. After that I touched nothing and only ran read-only checks. The token expired at 18:42:41.<br>• **Result:** the prompt appeared **by itself at 18:42:41, 0.1 s after expiry**, with **0 API calls** during the wait. The network log ends with the token endpoint's `400`.<br>• **State:** focus moved from the textarea to "Log in again". The drawer stayed open and inert, `#root` was inert, the draft was unchanged, and there was **no toast area and no toast** behind the prompt. |
+| AC2 | pass | After an admin sign-out, three API calls sent at once with a token the API rejects all got 401. **One** prompt appeared, with focus on "Log in again", and the toast area was removed. |
+| AC3 | pass | Done twice. Enter on "Log in again" opens the Keycloak login with `redirect_uri` set to the current URL, and after sign-in I was back on `/…/board/ticket/2` (and `/…/board`) with no prompt and nothing inert. Toasts work again after re-login: changing a priority showed "Saved · Undo". |
+| AC4 | pass | Signed out on `/`: the hooks are attached at load, but no timer is armed, there's no prompt and nothing is inert. A normal **Sign out** leads to the landing page with no prompt after 6 s. |
+| AC5 | pass | Not touched by the fix. Re-checked: "Remember me" is present, labelled, and styled with the brand primary (`accent-color` rgb(0,123,255) in dark). |
+| AC6 | pass (session flag) | Not touched by the fix; the round 1 cookie check stands. Keycloak recorded `rememberMe: true` for the ticked sign-in and `false` for the unticked one. |
+| AC7 | pass | Not touched by the fix. The kcadm read-back is unchanged: `rememberMe` true, both RememberMe lifetimes 2592000, normal 1800/36000, `verifyEmail` false. |
+| AC8 | pass (keyboard); VoiceOver **not verified** | With the drawer open behind the prompt, focus stays on "Log in again" through Tab, Shift+Tab, Esc, a real `?`, ⌘K and a backdrop click. No palette or help opened, and the draft was unchanged. VoiceOver: not in the pane (see round 1 for the accessibility tree). |
+| AC9 | pass | ⌘K opens the palette and `?` opens "Keyboard shortcuts". A forced refresh with a live session gives a new token, re-arms the timer and shows no prompt. Core flow: create ticket → drawer → comment posted → priority change saved with a toast. Sign out leads to the landing page. |
+
+**Regressions found:** none. The new `AppToaster` hides toasts only after the session has ended, and they return after re-login (checked above).
+
+**Clean-up**
+- Permanently deleted my test ticket A11Y-2, with its comment, from the e2e user's "A11y Org 1783497623300". There are 0 rows left in Ticket, Comment, Notification, TicketActivity and TicketWatcher.
+- The append-only AuditLog keeps its one entry for the ticket. The A11y Project's ticket counter is now 2. Both are harmless.
+- Deleted the "A11y Org t388r2" org that the e2e run created, along with its project and membership. The e2e user is back to its 18 test orgs.
+- Ended every e2e-user Keycloak session; none are left.
+- No realm setting was changed this round. The read-back at the end matches the start, and `agentpm-web` direct-access grants are still off.
+- No owner data was touched, and no files under `apps/web` were edited.
 
 ## 9. Release — *DevOps*
 _Not started._ The realm settings must be applied to the running dev Keycloak (kcadm or a re-run of `keycloak-init`), not just written into the JSON.
@@ -364,3 +400,18 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
 - **State:** branch `feat/3.8.8-session-expiry`, reviewed at `da6f52d`, with no product code changed by me. Ran: typecheck 4/4 (uncached), web 98/98, api 123/123, web build OK. The new timer test fails 3/3 against the old `auth.ts` and passes against the new one.
 - **Next role should:** re-run §8's AC1 repro on a **fresh page load**: sign in, open a ticket drawer and type a draft, end the session, then touch nothing for more than 5 minutes. The prompt should appear by itself at expiry, with no toast behind it. Then a quick AC2/AC4/AC9 regression pass. The other ACs passed before and this fix doesn't touch them.
 - **Watch out for:** don't force a refresh before the wait, and don't edit files under `apps/web/src` during it (Vite reloads the page). Restore any test data you create.
+
+### 2026-11-19 · Product Tester → Product DevOps
+- **Did:** re-tested `90e81b0` (round 2 in §8). Verdict: **Pass**.
+  - AC1 passes on my round 1 repro: fresh page, ticket drawer open with a draft, session ended, nothing touched. The prompt appeared by itself 0.1 s after the token expired, with 0 API calls and no toast behind it.
+  - AC2–AC9 regression: all pass. AC8's VoiceOver part is still not verified (no screen reader in the pane). AC6 rests on round 1's cookie check plus Keycloak's session flag.
+  - No product code changed.
+- **State:** branch `feat/3.8.8-session-expiry` at `ec95616` before this commit.
+  - Ran: typecheck 4/4 (0 cached), api 123/123, web 98/98, web build OK.
+  - e2e: 1 passed (a11y), 2 skipped (core-flow skips itself, BACKLOG T6).
+  - Test data is cleaned up: test ticket and e2e org deleted, no e2e-user Keycloak sessions left. The realm is unchanged.
+- **Next role should:** merge `feat/3.8.8-session-expiry` into `dev` (`--no-ff`), then smoke it on the local stack. The realm settings (`rememberMe` plus both 30-day lifetimes) are already on the running dev Keycloak, put there by `keycloak-init`. Confirm them with a kcadm read-back as §9 says.
+- **Watch out for:**
+  - Vite reloads the page when a file under `apps/web/src` changes, so a smoke run of the idle-tab case needs a quiet tree for 5 minutes.
+  - The new backlog lines from this item (B4–B7, T6, T7, F10) are for Planning to triage, not blockers.
+  - Nothing has been pushed.

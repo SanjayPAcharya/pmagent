@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-test`.** It re-tests 3.8.8 (the Building row) on `feat/3.8.8-session-expiry`: the AC1 idle-tab repro on a fresh page load (fix `90e81b0`, approved), plus a quick regression pass. Then it passes the item to DevOps or sends it back. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-devops`.** The Tester passed 3.8.8 (§8, round 2). DevOps merges `feat/3.8.8-session-expiry` into `dev` (`--no-ff`), smokes it on the local stack, confirms the realm settings with kcadm, and closes the item. After that, 3.8.3-t1 is next in Ready (`/pmagent-dev`). Each session updates this line and tells you which command comes next.
 >
 > **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
 > **Waiting to push:** nothing yet.
@@ -21,7 +21,7 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Stage | Next role | Branch | Updated | Notes |
 |---|---|---|---|---|---|---|
-| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `test` | **Product Tester** | `feat/3.8.8-session-expiry` | 2026-11-19 | Re-review 2: approved with nits. The AC1 idle-tab fix (`90e81b0`) is confirmed against the keycloak-js source, and its new test fails on the old code. Comment nit logged as BACKLOG T7. Re-ran suites: web 98/98, api 123/123, typecheck and build green. Tester: re-run the AC1 idle-tab repro. |
+| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `release` | **Product DevOps** | `feat/3.8.8-session-expiry` | 2026-11-19 | Test round 2: **Pass**. AC1's idle-tab repro now shows the prompt by itself 0.1 s after expiry, with no toast behind it. AC2–AC9 regression clean (VoiceOver not verified; AC6 by cookies and session flag). Suites: api 123/123, web 98/98, typecheck and build green, e2e a11y passed. Test data cleaned up; realm unchanged. |
 
 ## ✅ Reviewed — ready to build — [docs/phases/2-ready/](docs/phases/2-ready/)
 
