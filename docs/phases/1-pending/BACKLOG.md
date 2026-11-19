@@ -14,6 +14,7 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | B1 | Deleting a ticket leaves its dependency rows behind (dangling "blocked by" links). "Delete" archives the ticket, so it still shows as a blocker. **→ Promoted to [3.6-b](phase-3.6-b-loose-ends.md) on 2026-11-19.** | Noticed during 3.8.4 | 2026-07-16 |
 | B2 | The drawer's collapsed Relationships header never shows the blocked badge, because `api.getTicket` returns no blocker count. **→ Promoted to [3.6-b](phase-3.6-b-loose-ends.md) on 2026-11-19.** | Noticed during 3.7.2 | 2026-07-07 |
 | B3 | Line 21 of `sourcecode/apps/api/src/services/ai.prompts.ts` says the subtasks and quick-parse prompts exist; only sprint-goal does. Fix it when 3.8.3 lands. **→ In [3.8.3-t1](../2-ready/phase-3.8.3-t1-ai-subtasks.md) step S1 (2026-11-19).** | Restructure audit | 2026-11-19 |
+| B4 | A network blip during a token refresh (Keycloak briefly unreachable) shows the "Session expired" prompt, though the session may still be fine. keycloak-js rejects but keeps the token in that case. Retry once while `keycloak.token` is still set (`sourcecode/apps/web/src/lib/auth.ts`, `onTokenExpired`; also the 401 path in `lib/api.ts`). Recoverable today: "Log in again" signs straight back in. | 3.8.8 review nit #4 | 2026-11-19 |
 
 ## Features (deferred or requested)
 

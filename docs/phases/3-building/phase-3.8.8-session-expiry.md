@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `review` · **Next role:** Product / Code Reviewer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back for one blocking fix (§7), and the fix is in `3e09228`, ready for re-review.
+> **Stage:** `test` · **Next role:** Product Tester · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back for one blocking fix (§7), the fix landed in `3e09228`, and the re-review approved it for the Tester.
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -116,6 +116,26 @@ The core is sound. The once-only bus gated on `watchSession()` fixes the real bu
 - Read-only kcadm against the running dev Keycloak: `rememberMe` true, both RememberMe lifetimes 2592000, `verifyEmail` false. Normal lengths are 1800 s idle and 36000 s max, which matches features.md's "30 minutes … 10 hours".
 - Read the full `dev...feat/3.8.8-session-expiry` diff (16 files) and the security checklist. Also checked the app's other keydown handlers: none act on Enter or Space, so the guard letting those through is safe.
 
+**Re-review — Approved with nits** (2026-11-19, reviewed at `5adb156`). The blocking finding is fixed. One nit (#4) is left, and it's logged as [BACKLOG B4](../1-pending/BACKLOG.md).
+
+| # | Status | Checked |
+|---|---|---|
+| 1 | ✅ fixed | `SessionExpiredModal.tsx` is now a Radix Dialog, the same primitive as `?` help and the drawer. The new layer pauses the drawer's focus trap, and the prompt can't be dismissed: Esc and outside clicks are blocked, and `open` is controlled with no `onOpenChange`. Every other `<body>` child goes inert. The sweep only removes the `inert` it added itself, so cleanup is safe. The window-capture key guard runs before Radix's document-level Escape handler, so the drawer can't be closed underneath. The mousedown guard keeps focus on the button. My own throwaway open-`Sheet` test from the first review now passes: focus moves to "Log in again" and is still there after Tab. Before the fix, it stayed in the drawer. The new drawer suite covers Shift+Tab, a forced `focus()`, `inert` and `aria-hidden`. |
+| 2 | ✅ fixed | `Layout.tsx` is identical to `dev` again. |
+| 3 | ✅ fixed | Mounted once in `App.tsx`, after `<Routes>`, so `/invite/:token` is covered. The `watchSession()` gate keeps it off signed-out pages. A plus: if the user presses the browser's Back button, `RequireAuth` swaps to the landing page behind the prompt, and the prompt stays up instead of disappearing. |
+| 4 | ⏭ deferred | Logged as BACKLOG B4. Not a regression: the old code redirected to the login in the same case. |
+| 5 | ✅ fixed | The `api.test.ts` 401 tests are meaningful. Two parallel 401s plus a refused refresh fire the bus once and both calls reject. A good refresh retries with no prompt. |
+
+No new findings. Copy, tokens and lucide icons are unchanged, there are no new i18n keys, and no product code changed beyond `3e09228`.
+
+**What I ran** (re-review, this session, on `feat/3.8.8-session-expiry` at `5adb156`, clean tree):
+- `pnpm typecheck --force`: 4/4 tasks green, none cached.
+- `pnpm --filter @agentpm/web test`: 17 files, **92/92** (87 + 5 new).
+- `pnpm --filter @agentpm/api test`: 22 files, **123/123**.
+- `pnpm --filter @agentpm/web build`: OK.
+- My scratchpad open-`Sheet` test from the first review (not committed), as above.
+- Not run by me: a browser check. The Developer did one with ⌘K; the Tester covers the drawer and AC1–AC9 on the stack.
+
 ## 8. Test report — *Tester*
 _Not started._
 
@@ -192,3 +212,9 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
   - The inert sweep covers `<body>` children that exist when the prompt opens. Nothing new can open afterwards, because the key guard mutes the shortcuts and clicks can't reach the page.
   - AC6 (browser restart) is still unverified; that's for the Tester.
   - The browser checks signed the e2e user in and out, and its sessions out via kcadm. No app data was changed.
+
+### 2026-11-19 · Product / Code Reviewer → Product Tester
+- **Did:** re-reviewed the fix in `3e09228`. Verdict: **approved with nits** (re-review table in §7). #1, #2, #3 and #5 are fixed. #4 is logged as BACKLOG B4.
+- **State:** branch `feat/3.8.8-session-expiry`, reviewed at `5adb156`, with no product code changed by me. Ran: typecheck 4/4 (uncached), web 92/92, api 123/123, web build OK. My throwaway open-drawer test now passes.
+- **Next role should:** run §6 on the local stack. For AC1 and AC8, end the session with a **ticket drawer** open, not only ⌘K. The jsdom tests can't enforce `inert`, and the Developer browser-checked only ⌘K. The e2e user has no tickets, so create one and delete it afterwards (restore test data).
+- **Watch out for:** after an admin sign-out, the prompt waits for the next token refresh (up to 5 minutes), unless you force one with `keycloak.updateToken(-1)`. AC6 (survives a browser restart) is still unverified. Restore any realm timeout you shorten.

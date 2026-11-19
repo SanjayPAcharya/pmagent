@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-review`.** It re-reviews 3.8.8 (the Building row) on `feat/3.8.8-session-expiry`: the §7 #1 fix and nits in `3e09228`. Then it approves it for the Tester or sends it back. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-test`.** It tests 3.8.8 (the Building row) on `feat/3.8.8-session-expiry` against every AC on the local stack, including the session ending with a ticket drawer open. Then it passes the item to DevOps or sends it back. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-devops`). Each session updates this line and tells you which command comes next.
 >
 > **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
 > **Waiting to push:** nothing yet.
@@ -21,7 +21,7 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Stage | Next role | Branch | Updated | Notes |
 |---|---|---|---|---|---|---|
-| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `review` | **Product / Code Reviewer** | `feat/3.8.8-session-expiry` | 2026-11-19 | Re-review. §7 #1 fixed in `3e09228`: the prompt is now a Radix Dialog and the rest of the page goes inert, so an open drawer or ⌘K can't keep focus. Nits #2, #3 and #5 fixed; #4 is for the backlog. Tests: web 92/92, api 123/123. |
+| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `test` | **Product Tester** | `feat/3.8.8-session-expiry` | 2026-11-19 | Re-review: approved with nits. The drawer-focus fix (`3e09228`) checks out, and nit #4 is logged as BACKLOG B4. Re-ran suites: web 92/92, api 123/123, typecheck and build green. Tester: check AC1/AC8 with a ticket drawer open. |
 
 ## ✅ Reviewed — ready to build — [docs/phases/2-ready/](docs/phases/2-ready/)
 
