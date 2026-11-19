@@ -33,9 +33,9 @@
    - Fill §9 Release: merge commit, env steps applied, smoke results.
    - Move the BOARD row into the Completed table with the date and merge commit.
    - Commit `docs(board): <id> done`, then delete the branch (`git branch -d feat/<branch>`).
-6. **Report to the owner:** merged locally on `dev`. Ask whether to push `dev` to origin, and push only on an explicit yes. Don't merge to `main`: it's frozen while prod is parked.
+6. **Set the ▶ line** (`/pmagent-dev` if `2-ready/` has an item, else `/pmagent-pm` if a pending item is at `pm-review`, else `/pmagent-planning`). Add the item to the **Waiting to push** line on BOARD.md. Don't ask about pushing: the Overview session asks the owner once for a batch. Never push yourself, and don't merge to `main` (frozen while prod is parked).
 
-**If the smoke fails after the merge:** with the owner's OK, revert the merge (`git revert -m 1 <merge-sha>`). Then set Stage `changes-requested`, Next role Developer, and give exact details.
+**If the smoke fails after the merge:** revert the merge (`git revert -m 1 <merge-sha>`; it adds a commit and loses nothing). Then set Stage `changes-requested`, Next role Developer, and give exact details.
 
 ## Keep the environment healthy (any session)
 - A from-scratch bring-up works by following the runbook, and the runbook matches reality. Fix it when it doesn't.

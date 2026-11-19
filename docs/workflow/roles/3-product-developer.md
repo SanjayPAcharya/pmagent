@@ -16,7 +16,7 @@
 1. **Pick the item.**
    - If something in `3-building/` is at Stage `dev` or `changes-requested`, that's yours.
    - Otherwise take the top item in `2-ready/`, but only if `3-building/` is empty (WIP 1).
-2. **Environment.** Docker Desktop running, `docker compose ps` healthy, `git status` shows only what you expect. If the stack won't come up after the runbook's fixes, stop: say so in the Handoff log and on BOARD.md, and ask the owner to run a DevOps session.
+2. **Environment.** Docker Desktop running, `docker compose ps` healthy, `git status` shows only what you expect. If the stack won't come up after the runbook's fixes, stop: say so in the Handoff log, and set BOARD.md's ▶ line to `/pmagent-devops`. DevOps fixes it and hands back to you.
 3. **Starting a new item.**
    - On `dev`: `git mv` the file `2-ready/` → `3-building/`, set Stage `dev`, move its BOARD row to Building, and commit `docs(board): start <id>`.
    - Then cut the branch: `git switch -c feat/<id>-<slug>`.

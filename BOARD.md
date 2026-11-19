@@ -1,6 +1,9 @@
 # PmAgent — Board
 
 > **▶ Next session: `/pmagent-dev`.** It finishes 3.8.8 (the Building row) first: it puts the work on a branch, closes the known gaps, and hands off to the Reviewer. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
+>
+> **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
+> **Waiting to push:** nothing yet.
 
 The one place that says what's done, what's next, and who has the baton. **Every role session reads this first and updates its item's row when it hands off.** The four groups mirror the folders in [`docs/phases/`](docs/phases/). How the pipeline works: [docs/workflow/README.md](docs/workflow/README.md).
 

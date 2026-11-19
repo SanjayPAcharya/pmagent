@@ -41,7 +41,8 @@ A work item is **one markdown file**. It moves between four folders under [`docs
 
 - **`blocked`** means an owner decision (⛔) is needed. It's listed on BOARD.md under "Owner decisions".
 - **`parked`** means deliberately on hold, e.g. everything prod/AWS.
-- **WIP limit:** one item in `3-building/` at a time. Planning and the PM can keep shaping pending items meanwhile.
+- **WIP limit:** one item in `3-building/` at a time.
+- **One agent at a time.** All six sessions share this folder and the Docker stack, so only the role named on BOARD.md's ▶ line works; the others wait.
 - **Unit of flow:** one file = one pass through the pipeline, ideally 1–5 build steps. The PM splits anything bigger into lettered items (`3.8.3-t1`, `3.8.3-x1`).
 
 ## Every session, every role
@@ -54,10 +55,11 @@ A work item is **one markdown file**. It moves between four folders under [`docs
 1. Update the item's header line: Stage, Next role, Branch.
 2. Append a handoff note to the item's **Handoff log** (template below).
 3. Update the item's row on BOARD.md. If its group changed, `git mv` the file and move the row to the matching table. Then update the **▶ Next session** line at the top of BOARD.md:
-   - normally it's the next role in order (after DevOps, back to `/pmagent-planning`);
-   - if you sent the item back, it's the role you sent it to.
+   - normally it's the next role in order;
+   - if you sent the item back, it's the role you sent it to;
+   - after DevOps closes an item: `/pmagent-dev` if `2-ready/` has an item, else `/pmagent-pm` if a pending item is at `pm-review`, else `/pmagent-planning` (the owner's turn).
 4. Commit those changes (see Git flow). **Never push.**
-5. Tell the owner in two or three lines what you did, what's next, and which command starts the next session.
+5. End your turn with two or three plain lines: what you did and what's next. **Don't message or wake other sessions.** The Overview session does that (see Autopilot).
 
 **Handoff note template** (newest at the bottom of the log):
 
@@ -74,12 +76,28 @@ A work item is **one markdown file**. It moves between four folders under [`docs
 - **Stay in your lane.** Planning and the PM don't write product code. The Reviewer and Tester never edit product code; they write findings and send the item back. (The Tester may add test code.) The Developer doesn't change scope: gaps go back to the PM.
 - **Backwards is normal.** `changes-requested` from the Reviewer or Tester goes back to the Developer, and the PM can send a draft back to Planning. Say why in the note.
 - **Every code change gets reviewed.** After `changes-requested`, the fix goes Developer → Reviewer → Tester again. The Reviewer can keep a re-review short when the fix is small.
-- **Owner decisions are the owner's.** Mark them ⛔ in the item and on BOARD.md, then ask in chat. Don't guess on the owner's behalf.
+- **What goes to the owner.** The owner does Planning: what to build and what it should do. Ask the owner only when a requirement is unclear or contradicts the plan; mark it ⛔ in the item and on BOARD.md. Technical choices (how to build, test or run it) are yours: decide, and write one line on why in the item.
 - **Out-of-scope ideas** go into [`1-pending/BACKLOG.md`](../phases/1-pending/BACKLOG.md) as one line (date, source). Don't build them.
 - **Verify, don't assume.** A claim in a handoff note ("tests green", "browser-verified") must come from something you ran in this session, and you say what you ran.
 - **Local only.** Everything runs on the local Docker stack ([runbook](../reference/00-local-runbook.md)). Prod and AWS are parked until the owner says otherwise.
-- **Go slowly.** One item at a time, and check in with the owner before anything significant.
+- **Small steps.** One item at a time, one build step per commit.
 - **Restore test data** you change in the dev database.
+
+## Autopilot (the Overview session)
+
+The owner plans; the rest runs by itself. A separate **Overview session** is the only dispatcher:
+
+1. When a role session ends its turn, the Overview session reads the ▶ line on BOARD.md and wakes the session it names.
+2. That repeats through PM → Developer → Reviewer → Tester → DevOps, including the fix loops, until the item is merged into `dev` and running on the local Docker stack. Then it moves on to the next item.
+3. The Overview session stops and asks the owner only when:
+   - the ▶ line names `/pmagent-planning` (nothing left that the owner has planned);
+   - an item is `blocked` (⛔);
+   - an agent asks the owner something;
+   - an item has been sent back three times;
+   - a step would be destructive;
+   - finished work is waiting to be pushed (asked as one batch).
+
+Agents never wake each other. They finish their handoff, update the ▶ line and end their turn.
 
 ## Git flow
 

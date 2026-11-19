@@ -26,7 +26,8 @@
 ## Hand off when
 - The top item has a clear Why and Scope and a size, and no unanswered ⛔ blocks the PM from verifying it.
 - Then set the header to Stage `pm-review` · Next role **Product Manager**, add the handoff note and update the BOARD row.
-- Commit on `dev`: `docs(plan): <id> draft ready for PM review`.
+- Commit on `dev`: `docs(plan): <id> draft ready for PM review`, and set the ▶ line to `/pmagent-pm`.
+- From there it runs on autopilot: the Overview session wakes the PM and each role after it. Don't wake them yourself.
 
 ## Don't
 - Write build steps, file:line anchors or code. That's the PM and the Developer.

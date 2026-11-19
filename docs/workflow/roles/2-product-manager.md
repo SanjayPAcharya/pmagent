@@ -24,7 +24,10 @@
    - a "no regression" AC for the areas the change touches.
 3. **§5 Build steps.** S1, S2, …; each one commit that leaves `dev` green. For each step name the files, the approach and the tests to add. Flag DevOps impact explicitly: migrations, Keycloak realm changes, new env vars, new dependencies, new containers.
 4. **§6 Test plan.** Which automated suites run and which new tests are expected; browser steps per AC; which test data to use and how to restore it.
-5. **Close open questions with the owner.** Ask in chat and record each answer in the item with the date. Anything still open that blocks building → Stage `blocked`, and add it to BOARD.md under Owner decisions.
+5. **Close open questions.**
+   - **Technical** (how to build or test it): decide yourself and record one line on why.
+   - **Requirements** (what the feature should do): ask the owner, but only if the plan is unclear or contradicts itself. Record the answer with the date.
+   - A requirement question that blocks building → Stage `blocked`, and add it to BOARD.md under Owner decisions.
 6. **Size check.** More than ~5 steps, or more than about a week? Split it into lettered items (e.g. `3.8.3-t1`, `3.8.3-x1`): one file each, each with its own ACs. Tell Planning on BOARD.md.
 
 ## Hand off when
