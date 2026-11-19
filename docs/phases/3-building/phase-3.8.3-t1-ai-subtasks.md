@@ -1,7 +1,7 @@
 # Phase 3.8.3-t1 — AI suggests subtasks
 
-> **Stage:** `ready` · **Next role:** Product Developer · **Branch:** — (cut `feat/3.8.3-t1-ai-subtasks` from `dev` once 3.8.8 has merged) · **Size:** M (3 build steps)
-> Checked against the code on 2026-11-19. Waits in Ready until 3.8.8 leaves Building. The sister item X1 (natural-language quick-add) is in [`1-pending/`](../1-pending/phase-3.8.3-x1-nl-quick-add.md); S1 (sprint goal) shipped on 2026-07-13 (record at the bottom).
+> **Stage:** `dev` · **Next role:** Product Developer · **Branch:** `feat/3.8.3-t1-ai-subtasks` · **Size:** M (3 build steps)
+> Started 2026-11-19 by the Developer, after 3.8.8 merged. The sister item X1 (natural-language quick-add) is in [`1-pending/`](../1-pending/phase-3.8.3-x1-nl-quick-add.md); S1 (sprint goal) shipped on 2026-07-13 (record at the bottom).
 
 ## 1. Why — *Product Planning*
 - **Problem:** to break a ticket into smaller pieces today, you type each subtask by hand, one title at a time. You get no acceptance criteria, and you have to think up the split yourself.

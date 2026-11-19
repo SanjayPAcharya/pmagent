@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-dev`.** 3.8.8 is merged into `dev` and done. The Developer starts 3.8.3-t1 (AI suggests subtasks) from `dev` on `feat/3.8.3-t1-ai-subtasks`. Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-dev`.** The Developer is building 3.8.3-t1 (AI suggests subtasks) on `feat/3.8.3-t1-ai-subtasks`, then hands it to `/pmagent-review`. Each session updates this line and tells you which command comes next.
 >
 > **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
 > **Waiting to push:** `dev` (17 commits ahead of `origin/dev` before the 3.8.8 close-out commit): 3.8.8 session expiry (merge `2fdf616`), plus the earlier docs commits (workflow autopilot, 3.6-b draft, 3.8.3-t1 ready). Not `main`.
@@ -21,13 +21,13 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Stage | Next role | Branch | Updated | Notes |
 |---|---|---|---|---|---|---|
-| — | *Nothing building.* 3.8.3-t1 is next (Ready). | — | — | — | 2026-11-19 | — |
+| 3.8.3-t1 | [AI suggests subtasks](docs/phases/3-building/phase-3.8.3-t1-ai-subtasks.md) | `dev` | **Product Developer** | `feat/3.8.3-t1-ai-subtasks` | 2026-11-19 | Started 2026-11-19. Size M, 3 steps: S1 API → S2 review logic → S3 drawer UI + guide. |
 
 ## ✅ Reviewed — ready to build — [docs/phases/2-ready/](docs/phases/2-ready/)
 
 | Phase | Work item | Size | Updated | Notes |
 |---|---|---|---|---|
-| 3.8.3-t1 | [AI suggests subtasks](docs/phases/2-ready/phase-3.8.3-t1-ai-subtasks.md) | M (3 steps) | 2026-11-19 | Checked against the code on 2026-11-19. 11 ACs, S1 API → S2 review logic → S3 drawer UI + guide. DevOps impact: none. Owner decisions recorded: the new subtasks copy only the parent's workstream, and their criteria are saved as plain bullets. Start it after 3.8.8 has merged (both touch `lib/api.ts` and `en.json`). |
+| — | *Nothing ready.* 3.8.3-x1 is next once the PM writes it up (Pending #1). | — | 2026-11-19 | — |
 
 ## ⏳ Pending — [docs/phases/1-pending/](docs/phases/1-pending/)
 *The top row is what the Product Manager picks up next. Planning owns the order (decision 1 below; the 3.6 part was revised by decisions 6–8).*
@@ -93,7 +93,7 @@ These were made by the owner on 2026-11-19, in the Planning session:
 | 3.7.4 | [Compliance & security hardening](docs/phases/4-completed/phase-3.7.4-compliance-hardening.md) | 2026-07-08 | CSP enforce + a11y gate in CI (parked) |
 | 3.8 | [AI ticket drafting on Amazon Bedrock](docs/phases/4-completed/phase-3.8-ai-tickets.md) | 2026-07-11 | Prod model choice parked (decision 4) |
 | 3.8.1 | [AI polish: output quality + generation UX](docs/phases/4-completed/phase-3.8.1-ai-polish.md) | 2026-07-12 | Prod model choice parked (decision 4) |
-| 3.8.3-s1 | [AI drafts the sprint goal](docs/phases/2-ready/phase-3.8.3-t1-ai-subtasks.md#background-s1-sprint-goal-shipped-2026-07-13) (recorded in the T1 file) | 2026-07-13 | T1 and X1 split out on 2026-11-19 |
+| 3.8.3-s1 | [AI drafts the sprint goal](docs/phases/3-building/phase-3.8.3-t1-ai-subtasks.md#background-s1-sprint-goal-shipped-2026-07-13) (recorded in the T1 file) | 2026-07-13 | T1 and X1 split out on 2026-11-19 |
 | 3.8.4 | [Beta-feedback polish: 9 fixes](docs/phases/4-completed/phase-3.8.4-beta-polish.md) | 2026-07-16 | Dangling dependency rows → B1 |
 | 3.8.5 | [Milestones v2](docs/phases/4-completed/phase-3.8.5-milestones-v2.md) | 2026-07-24 | — |
 | 3.8.6 | [Scoped Board + "Needs attention" Overview](docs/phases/4-completed/phase-3.8.6-decisions.md) | 2026-07-24 | Kept as is (decision 5) |

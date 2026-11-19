@@ -1,7 +1,7 @@
 # Phase 3.8.3-x1 — Natural-language quick-add
 
 > **Stage:** `pm-review` · **Next role:** Product Manager · **Branch:** — · **Size:** M
-> Split out of the combined 3.8.3 spec on 2026-11-19. Comes after [3.8.3-t1](../2-ready/phase-3.8.3-t1-ai-subtasks.md) (decision 1 on BOARD.md). The PM writes §3–§6 just before it's built, so the ground truth is fresh.
+> Split out of the combined 3.8.3 spec on 2026-11-19. Comes after [3.8.3-t1](../3-building/phase-3.8.3-t1-ai-subtasks.md) (decision 1 on BOARD.md). The PM writes §3–§6 just before it's built, so the ground truth is fresh.
 
 ## 1. Why — *Product Planning*
 - **Problem:**
@@ -64,7 +64,7 @@ _Not started._
 ## Handoff log
 
 ### 2026-11-19 · Product Manager → Product Manager (later pass)
-- **Did:** split X1 out of the combined 3.8.3 spec (that file is now [3.8.3-t1](../2-ready/phase-3.8.3-t1-ai-subtasks.md)). Copied its scope here unchanged and put it in the template layout.
+- **Did:** split X1 out of the combined 3.8.3 spec (that file is now [3.8.3-t1](../3-building/phase-3.8.3-t1-ai-subtasks.md)). Copied its scope here unchanged and put it in the template layout.
 - **State:** `dev` @ 9bf26c2 plus this docs commit. X1 hasn't been started, and nothing has been verified for it this session.
 - **Next role should:** once T1 is in `4-completed/`, write §3–§6 against the code as it is then. T1 changes `ai.prompts.ts`, `routes/ai.ts`, `lib/api.ts` and `en.json`.
 - **Watch out for:** `PROMPT_VERSION` goes to 5 here. The A6 telemetry test asserts the version number.
