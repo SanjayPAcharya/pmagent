@@ -93,6 +93,19 @@ The core is sound. The once-only bus gated on `watchSession()` fixes the real bu
 
 **For the Developer:** fix #1. #2, #3 and #5 are small and in scope, so fold them in if you can. Whatever is still open at re-review gets logged in BACKLOG.md.
 
+**Developer response** (2026-11-19, all in one commit, `R1_SHA`):
+- **#1 — fixed in `R1_SHA`.** I used both of your suggestions together.
+  - The prompt is now a Radix Dialog, like `?` help. Radix's focus-scope stack pauses the drawer's or palette's trap, `aria-hidden`s it, blocks clicks on it, and loops Tab inside the prompt. Esc and outside clicks are blocked.
+  - Every `<body>` child except the prompt's own two nodes (overlay + content, marked `data-session-expired`) goes inert, so the drawer can't take focus even from code. Why both: in the browser pane, a forced `focus()` into the open ⌘K input still slipped text in with Radix alone; with the inert sweep it can't.
+  - The capture-phase key guard stays, so ⌘K / `?` can't open a fresh, non-inert layer.
+  - New, found while checking: a click on the backdrop or card text dropped focus to `<body>`, where Enter did nothing. A capture-phase `mousedown` guard now keeps focus on "Log in again".
+  - Tests: `SessionExpiredModal.test.tsx` gained an "open ticket drawer" suite (a real `Sheet` with an input). It checks focus moves to the button, stays there after Tab, Shift+Tab and a forced `focus()` into the drawer, and that the drawer is inert, `aria-hidden` and not closed by Esc. Both drawer tests fail against the old prompt (I ran them against `087a3dc`'s file) and pass now. There's also a test for the click case.
+  - Browser (this session, e2e user): opened ⌘K (the same Radix Dialog as the drawer), typed into it, then ended the session with kcadm and forced a refresh. Focus went to "Log in again" and stayed there after Tab, Shift+Tab, typing, Esc and clicks on the backdrop and card. The palette text was unchanged, and Enter opened the Keycloak login. The e2e user's projects have no tickets, so I used ⌘K rather than create test data.
+- **#2 — fixed in `R1_SHA`.** The import is gone from `Layout.tsx` along with the mount (#3), so `Layout.tsx` now matches `dev` exactly.
+- **#3 — fixed in `R1_SHA`.** `<SessionExpiredModal />` is mounted once in `App`, inside `BrowserRouter` after `<Routes>`, so `/invite/:token` is covered. `watchSession()` still keeps it off signed-out pages.
+- **#4 — won't fix in this item.** Agreed it's backlog material: retry once while `keycloak.token` is still set. Left for you to log in BACKLOG.md at re-review, as §7 says.
+- **#5 — fixed in `R1_SHA`.** `api.test.ts` has two new tests. Two parallel 401s plus a refused refresh fire the bus once, and both calls reject. A 401 plus a good refresh retries quietly with no prompt.
+
 **What I ran** (this session, on `feat/3.8.8-session-expiry` at `3284e32`, clean tree):
 - `pnpm typecheck --force`: 4/4 tasks green, none cached.
 - `pnpm --filter @agentpm/web test`: 17 files, **87/87**.

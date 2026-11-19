@@ -18,6 +18,7 @@ import AccountSettings from './pages/AccountSettings'
 import ProjectReports from './pages/ProjectReports'
 import ArchivedTickets from './pages/ArchivedTickets'
 import ArchivedProjects from './pages/ArchivedProjects'
+import { SessionExpiredModal } from './components/SessionExpiredModal'
 
 // Public routes render regardless of auth; gated routes sit behind RequireAuth.
 // keycloak is initialized in main.tsx before the app mounts.
@@ -59,6 +60,8 @@ export default function App() {
           </Route>
         </Route>
       </Routes>
+      {/* 3.8.8: on every page, /invite included. watchSession() keeps it off signed-out pages. */}
+      <SessionExpiredModal />
     </BrowserRouter>
   )
 }
