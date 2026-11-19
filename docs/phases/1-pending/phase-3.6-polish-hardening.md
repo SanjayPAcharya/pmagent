@@ -1,9 +1,22 @@
 # Phase 3.6 — Polish, hardening & carried-over hygiene
 
-> **Stage:** `draft` · **Next role:** Product Planning · **Branch:** — · **Size:** L (split before building)
-> Part B is mostly done (2026-07-04). Part A (plan limits, error monitoring, API tokens + webhooks) and the open Part B items need re-scoping for local-first.
+> **Stage:** `draft` (umbrella) · **Next role:** Product Planning · **Branch:** — · **Size:** split into five items, see below
+> Split on 2026-11-19 (decisions 6–8 on BOARD.md). 3.6-b has its own file and is at `pm-review`. The other four live in this file until Planning gives each its own file.
 
-> **Status: 🔨 IN PROGRESS** (opened 2026-07-03; Part B underway 2026-07-04). A deliberate consolidation pass: finish the 3.5 hygiene items that were paused, then walk back through everything shipped in the 3.x arc (org/project redesign, 3.1 PM depth, 3.2 collaboration, 3.4 workflow, 3.5 settings) and close the loose ends before starting Phase 4. **No new feature surface** beyond the carried-over 3.5 work — this phase makes what exists feel finished.
+## Split (2026-11-19)
+Agreed with the owner in the Planning session. Each item gets its own file (from the work-item template) when Planning drafts it. Until then, its content is the matching Part A section below.
+
+| Order | Item | What | Size | When | File |
+|---|---|---|---|---|---|
+| 1 | **3.6-b** | Loose ends: delete cleanup, blocked-state bugs (backlog B1, B2), phone + accessibility check, two perf/correctness checks | M | after 3.8.3 X1 | [phase-3.6-b-loose-ends.md](phase-3.6-b-loose-ends.md) (`pm-review`) |
+| 2 | **3.6-a2** | Soft plan limits (A2 below) | S–M | after 3.6-b | here |
+| 3 | **3.6-a1** | Error-reporting hook, off by default (A1 below, re-scoped) | S | after 3.6-a2 | here |
+| 4 | **3.6-a3a** | Personal API tokens (the token half of A3) | M | after Phase 4, before Phase 5 | here |
+| 5 | **3.6-a3b** | Webhooks (the webhook half of A3) | M | after 3.6-a3a | here |
+
+The open Part B items (delete flows, the phone audit, the a11y sweep and the two performance/correctness nits) all moved into 3.6-b.
+
+> **History:** opened 2026-07-03; most of Part B shipped on 2026-07-04. The original intro follows. A deliberate consolidation pass: finish the 3.5 hygiene items that were paused, then walk back through everything shipped in the 3.x arc (org/project redesign, 3.1 PM depth, 3.2 collaboration, 3.4 workflow, 3.5 settings) and close the loose ends before starting Phase 4. **No new feature surface** beyond the carried-over 3.5 work — this phase makes what exists feel finished.
 
 ## Why 3.6 exists
 The 3.x track shipped fast and broad. A focused polish phase (a) prevents small rough edges from compounding, (b) adds the test coverage the frontend never got, and (c) lands the remaining pre-launch hygiene. This is the last stop before the notification-channels / agent work.
@@ -15,11 +28,20 @@ The 3.x track shipped fast and broad. A focused polish phase (a) prevents small 
 ### A1. Error monitoring *(was 3.5 H3)* — **M**
 Sentry (or self-hosted GlitchTip to stay in the Docker ethos) in api + web; release tag from the CI SHA; alert on new issues. **Blocked on:** a DSN / monitoring backend from the owner. Follows `docs/reference/08-monitoring.md`.
 
+> **Re-scoped 2026-11-19 → 3.6-a1, size S (decision 7).** Code hook only. Add the error-reporting library (the Sentry SDK, which GlitchTip also accepts) to api and web, switched off unless a DSN is set in `.env`. No Sentry account, no GlitchTip container and no alerting for now. A release tag from the git SHA is nice to have. **Risks for the draft:**
+> - The web app's CSP (3.7.4) will need the DSN's host when someone switches it on.
+> - Nothing personal may go into error reports.
+> - With no DSN set, the app must behave exactly as it does today.
+>
+> `08-monitoring.md` describes the AWS/CloudWatch plan, so treat it as background only.
+
 ### A2. Soft plan limits *(was 3.5 H4)* — **S–M**
 Enforce FREE limits server-side (e.g. 3 projects, 10 members / org) with a friendly 402-style error + an upgrade hint in the UI. No billing — just the seam so Stripe can slot in later without schema churn. Self-contained; good to do first of the three.
 
 ### A3. Personal access tokens + webhooks *(was 3.5 H5)* — **L**, Phase-5 prerequisite
 `ApiToken { userId, hash, scopes, lastUsedAt }` + `Webhook { orgId, url, secret, events }`; token auth path alongside Keycloak JWT; webhook delivery on `ticket.*` events (reuse the event bus). The bridge the GitHub agent (Phase 5) stands on — schedule right before Phase 5.
+
+> **Re-scoped 2026-11-19 (decision 8).** Split into **3.6-a3a personal API tokens** and **3.6-a3b webhooks**, both M. They come after Phase 4 and right before Phase 5. Local-first: test webhook delivery against a small receiver on this machine. A public URL or tunnel is only needed for GitHub's own webhooks, which are Phase 5's concern.
 
 ---
 
@@ -76,3 +98,16 @@ This is polish, not scope growth. Anything that turns into a real new feature ge
   - Part B: delete-flow cleanup, the mobile audit of the newer surfaces, the a11y sweep, and the two performance/correctness nits.
 - **Next role should:** re-scope for local-first. A1 could be a self-hosted GlitchTip container instead of a Sentry DSN. A3 is the Phase 5 prerequisite. Then split the work into small items (for example `3.6-a2` plan limits first, as this doc suggests) and hand the first one to the PM.
 - **Watch out for:** the "Status: 🔨 IN PROGRESS" line above is from July. The header line is the current state.
+
+### 2026-11-19 · Product Planning → Product Planning (umbrella stays with Planning)
+- **Did:**
+  - Re-scoped and split 3.6 with the owner (decisions 6–8 on BOARD.md). See the Split table at the top.
+  - Drafted 3.6-b in its own file and handed it to the PM.
+  - Re-scoped A1 to a code hook only, and split A3 into tokens and webhooks, moved to just before Phase 5.
+- **State:** docs only, on `dev`. Nothing was run.
+- **Next role should:** Planning drafts **3.6-a2 plan limits** into its own file in a later session, in time for the PM to pick it up after 3.6-b. Questions to put to the owner then (⛔ in that draft):
+  - What are the free-plan caps? This file suggests 3 projects and 10 members.
+  - Do pending invites count toward the member cap?
+  - What happens to orgs already over a cap? Suggested: block only new creates.
+  - With no billing, how does an org become PRO? For example, a one-line admin script.
+- **Watch out for:** `Organization.plan` (FREE / PRO / TEAM) already exists in `schema.prisma`, so 3.6-a2 may need no migration. The PM confirms.

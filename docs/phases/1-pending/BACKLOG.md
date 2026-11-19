@@ -11,9 +11,9 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 
 | ID | Item | Source | Added |
 |---|---|---|---|
-| B1 | Deleting a ticket leaves its dependency rows behind (dangling "blocked by" links). | Noticed during 3.8.4 | 2026-07-16 |
-| B2 | The drawer's collapsed Relationships header never shows the blocked badge, because `api.getTicket` returns no blocker count. | Noticed during 3.7.2 | 2026-07-07 |
-| B3 | Line 21 of `sourcecode/apps/api/src/services/ai.prompts.ts` says the subtasks and quick-parse prompts exist; only sprint-goal does. Fix it when 3.8.3 lands. | Restructure audit | 2026-11-19 |
+| B1 | Deleting a ticket leaves its dependency rows behind (dangling "blocked by" links). "Delete" archives the ticket, so it still shows as a blocker. **→ Promoted to [3.6-b](phase-3.6-b-loose-ends.md) on 2026-11-19.** | Noticed during 3.8.4 | 2026-07-16 |
+| B2 | The drawer's collapsed Relationships header never shows the blocked badge, because `api.getTicket` returns no blocker count. **→ Promoted to [3.6-b](phase-3.6-b-loose-ends.md) on 2026-11-19.** | Noticed during 3.7.2 | 2026-07-07 |
+| B3 | Line 21 of `sourcecode/apps/api/src/services/ai.prompts.ts` says the subtasks and quick-parse prompts exist; only sprint-goal does. Fix it when 3.8.3 lands. **→ Already listed in the 3.8.3 handoff note; the PM puts it into 3.8.3-t1.** | Restructure audit | 2026-11-19 |
 
 ## Features (deferred or requested)
 
@@ -24,7 +24,7 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | F3 | Recurring tickets. | 3.4 W5 (deferred) | 2026-07-03 |
 | F4 | BYOK: an organization brings its own AI key (encrypted key storage + a settings screen). Earmarked "Phase 3.8.2"; no spec yet. | 3.8 / 3.8.1 | 2026-07-11 |
 | F5 | Dependency types (finish-to-start, start-to-start, …) and a scheduling engine for the Timeline. | Beta doc DEF-1 | 2026-07-16 |
-| F6 | GitHub and Jira integrations. The GitHub part overlaps Phase 5. | Beta doc DEF-2 | 2026-07-16 |
+| F6 | Jira integration (import, or two-way sync). The GitHub half of the beta request is already Phase 5's scope, so it was dropped from this line as a duplicate (2026-11-19). | Beta doc DEF-2 | 2026-07-16 |
 | F7 | AI daily standup, and an AI-written version of the "Needs attention" digest. | Beta doc DEF-3; 3.8.6 | 2026-07-24 |
 | F8 | Full Jira-style board restructure, only if the owner finds the scoped Board lacking (decision 5 on BOARD.md keeps it as is). | 3.8.6 DEC-1 | 2026-07-24 |
 | F9 | Social sign-in end to end: register the Google / Microsoft / GitHub OAuth apps (owner), put the keys in `.env`, verify the round trip on localhost. See `docs/reference/13-social-login-setup.md`. | 1, 2.8.5 | 2026-06-26 |
@@ -34,7 +34,7 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | ID | Item | Source | Added |
 |---|---|---|---|
 | T1 | `docs/reference/*` still describe the original plan in places (AgentPM name, `agentpm.io`, RDS/managed data, SES). Refresh each file the next time its area is touched. | Restructure audit | 2026-11-19 |
-| T2 | `docs/product/features.md` still says "PMAgent" in its body after the rebrand to "PmAgent". | Restructure audit | 2026-11-19 |
+| T2 | `docs/product/features.md` still says "PMAgent" in its body after the rebrand to "PmAgent" (3 places). A one-minute fix for whichever item next edits `features.md`. | Restructure audit | 2026-11-19 |
 | T3 | Old verification debt from 2.1: silent sign-in on hard refresh (C9), drag-reorder feel within a column (C10), the mention → notification chain. Probably fine; confirm in a Tester regression pass. | 2.1 | 2026-06-24 |
 | T4 | `docs/product/overview.md` still describes the original MVP and pricing. | Restructure audit | 2026-11-19 |
 

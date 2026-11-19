@@ -17,18 +17,19 @@ Plans written before 2026-11-19 assume AWS services. Until prod is unparked:
 |---|---|
 | AWS SES email (Phase 4) | a dev mail-catcher container (e.g. Mailpit) |
 | S3 file storage (attachments, backlog F1) | a MinIO container |
-| A Sentry DSN for error monitoring (3.6 A1) | a self-hosted GlitchTip container, or off |
+| A Sentry DSN for error monitoring (3.6-a1) | **confirmed 2026-11-19 (decision 7):** a code hook only, off unless a DSN is set. Sentry or a self-hosted GlitchTip can plug in later. |
 | Amazon Bedrock for AI | keep using the dev key (decision 3 on BOARD.md, 2026-11-19) |
 | GitHub webhooks to a public URL (Phase 5) | a tunnel to localhost (e.g. smee.io) |
 
-## Sequence (set 2026-11-19, decision 1 on BOARD.md)
+## Sequence (set 2026-11-19: decision 1 on BOARD.md, with the 3.6 part revised by decisions 6–8)
 1. **3.8.8 Session expiry & Remember me.** Already built; take it through review and test.
 2. **3.8.3 AI auto-populate.** T1 suggest subtasks, then X1 natural-language quick-add.
-3. **3.6 Polish & hardening.** Plan limits, then error monitoring, then API tokens + webhooks (Phase 5 stands on these).
+3. **3.6 Polish & hardening, split into small items:** 3.6-b loose ends (delete cleanup, blocked-state bugs, phone + accessibility check), then 3.6-a2 soft plan limits, then 3.6-a1 the error-reporting hook. Loose ends go first because users notice them today; plan limits only matter once there are paying customers.
 4. **Phase 4 Notifications & channels.** Email first (local mail catcher), then Slack and WhatsApp.
-5. **Phase 5 + 5.5 GitHub integration + Code Agent**, with the agent-first UI.
-6. **Phase 6 Full agent suite + autonomy dial.**
-7. **Phase 7 Autonomous sprints.**
+5. **3.6-a3a API tokens, then 3.6-a3b webhooks.** Moved here from 3.6 because only Phase 5 needs them.
+6. **Phase 5 + 5.5 GitHub integration + Code Agent**, with the agent-first UI.
+7. **Phase 6 Full agent suite + autonomy dial.**
+8. **Phase 7 Autonomous sprints.**
 
 Backlog items slot in between when Planning promotes them.
 

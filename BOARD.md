@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-planning`.** It re-scopes 3.6 and tidies the backlog. Then go down the list (`/pmagent-pm`, `/pmagent-dev`, `/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-pm`.** It re-verifies 3.8.3 (the top Pending row), splits it into T1 and X1, and makes T1 build-ready. Then go down the list (`/pmagent-dev`, `/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
 
 The one place that says what's done, what's next, and who has the baton. **Every role session reads this first and updates its item's row when it hands off.** The four groups mirror the folders in [`docs/phases/`](docs/phases/). How the pipeline works: [docs/workflow/README.md](docs/workflow/README.md).
 
@@ -27,18 +27,22 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 | — | *Empty. The Product Manager moves items here after checking them against today's code.* | | | |
 
 ## ⏳ Pending — [docs/phases/1-pending/](docs/phases/1-pending/)
-*The top row is what the Product Manager picks up next. Planning owns the order (set on 2026-11-19, decision 1 below).*
+*The top row is what the Product Manager picks up next. Planning owns the order (decision 1 below; the 3.6 part was revised by decisions 6–8).*
 
 | # | Phase | Work item | Stage | Next role | Updated | Notes |
 |---|---|---|---|---|---|---|
 | 1 | 3.8.3 | [AI auto-populate — T1 subtasks, X1 natural-language quick-add](docs/phases/1-pending/phase-3.8.3-ai-autopopulate.md) | `pm-review` | Product Manager | 2026-11-19 | S1 (sprint goal) shipped 2026-07-13. The spec was checked against the code on 2026-07-12 and the code has moved since, so re-verify it and split T1 / X1 into separate items. AI runs on Bedrock locally (decision 3). |
-| 2 | 3.6 | [Polish & hardening — plan limits, monitoring, API tokens + webhooks, loose ends](docs/phases/1-pending/phase-3.6-polish-hardening.md) | `draft` | Product Planning | 2026-11-19 | Part B is mostly done (2026-07-04). Part A needs re-scoping for local-first, e.g. self-hosted error monitoring instead of a Sentry DSN. |
-| 3 | — | [Backlog](docs/phases/1-pending/BACKLOG.md) | `idea` | Product Planning | 2026-11-19 | Deferred features, bugs noticed in passing, tech debt, DevOps chores. Planning turns the best into drafts. |
-| 4 | 4 | [Notifications & channels](docs/phases/1-pending/phase-4-notifications-channels.md) | `draft` | Product Planning | 2026-11-19 | The plan assumes AWS SES; while prod is parked, use a local mail catcher. |
-| 5 | 5 | [GitHub integration + Code Agent](docs/phases/1-pending/phase-5-github-code-agent.md) | `draft` | Product Planning | 2026-11-19 | The product's headline feature. Needs 3.6 A3 (API tokens + webhooks) first. |
-| 6 | 5.5 | [Agent-first surfaces](docs/phases/1-pending/phase-5.5-agent-first.md) | `parked` | — | 2026-11-19 | Lands together with Phase 5. |
-| 7 | 6 | [Full agent suite + autonomy](docs/phases/1-pending/phase-6-agent-suite-autonomy.md) | `draft` | Product Planning | 2026-11-19 | After Phase 5. |
-| 8 | 7 | [Autonomous sprints](docs/phases/1-pending/phase-7-autonomous-sprints.md) | `draft` | Product Planning | 2026-11-19 | After Phase 6. |
+| 2 | 3.6-b | [Loose ends — delete cleanup, blocked-state bugs B1/B2, phone + a11y check](docs/phases/1-pending/phase-3.6-b-loose-ends.md) | `pm-review` | Product Manager | 2026-11-19 | First piece of the 3.6 split (decision 6). Size M. PM picks it up after 3.8.3. |
+| 3 | 3.6-a2 | [Soft plan limits](docs/phases/1-pending/phase-3.6-polish-hardening.md#split-2026-11-19) | `draft` | Product Planning | 2026-11-19 | Free-plan caps with an "upgrade" hint, no billing. `Organization.plan` (FREE/PRO/TEAM) already exists. Still inside the 3.6 file; Planning gives it its own file next. |
+| 4 | 3.6-a1 | [Error-reporting hook, off by default](docs/phases/1-pending/phase-3.6-polish-hardening.md#split-2026-11-19) | `draft` | Product Planning | 2026-11-19 | Re-scoped (decision 7): the error-reporting library in api + web, switched on only when a DSN is set. No account, no container. Size S. |
+| 5 | — | [Backlog](docs/phases/1-pending/BACKLOG.md) | `idea` | Product Planning | 2026-11-19 | Deferred features, bugs noticed in passing, tech debt, DevOps chores. Planning turns the best into drafts. |
+| 6 | 4 | [Notifications & channels](docs/phases/1-pending/phase-4-notifications-channels.md) | `draft` | Product Planning | 2026-11-19 | The plan assumes AWS SES; while prod is parked, use a local mail catcher. |
+| 7 | 3.6-a3a | [Personal API tokens](docs/phases/1-pending/phase-3.6-polish-hardening.md#split-2026-11-19) | `draft` | Product Planning | 2026-11-19 | Moved to just before Phase 5 (decision 8). Size M. |
+| 8 | 3.6-a3b | [Webhooks](docs/phases/1-pending/phase-3.6-polish-hardening.md#split-2026-11-19) | `draft` | Product Planning | 2026-11-19 | After 3.6-a3a (decision 8). Size M. Test locally against a receiver on this machine. |
+| 9 | 5 | [GitHub integration + Code Agent](docs/phases/1-pending/phase-5-github-code-agent.md) | `draft` | Product Planning | 2026-11-19 | The product's headline feature. Needs 3.6-a3a and 3.6-a3b (API tokens + webhooks) first. |
+| 10 | 5.5 | [Agent-first surfaces](docs/phases/1-pending/phase-5.5-agent-first.md) | `parked` | — | 2026-11-19 | Lands together with Phase 5. |
+| 11 | 6 | [Full agent suite + autonomy](docs/phases/1-pending/phase-6-agent-suite-autonomy.md) | `draft` | Product Planning | 2026-11-19 | After Phase 5. |
+| 12 | 7 | [Autonomous sprints](docs/phases/1-pending/phase-7-autonomous-sprints.md) | `draft` | Product Planning | 2026-11-19 | After Phase 6. |
 
 ## 🧑 Owner decisions
 
@@ -48,11 +52,19 @@ These were made on 2026-11-19 by Claude, at the owner's request ("you do these s
 
 | # | Decision | Why |
 |---|---|---|
-| 1 | **Order of work:** 3.8.8 session expiry → 3.8.3 T1 AI subtasks → 3.8.3 X1 natural-language quick-add → 3.6 polish (plan limits first) → Phase 4 → Phase 5. | Finish the half-built item first, then the AI features that are already designed, then hardening before the integrations. |
+| 1 | **Order of work:** 3.8.8 session expiry → 3.8.3 T1 AI subtasks → 3.8.3 X1 natural-language quick-add → 3.6 polish (plan limits first) → Phase 4 → Phase 5. *The 3.6 part is replaced by decisions 6–8.* | Finish the half-built item first, then the AI features that are already designed, then hardening before the integrations. |
 | 2 | **Session-expired screen:** keep the full-screen prompt. | A deliberate exception to "no modals", like ⌘K and the `?` help: once you're signed out nothing on the page can be saved, so one clear "Log in again" is the simplest honest answer. |
 | 3 | **AI in local dev:** keep Amazon Bedrock with the dev key already set in `sourcecode/.env`. | It's wired up, costs pennies, and isn't a deployment. If the key stops working, AI features get built and tested against the mock provider, with live checks marked "not verified". Rotating the key is optional owner housekeeping. |
 | 4 | **Production AI model (A5):** parked along with prod. | Local dev keeps Nova Micro. |
 | 5 | **Scoped Board (DEC-1):** keep it as it is. | The full board restructure (backlog F8) reopens only if you find the scoped Board lacking. |
+
+These were made by the owner on 2026-11-19, in the Planning session:
+
+| # | Decision | Why |
+|---|---|---|
+| 6 | **3.6 is split into five items, and loose ends go first:** 3.6-b loose ends → 3.6-a2 plan limits → 3.6-a1 error-reporting hook. All three come after 3.8.3 X1. | Users notice the loose ends today. Plan limits only matter once there are paying customers. |
+| 7 | **Error monitoring (3.6-a1) is a code hook only.** Add the error-reporting library, switched off unless a DSN is set. No Sentry account and no GlitchTip container for now. | On one machine, `docker compose logs` already shows errors. The hook lets Sentry or a self-hosted GlitchTip plug in later without code changes. |
+| 8 | **API tokens + webhooks move to just before Phase 5,** after Phase 4, as two items: 3.6-a3a tokens, then 3.6-a3b webhooks. | Only the GitHub agent (Phase 5) needs them. |
 
 ## ✔ Completed — [docs/phases/4-completed/](docs/phases/4-completed/)
 
