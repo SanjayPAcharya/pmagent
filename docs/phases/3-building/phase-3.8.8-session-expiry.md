@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `review` · **Next role:** Product / Code Reviewer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back once (§7, fixed in `3e09228`, approved). The Tester sent it back once (§8 AC1: an idle tab never showed the prompt). That is fixed in `90e81b0`, and it is back with the Reviewer.
+> **Stage:** `test` · **Next role:** Product Tester · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back once (§7, fixed in `3e09228`, approved). The Tester sent it back once (§8 AC1: an idle tab never showed the prompt). That is fixed in `90e81b0`, and the Reviewer approved the fix for the Tester's re-run.
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -135,6 +135,28 @@ No new findings. Copy, tokens and lucide icons are unchanged, there are no new i
 - `pnpm --filter @agentpm/web build`: OK.
 - My scratchpad open-`Sheet` test from the first review (not committed), as above.
 - Not run by me: a browser check. The Developer did one with ⌘K; the Tester covers the drawer and AC1–AC9 on the stack.
+
+**Re-review 2: the Tester's AC1 fix — Approved with nits** (2026-11-19, reviewed at `da6f52d`; the commit under review is `90e81b0`).
+
+I missed the cause in my first review: the `onTokenExpired` hook was attached after `init()`. The Tester caught it.
+
+The fix is right. I read `keycloak-js@26.2.4` `#setToken` (`lib/keycloak.js:1575`): it arms the expiry timer only if `onTokenExpired` is already set when a token is stored. Attaching both hooks at module load in `lib/auth.ts` covers the first token of every page load.
+- **Signed-out pages:** nothing changes, because no token means no timer, and `clearToken()` only calls `onAuthLogout` when a token existed. The bus stays off until `watchSession()` anyway, so AC4 holds.
+- **Hoisting:** the hooks only run after module load, and `notifySessionExpired` is a hoisted function declaration, so nothing runs too early.
+- **No other assignments:** a grep finds nothing else that sets `onTokenExpired` or `onAuthLogout`.
+- **`AppToaster`:** small and tested. It was the Tester's optional point and is in scope. `main.tsx` is the only `<Toaster>`.
+
+| # | Severity | File:line (under `sourcecode/`) | Issue | Suggested fix |
+|---|---|---|---|---|
+| 6 | nit | `apps/web/src/lib/auth.expiry-timer.test.ts:49` | The comment says "No refresh happens before the first expiry". But `init({ token, refreshToken, checkLoginIframe: false })` runs `updateToken(-1)` inside `init()` (`keycloak.js:866`), and that in-init refresh is what stores the first timed token. The real app stores it through the check-sso code exchange instead. Both paths go through `#setToken` before `init()` resolves, so the test still catches the bug (checked below). Only the comment is off. | Reword the comment when the file is next touched. Logged as BACKLOG T7. |
+
+**What I ran** (re-review 2, this session, on `feat/3.8.8-session-expiry` at `da6f52d`, clean tree):
+- `pnpm typecheck --force`: 4/4 tasks green, none cached.
+- `pnpm --filter @agentpm/web test`: 19 files, **98/98** (92 + 6 new).
+- `pnpm --filter @agentpm/api test`: 22 files, **123/123**.
+- `pnpm --filter @agentpm/web build`: OK.
+- `auth.expiry-timer.test.ts` against the **old** `auth.ts` (from `2d6ce99`), in a scratchpad harness (not committed): **3/3 fail**, for the right reasons (no timer; no prompt; no refresh). Against the new `auth.ts` in the same harness: 3/3 pass.
+- Not run by me: the 5-minute idle-tab browser check. The Developer ran it; the Tester re-runs it.
 
 ## 8. Test report — *Tester*
 **Verdict: Fail** (2026-11-19). AC1 fails in its main case, an idle tab (repro below). Every other AC passes. Two checks couldn't be done in the browser pane and are marked: the VoiceOver part of AC8, and a real browser restart for AC6, which was checked through the cookies as §6 allows.
@@ -336,3 +358,9 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
   - **For the Tester's re-run:** Vite reloads the page whenever a file under `apps/web/src` changes, test files included. Don't edit anything there during the 5-minute wait, or the page reloads and simply shows the landing page (correct for an ended session, but not the case being tested). That spoiled my first attempt.
   - `tokenTimeoutHandle` isn't in keycloak-js's public types; the test reads it through a small cast.
   - The e2e user's Keycloak session from my browser check is ended. No app data was changed.
+
+### 2026-11-19 · Product / Code Reviewer → Product Tester
+- **Did:** re-reviewed `90e81b0` (the Tester's AC1 fix). Verdict: **approved with nits** (re-review 2 in §7). I confirmed the root cause in the keycloak-js source, and the fix attaches the hooks before `init()`. One comment nit (#6) is logged as BACKLOG T7.
+- **State:** branch `feat/3.8.8-session-expiry`, reviewed at `da6f52d`, with no product code changed by me. Ran: typecheck 4/4 (uncached), web 98/98, api 123/123, web build OK. The new timer test fails 3/3 against the old `auth.ts` and passes against the new one.
+- **Next role should:** re-run §8's AC1 repro on a **fresh page load**: sign in, open a ticket drawer and type a draft, end the session, then touch nothing for more than 5 minutes. The prompt should appear by itself at expiry, with no toast behind it. Then a quick AC2/AC4/AC9 regression pass. The other ACs passed before and this fix doesn't touch them.
+- **Watch out for:** don't force a refresh before the wait, and don't edit files under `apps/web/src` during it (Vite reloads the page). Restore any test data you create.
