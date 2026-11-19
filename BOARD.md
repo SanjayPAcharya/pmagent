@@ -1,9 +1,9 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-devops`.** The Tester passed 3.8.8 (§8, round 2). DevOps merges `feat/3.8.8-session-expiry` into `dev` (`--no-ff`), smokes it on the local stack, confirms the realm settings with kcadm, and closes the item. After that, 3.8.3-t1 is next in Ready (`/pmagent-dev`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-dev`.** 3.8.8 is merged into `dev` and done. The Developer starts 3.8.3-t1 (AI suggests subtasks) from `dev` on `feat/3.8.3-t1-ai-subtasks`. Each session updates this line and tells you which command comes next.
 >
 > **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
-> **Waiting to push:** nothing yet.
+> **Waiting to push:** `dev` (17 commits ahead of `origin/dev` before the 3.8.8 close-out commit): 3.8.8 session expiry (merge `2fdf616`), plus the earlier docs commits (workflow autopilot, 3.6-b draft, 3.8.3-t1 ready). Not `main`.
 
 The one place that says what's done, what's next, and who has the baton. **Every role session reads this first and updates its item's row when it hands off.** The four groups mirror the folders in [`docs/phases/`](docs/phases/). How the pipeline works: [docs/workflow/README.md](docs/workflow/README.md).
 
@@ -21,7 +21,7 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Stage | Next role | Branch | Updated | Notes |
 |---|---|---|---|---|---|---|
-| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `release` | **Product DevOps** | `feat/3.8.8-session-expiry` | 2026-11-19 | Test round 2: **Pass**. AC1's idle-tab repro now shows the prompt by itself 0.1 s after expiry, with no toast behind it. AC2–AC9 regression clean (VoiceOver not verified; AC6 by cookies and session flag). Suites: api 123/123, web 98/98, typecheck and build green, e2e a11y passed. Test data cleaned up; realm unchanged. |
+| — | *Nothing building.* 3.8.3-t1 is next (Ready). | — | — | — | 2026-11-19 | — |
 
 ## ✅ Reviewed — ready to build — [docs/phases/2-ready/](docs/phases/2-ready/)
 
@@ -98,6 +98,7 @@ These were made by the owner on 2026-11-19, in the Planning session:
 | 3.8.5 | [Milestones v2](docs/phases/4-completed/phase-3.8.5-milestones-v2.md) | 2026-07-24 | — |
 | 3.8.6 | [Scoped Board + "Needs attention" Overview](docs/phases/4-completed/phase-3.8.6-decisions.md) | 2026-07-24 | Kept as is (decision 5) |
 | 3.8.7 | [Inline List editing + Timeline PNG/CSV export](docs/phases/4-completed/phase-3.8.7-features.md) | 2026-07-24 | — |
+| 3.8.8 | [Session-expired prompt + "Remember me" (30-day sessions)](docs/phases/4-completed/phase-3.8.8-session-expiry.md) | 2026-11-19 (merge `2fdf616`) | Backlog B4–B7, T6, T7, F10 for Planning |
 | — | Unphased work: Timeline polish TL1–TL5, shared FilterBar, CVE overrides, Buildenics rebrand | 2026-07-16 → 2026-08-06 | Details in the [archived log](docs/history/PROGRESS-until-2026-11-19.md) |
 
 ## 🅿️ Parked — prod & AWS (owner, 2026-11-19)

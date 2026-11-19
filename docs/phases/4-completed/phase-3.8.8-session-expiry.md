@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `release` · **Next role:** Product DevOps · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back once (§7, fixed in `3e09228`, approved). The Tester sent it back once (§8 AC1: an idle tab never showed the prompt). That is fixed in `90e81b0`, the Reviewer approved the fix, and the Tester's re-run passed (§8, round 2).
+> **Stage:** `done` · **Next role:** — · **Branch:** merged into `dev` as `2fdf616` (branch deleted) · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back once (§7, fixed in `3e09228`, approved). The Tester sent it back once (§8 AC1: an idle tab never showed the prompt). That is fixed in `90e81b0`, the Reviewer approved the fix, and the Tester's re-run passed (§8, round 2). DevOps merged it into `dev` on 2026-11-19 and the smoke run was green (§9).
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -275,7 +275,25 @@ The fix is right. I read `keycloak-js@26.2.4` `#setToken` (`lib/keycloak.js:1575
 - No owner data was touched, and no files under `apps/web` were edited.
 
 ## 9. Release — *DevOps*
-_Not started._ The realm settings must be applied to the running dev Keycloak (kcadm or a re-run of `keycloak-init`), not just written into the JSON.
+**Released to `dev` on 2026-11-19.** Not pushed; `main` is untouched (frozen while prod is parked).
+
+- **Inputs checked:** §7 re-review 2 says Approved with nits; §8 round 2 says Pass.
+- **Merge:** `git merge --no-ff feat/3.8.8-session-expiry` into `dev` → merge commit **`2fdf616`** (`merge: 3.8.8 Session expiry & Remember me`). `dev` had no commits of its own since the branch was cut, so there were no conflicts. 21 files changed.
+- **Environment steps applied:**
+  - **Keycloak realm:** re-ran `docker compose up keycloak-init` on `dev`; it printed "remember-me on (30-day sessions)" and exited 0. kcadm read-back of `realms/agentpm`: `rememberMe` true, `ssoSessionIdleTimeoutRememberMe` 2592000, `ssoSessionMaxLifespanRememberMe` 2592000. Normal lengths unchanged (1800 s idle, 36000 s max), `verifyEmail` false. `agentpm-web` direct-access grants still off.
+  - **Login theme CSS:** nothing to do. The running Keycloak already serves this file (the Tester restarted it in round 1, and the merge didn't change the file's content).
+  - **Prod (`prod-bootstrap.sh` step 4):** not run, because prod is parked.
+  - **Migrations, env vars, dependencies:** none in this item.
+- **Smoke on `dev` at `2fdf616`** (all run in this session):
+  - `pnpm typecheck --force`: 4/4 tasks, 0 cached.
+  - `pnpm --filter @agentpm/api test`: 22 files, **123/123**.
+  - `pnpm --filter @agentpm/web test`: 19 files, **98/98**.
+  - `pnpm --filter @agentpm/web build`: OK (only the usual chunk-size warning).
+  - `docker compose ps`: api, keycloak, web up; postgres and redis healthy.
+  - api `/health` 200, `/ready` 200 (`{"status":"ready"}`), web 200, Keycloak realm 200.
+  - Browser pane: http://localhost:3000 shows the landing page with no prompt. "Sign in with email" opens the Keycloak login with the "Remember me" checkbox. Signing in as the seeded e2e user lands in the workspace with no prompt and nothing inert. Sign out returns to the landing page with no prompt.
+- **Not re-run here:** the 5-minute idle-tab case (AC1) and the e2e suite. The Tester ran both at `ec95616`, and the merge adds no code beyond that commit.
+- **Clean-up:** the e2e user has 0 Keycloak sessions afterwards. No app data or realm settings changed. Feature branch deleted with `git branch -d`.
 
 ## Handoff log
 
@@ -415,3 +433,9 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
   - Vite reloads the page when a file under `apps/web/src` changes, so a smoke run of the idle-tab case needs a quiet tree for 5 minutes.
   - The new backlog lines from this item (B4–B7, T6, T7, F10) are for Planning to triage, not blockers.
   - Nothing has been pushed.
+
+### 2026-11-19 · Product DevOps → done (next: Product Developer on 3.8.3-t1)
+- **Did:** merged `feat/3.8.8-session-expiry` into `dev` with `--no-ff` (merge commit `2fdf616`). Re-ran `keycloak-init` and read the realm back with kcadm. Smoked `dev` on the local stack. Moved this file to `4-completed/` and filled §9.
+- **State:** `dev` at `2fdf616` plus this close-out commit. Ran: typecheck 4/4 (0 cached), api 123/123, web 98/98, web build OK, `/health` and `/ready` 200, sign-in and sign-out work in the browser pane. Realm: `rememberMe` true, both RememberMe lifetimes 2592000, normal 1800/36000.
+- **Next role should:** the Developer starts 3.8.3-t1 from `dev`, which now has this item's `lib/api.ts` and `en.json` changes.
+- **Watch out for:** nothing is pushed; `dev` is waiting to push (BOARD.md). The new backlog lines from this item (B4–B7, T6, T7, F10) are for Planning to triage.
