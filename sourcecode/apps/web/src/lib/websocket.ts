@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
 import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import type { WSMessage, WSEventType } from '@agentpm/shared-types'
-import { keycloak } from './auth'
+import { keycloak, notifySessionExpired } from './auth'
 import { api } from './api'
 
 const WS_URL = import.meta.env.VITE_WS_URL as string | undefined
@@ -66,6 +66,9 @@ export function useProjectWebSocket(projectId: string | undefined, handlers: WSH
       if (msg.type === 'auth.error') {
         closedByUs.current = true
         ws.close(4001, 'auth failed')
+        // 3.8.8: auth.error also covers "not a member of this project", so only
+        // a refresh that fails too means the session is over.
+        void keycloak.updateToken(-1).catch(() => notifySessionExpired())
         return
       }
       const actorId = (msg.payload as { actorId?: string } | undefined)?.actorId

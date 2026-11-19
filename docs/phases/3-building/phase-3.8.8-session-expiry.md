@@ -50,7 +50,15 @@
 
 ## 5. Build steps — *PM writes · Developer ticks* (one step = one commit)
 - [x] **S0** — Package the existing work. Run `git switch -c feat/3.8.8-session-expiry` (it carries the uncommitted changes), then commit only the eight files in §3, as built: `feat(3.8.8 S0): session-expired prompt + Remember me (as built 2026-08-06)`.
-- [ ] **S1** — Close gaps 1–6: apply the realm settings via `keycloak-init` and `prod-bootstrap.sh`; remove the dead exports and the unused key; make the websocket decision; restore `verifyEmail`; fix focus and copy. Keep the full-screen prompt (decision 2).
+- [x] **S1** — Close gaps 1–6: apply the realm settings via `keycloak-init` and `prod-bootstrap.sh`; remove the dead exports and the unused key; make the websocket decision; restore `verifyEmail`; fix focus and copy. Keep the full-screen prompt (decision 2).
+  - **Gap 1:** the same `kcadm update realms/agentpm` (rememberMe + both 30-day lifetimes) is now in `keycloak-init` and as step 4 of `prod-bootstrap.sh`. Applied to the running dev Keycloak by re-running `keycloak-init`; kcadm read-back went from `rememberMe:false`, `0`/`0` to `true`, `2592000`/`2592000`.
+  - **Gap 2:** removed `isSessionExpired` and `resetSessionExpiredState`. A fresh login reloads the page, so nothing needs a reset.
+  - **Gap 3:** removed `auth.rememberMe`. Keycloak's own message bundle labels the checkbox.
+  - **Gap 4 (decision):** yes, but only when it's really the session. On `auth.error` the websocket forces a token refresh and raises the prompt only if that fails. Why: the API also sends `auth.error` for "not a member of this project", which must not look like a sign-out.
+  - **Gap 5:** restored `"verifyEmail": false`.
+  - **Gap 6:** focus moves to "Log in again" on open and Tab stays on it. Copy is sentence case: "Session expired" / "You've been signed out, so changes can't be saved right now. Log in again to keep working." The button shows `Loader2` + `disabled` while it redirects (async-button standard).
+  - **Bug found and fixed (AC1/AC2):** the as-built check `keycloak.authenticated || keycloak.token` never passed in the real case, because keycloak-js clears both as soon as Keycloak refuses a refresh (`clearToken()` on a 400). The bus now remembers that the page started signed in (`watchSession()`, called from `main.tsx`) and also listens to `keycloak.onAuthLogout`. It fires once; later calls are no-ops.
+  - **AC1 "nothing behind it can be used":** the prompt is portalled to `<body>`, `#root` gets `inert` while it's up, and a capture-phase key guard mutes the app's shortcuts (⌘K, `?`, board keys). Why: `aria-modal` alone doesn't stop Tab or document-level shortcuts.
 - [ ] **S2** — Add unit tests for the event bus (fires once, only when authenticated). Describe both features in `docs/product/features.md` in plain language and refresh its date.
 
 DevOps impact: Keycloak realm settings on the running dev Keycloak (via kcadm/init), plus the prod bootstrap script (prod itself is parked). No migrations, env vars or new dependencies.

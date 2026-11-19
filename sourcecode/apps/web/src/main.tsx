@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
-import { keycloak, notifySessionExpired } from './lib/auth'
+import { keycloak, watchSession } from './lib/auth'
 import { applyTheme, getInitialTheme } from './lib/theme'
 import './lib/i18n'
 import App from './App'
@@ -28,11 +28,9 @@ keycloak
     silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
   })
   .then((authenticated) => {
-    if (authenticated) {
-      keycloak.onTokenExpired = () => {
-        void keycloak.updateToken(30).catch(() => notifySessionExpired())
-      }
-    }
+    // 3.8.8: a session that ends later shows the session-expired prompt
+    // instead of redirecting mid-task.
+    if (authenticated) watchSession()
     root.render(
       <React.StrictMode>
         <QueryClientProvider client={queryClient}>

@@ -55,4 +55,10 @@ if [ -n "$rp" ]; then
     && echo "prod-bootstrap: first-broker-login review-profile disabled"
 fi
 
+# 4. Phase 3.8.8: "Remember me" with 30-day sessions. The realm JSON only seeds
+#    a new Keycloak (--import-realm skips an existing realm), so set it here too.
+$kc update realms/agentpm -s rememberMe=true \
+  -s ssoSessionIdleTimeoutRememberMe=2592000 -s ssoSessionMaxLifespanRememberMe=2592000 \
+  && echo "prod-bootstrap: remember-me on (30-day sessions)"
+
 echo "prod-bootstrap: done"
