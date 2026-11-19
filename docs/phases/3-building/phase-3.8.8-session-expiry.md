@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `review` · **Next role:** Product / Code Reviewer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch, closed the known gaps (§3) and handed it to the Reviewer.
+> **Stage:** `changes-requested` · **Next role:** Product Developer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch, closed the known gaps (§3) and handed it to the Reviewer, who sent it back for one blocking fix (§7).
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -79,7 +79,29 @@ DevOps impact: Keycloak realm settings on the running dev Keycloak (via kcadm/in
 - **Restore:** any realm timeout you shortened for testing.
 
 ## 7. Review — *Reviewer*
-_Not started._
+**Verdict: Changes requested** (2026-11-19, reviewed at `3284e32`). One blocking finding; the rest are nits.
+
+The core is sound. The once-only bus gated on `watchSession()` fixes the real bug (keycloak-js clears the token before the old check ran). The websocket decision is right. The realm settings now reach an existing Keycloak. Copy, tokens, lucide icons and `Loader2` + `disabled` all follow CLAUDE.md, and there are no orphan i18n keys. Every AC has code behind it. The only extras are `docker-compose.override.yml` (named in S1) and the websocket change (gap 4), both in scope. No new routes, secrets or migrations.
+
+| # | Severity | File:line (under `sourcecode/`) | Issue | Suggested fix |
+|---|---|---|---|---|
+| 1 | blocking | `apps/web/src/components/SessionExpiredModal.tsx:22` | Only `#root` is made inert, but Radix overlays portal to `<body>`, outside `#root`: the ticket drawer (`Sheet`), the ⌘K palette, `?` help. They stay live, and a modal one's focus trap pulls focus back from the prompt. **Checked:** a throwaway jsdom test (outside the repo) with an open `Sheet` and an input inside it. The prompt shows, but focus stays on the drawer's input, and is still there after Tab. So a keyboard or screen-reader user can't reach "Log in again", and can keep typing into a form that can't save (Enter passes the key guard). That fails **AC8**, and **AC1** for the keyboard. It's a common state, not a rare one: a ticket left open in an idle tab is the main case this feature is for. The Developer's note only weighed ⌘K / `?`. | Either build the prompt on `@radix-ui/react-dialog`, as `KeyboardHelp` does (its focus-scope stack pauses the drawer's trap and hides the rest from screen readers; block Escape and outside clicks), or set `inert` on every `<body>` child except the prompt. Add a test with an open `Sheet` behind the prompt. |
+| 2 | nit | `apps/web/src/pages/Layout.tsx:20` | A stray blank line splits the import block. | Drop it. |
+| 3 | nit | `apps/web/src/pages/Layout.tsx:136` | The prompt is mounted only in `Layout`. `/invite/:token` is a signed-in page outside `Layout`, so a session that ends there now gets neither the prompt nor the old redirect. The page is short-lived (it auto-accepts and moves on), so this is rare. | Mount `<SessionExpiredModal />` in `App` instead. The `watchSession()` gate already keeps it off the landing page. |
+| 4 | nit | `apps/web/src/lib/auth.ts:50` | A network blip during a refresh (Keycloak briefly unreachable) also shows "Session expired". In that case keycloak-js rejects but keeps the token, so the session may still be fine. It recovers, because "Log in again" signs straight back in, and it's no worse than the old redirect. | Later: retry once while `keycloak.token` is still set. Fine for the backlog. |
+| 5 | nit | `apps/web/src/lib/api.ts:39` | The new 401 → `notifySessionExpired()` branch has no unit test, and `api.test.ts` doesn't cover 401s. The Tester covers AC2 in the browser. | A small `authedFetch` test: a 401 plus a refused refresh fires the bus once. |
+
+**For the Developer:** fix #1. #2, #3 and #5 are small and in scope, so fold them in if you can. Whatever is still open at re-review gets logged in BACKLOG.md.
+
+**What I ran** (this session, on `feat/3.8.8-session-expiry` at `3284e32`, clean tree):
+- `pnpm typecheck --force`: 4/4 tasks green, none cached.
+- `pnpm --filter @agentpm/web test`: 17 files, **87/87**.
+- `pnpm --filter @agentpm/api test`: 22 files, **123/123**.
+- `pnpm --filter @agentpm/web build`: OK (only the usual chunk-size warning).
+- Lint: the web `lint` script is a no-op (`echo no-lint`).
+- A throwaway vitest file and config in my scratchpad (not committed) for finding #1, as described above.
+- Read-only kcadm against the running dev Keycloak: `rememberMe` true, both RememberMe lifetimes 2592000, `verifyEmail` false. Normal lengths are 1800 s idle and 36000 s max, which matches features.md's "30 minutes … 10 hours".
+- Read the full `dev...feat/3.8.8-session-expiry` diff (16 files) and the security checklist. Also checked the app's other keydown handlers: none act on Enter or Space, so the guard letting those through is safe.
 
 ## 8. Test report — *Tester*
 _Not started._
@@ -126,3 +148,9 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
   - **Edge case, not handled:** if the ⌘K palette or `?` help is open at the moment the session ends, Radix's own focus trap may keep focus in it. The prompt still sits on top (`z-[60]`, `pointer-events-auto`) and can be clicked. Rare, so I left it.
   - **AC6** (survives a browser restart) isn't verified yet; it needs a real restart or a cookie check.
   - My browser checks signed the e2e user in and out (and signed its sessions out once via kcadm). No app data was changed.
+
+### 2026-11-19 · Product / Code Reviewer → Product Developer
+- **Did:** reviewed S0–S2 (`9889365`, `378fce5`, `087a3dc`) against §4, CLAUDE.md and the security checklist. Verdict: **changes requested**, with one blocking finding and four nits (§7).
+- **State:** branch `feat/3.8.8-session-expiry`, reviewed at `3284e32`, with no product code changed. Ran: typecheck 4/4 (uncached), web 87/87, api 123/123, web build OK. Read-only kcadm shows the dev realm already has remember-me on with 30-day lifetimes.
+- **Next role should:** fix §7 #1, so an open ticket drawer, ⌘K or `?` can't keep focus or input away from the prompt. Add a test with an open `Sheet` behind it. Fold in #2, #3 and #5 if cheap. Then hand back to the Reviewer.
+- **Watch out for:** jsdom doesn't implement `inert`. If you take the `inert` route, test that the attribute is set on the `<body>` children, and check the focus behaviour in the browser pane. The Radix Dialog route can be tested in jsdom directly: check that focus lands on "Log in again" with a `Sheet` open.
