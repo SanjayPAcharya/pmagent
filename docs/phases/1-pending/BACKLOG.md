@@ -13,7 +13,7 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 |---|---|---|---|
 | B1 | Deleting a ticket leaves its dependency rows behind (dangling "blocked by" links). "Delete" archives the ticket, so it still shows as a blocker. **→ Promoted to [3.6-b](phase-3.6-b-loose-ends.md) on 2026-11-19.** | Noticed during 3.8.4 | 2026-07-16 |
 | B2 | The drawer's collapsed Relationships header never shows the blocked badge, because `api.getTicket` returns no blocker count. **→ Promoted to [3.6-b](phase-3.6-b-loose-ends.md) on 2026-11-19.** | Noticed during 3.7.2 | 2026-07-07 |
-| B3 | Line 21 of `sourcecode/apps/api/src/services/ai.prompts.ts` says the subtasks and quick-parse prompts exist; only sprint-goal does. Fix it when 3.8.3 lands. **→ Already listed in the 3.8.3 handoff note; the PM puts it into 3.8.3-t1.** | Restructure audit | 2026-11-19 |
+| B3 | Line 21 of `sourcecode/apps/api/src/services/ai.prompts.ts` says the subtasks and quick-parse prompts exist; only sprint-goal does. Fix it when 3.8.3 lands. **→ In [3.8.3-t1](../2-ready/phase-3.8.3-t1-ai-subtasks.md) step S1 (2026-11-19).** | Restructure audit | 2026-11-19 |
 
 ## Features (deferred or requested)
 
@@ -34,9 +34,10 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | ID | Item | Source | Added |
 |---|---|---|---|
 | T1 | `docs/reference/*` still describe the original plan in places (AgentPM name, `agentpm.io`, RDS/managed data, SES). Refresh each file the next time its area is touched. | Restructure audit | 2026-11-19 |
-| T2 | `docs/product/features.md` still says "PMAgent" in its body after the rebrand to "PmAgent" (3 places). A one-minute fix for whichever item next edits `features.md`. | Restructure audit | 2026-11-19 |
+| T2 | `docs/product/features.md` still says "PMAgent" in its body after the rebrand to "PmAgent" (3 places). A one-minute fix for whichever item next edits `features.md`. **→ In [3.8.3-t1](../2-ready/phase-3.8.3-t1-ai-subtasks.md) step S3 (2026-11-19).** | Restructure audit | 2026-11-19 |
 | T3 | Old verification debt from 2.1: silent sign-in on hard refresh (C9), drag-reorder feel within a column (C10), the mention → notification chain. Probably fine; confirm in a Tester regression pass. | 2.1 | 2026-06-24 |
 | T4 | `docs/product/overview.md` still describes the original MVP and pricing. | Restructure audit | 2026-11-19 |
+| T5 | The offline AI eval (`pnpm --filter @agentpm/api ai:eval`) only has fixtures for draft / expand / summary. `--endpoint sprintGoal` already crashes on `fixtures[ep].length`, and the 3.8.3-t1 `subtasks` and X1 `quickParse` entries won't be covered either. Add fixtures, or skip endpoints that have none. | PM, 3.8.3-t1 check | 2026-11-19 |
 
 ## DevOps (local)
 

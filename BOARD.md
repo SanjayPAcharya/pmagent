@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-pm`.** It re-verifies 3.8.3 (the top Pending row), splits it into T1 and X1, and makes T1 build-ready. Then go down the list (`/pmagent-dev`, `/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-dev`.** It finishes 3.8.8 (the Building row) first: it puts the work on a branch, closes the known gaps, and hands off to the Reviewer. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
 
 The one place that says what's done, what's next, and who has the baton. **Every role session reads this first and updates its item's row when it hands off.** The four groups mirror the folders in [`docs/phases/`](docs/phases/). How the pipeline works: [docs/workflow/README.md](docs/workflow/README.md).
 
@@ -24,14 +24,14 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Size | Updated | Notes |
 |---|---|---|---|---|
-| — | *Empty. The Product Manager moves items here after checking them against today's code.* | | | |
+| 3.8.3-t1 | [AI suggests subtasks](docs/phases/2-ready/phase-3.8.3-t1-ai-subtasks.md) | M (3 steps) | 2026-11-19 | Checked against the code on 2026-11-19. 11 ACs, S1 API → S2 review logic → S3 drawer UI + guide. DevOps impact: none. Owner decisions recorded: the new subtasks copy only the parent's workstream, and their criteria are saved as plain bullets. Start it after 3.8.8 has merged (both touch `lib/api.ts` and `en.json`). |
 
 ## ⏳ Pending — [docs/phases/1-pending/](docs/phases/1-pending/)
 *The top row is what the Product Manager picks up next. Planning owns the order (decision 1 below; the 3.6 part was revised by decisions 6–8).*
 
 | # | Phase | Work item | Stage | Next role | Updated | Notes |
 |---|---|---|---|---|---|---|
-| 1 | 3.8.3 | [AI auto-populate — T1 subtasks, X1 natural-language quick-add](docs/phases/1-pending/phase-3.8.3-ai-autopopulate.md) | `pm-review` | Product Manager | 2026-11-19 | S1 (sprint goal) shipped 2026-07-13. The spec was checked against the code on 2026-07-12 and the code has moved since, so re-verify it and split T1 / X1 into separate items. AI runs on Bedrock locally (decision 3). |
+| 1 | 3.8.3-x1 | [Natural-language quick-add](docs/phases/1-pending/phase-3.8.3-x1-nl-quick-add.md) | `pm-review` | Product Manager | 2026-11-19 | Split out of 3.8.3 by the PM on 2026-11-19. The scope is carried over; §3–§6 aren't written yet. The PM writes them once T1 has merged, because T1 changes the same AI files. AI runs on Bedrock locally (decision 3). |
 | 2 | 3.6-b | [Loose ends — delete cleanup, blocked-state bugs B1/B2, phone + a11y check](docs/phases/1-pending/phase-3.6-b-loose-ends.md) | `pm-review` | Product Manager | 2026-11-19 | First piece of the 3.6 split (decision 6). Size M. PM picks it up after 3.8.3. |
 | 3 | 3.6-a2 | [Soft plan limits](docs/phases/1-pending/phase-3.6-polish-hardening.md#split-2026-11-19) | `draft` | Product Planning | 2026-11-19 | Free-plan caps with an "upgrade" hint, no billing. `Organization.plan` (FREE/PRO/TEAM) already exists. Still inside the 3.6 file; Planning gives it its own file next. |
 | 4 | 3.6-a1 | [Error-reporting hook, off by default](docs/phases/1-pending/phase-3.6-polish-hardening.md#split-2026-11-19) | `draft` | Product Planning | 2026-11-19 | Re-scoped (decision 7): the error-reporting library in api + web, switched on only when a DSN is set. No account, no container. Size S. |
@@ -90,6 +90,7 @@ These were made by the owner on 2026-11-19, in the Planning session:
 | 3.7.4 | [Compliance & security hardening](docs/phases/4-completed/phase-3.7.4-compliance-hardening.md) | 2026-07-08 | CSP enforce + a11y gate in CI (parked) |
 | 3.8 | [AI ticket drafting on Amazon Bedrock](docs/phases/4-completed/phase-3.8-ai-tickets.md) | 2026-07-11 | Prod model choice parked (decision 4) |
 | 3.8.1 | [AI polish: output quality + generation UX](docs/phases/4-completed/phase-3.8.1-ai-polish.md) | 2026-07-12 | Prod model choice parked (decision 4) |
+| 3.8.3-s1 | [AI drafts the sprint goal](docs/phases/2-ready/phase-3.8.3-t1-ai-subtasks.md#background-s1-sprint-goal-shipped-2026-07-13) (recorded in the T1 file) | 2026-07-13 | T1 and X1 split out on 2026-11-19 |
 | 3.8.4 | [Beta-feedback polish: 9 fixes](docs/phases/4-completed/phase-3.8.4-beta-polish.md) | 2026-07-16 | Dangling dependency rows → B1 |
 | 3.8.5 | [Milestones v2](docs/phases/4-completed/phase-3.8.5-milestones-v2.md) | 2026-07-24 | — |
 | 3.8.6 | [Scoped Board + "Needs attention" Overview](docs/phases/4-completed/phase-3.8.6-decisions.md) | 2026-07-24 | Kept as is (decision 5) |
