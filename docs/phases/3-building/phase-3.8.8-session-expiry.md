@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `changes-requested` · **Next role:** Product Developer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back for one blocking fix (§7), the fix landed in `3e09228`, and the re-review approved it for the Tester. The Tester failed AC1 (§8): on a freshly loaded page, a session that ends while the tab sits idle shows no prompt until the user acts.
+> **Stage:** `review` · **Next role:** Product / Code Reviewer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back once (§7, fixed in `3e09228`, approved). The Tester sent it back once (§8 AC1: an idle tab never showed the prompt). That is fixed in `90e81b0`, and it is back with the Reviewer.
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -178,8 +178,8 @@ No new findings. Copy, tokens and lucide icons are unchanged, there are no new i
   - Add a unit test: the first token's expiry, with no earlier refresh, triggers a refresh and, if that fails, the prompt.
 - **Small, same area (fold in if cheap):** when the expiry is discovered by a failed save, the save's raw "Unauthorized" toast shows behind the prompt. It's covered by the overlay, but the prompt alone says it better.
 
-**Developer response** (2026-11-19, all in one commit, `R2_SHA`):
-- **AC1 idle tab — fixed in `R2_SHA`.**
+**Developer response** (2026-11-19, all in one commit, `90e81b0`):
+- **AC1 idle tab — fixed in `90e81b0`.**
   - **Root cause confirmed** in `keycloak-js@26.2.4` `#setToken` (`lib/keycloak.js` around line 1575). The expiry timer is set only if `onTokenExpired` is already attached when a token is stored. `watchSession()` attached it after `init()`, so the first token of every page load had no timer.
   - **Fix:** `onTokenExpired` and `onAuthLogout` are now attached in `lib/auth.ts` right after `new Keycloak(…)`, at module load. `main.tsx` imports that module before it calls `init()`, so every stored token gets a timer, the first one included. `watchSession()` now only switches the bus on. A signed-out page has no token, so nothing is armed, and the bus stays off there either way (AC4).
   - Why this option and not arming the first timer in `watchSession()` from `tokenParsed.exp`: it uses keycloak-js's own timer, with its own clock-skew handling and its own re-arming after each refresh, instead of a copy of that logic.
@@ -196,7 +196,7 @@ No new findings. Copy, tokens and lucide icons are unchanged, there are no new i
   - The token expired at 12:59:56.0. The prompt appeared **by itself at 12:59:56.6**, and the network log ends with the token endpoint's `400`.
   - Focus was on "Log in again". The palette was inert with its draft untouched, and the toast area was gone.
   - A first attempt was spoiled: Vite reloads the page whenever a file under `apps/web/src` changes, test files included, so editing a test mid-wait reloaded the page. The repeat touched nothing under `apps/web`.
-- **"Unauthorized" toast behind the prompt — folded in, `R2_SHA`.** The new `components/AppToaster.tsx` wraps sonner's `Toaster` (used by `main.tsx`) and renders nothing once the session has ended. Toasts already on screen go, and later ones (the failed save's) never show. `"Log in again"` reloads the page, so toasts come back after re-login. Test: `AppToaster.test.tsx` (2 tests). I didn't need to touch any call site.
+- **"Unauthorized" toast behind the prompt — folded in, `90e81b0`.** The new `components/AppToaster.tsx` wraps sonner's `Toaster` (used by `main.tsx`) and renders nothing once the session has ended. Toasts already on screen go, and later ones (the failed save's) never show. `"Log in again"` reloads the page, so toasts come back after re-login. Test: `AppToaster.test.tsx` (2 tests). I didn't need to touch any call site.
 - **Draft lost after re-login:** the prompt now appears before the user presses Send, but "Log in again" still reloads the page, so an unsent draft is lost. The prompt's copy says changes can't be saved. Keeping drafts across the re-login is a feature of its own, so I logged it as **BACKLOG F10** rather than building it here.
 
 **Regressions found:** none caused by this item.
@@ -307,3 +307,32 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
   - Don't force a refresh (`updateToken(-1)`) before you wait. That arms the timer and hides the bug, which is why earlier browser checks passed.
   - Optional, same area: the raw "Unauthorized" toast behind the prompt when a save discovers the expiry.
   - Logged in BACKLOG, not this item: B5 (board header overflows at 375 px), B6 (barely visible focus ring on primary buttons), B7 (`window.confirm` on Delete ticket), T6 (e2e skip and leftover orgs).
+
+### 2026-11-19 · Product Developer → Product / Code Reviewer
+- **Did:** fixed the Tester's AC1 failure in [`90e81b0`]. The answer is inline in §8.
+  - **Cause:** keycloak-js arms its expiry timer only if `onTokenExpired` already exists when a token is stored. We attached it after `init()`, so the first token of every page load was never watched.
+  - **Fix:** `onTokenExpired` and `onAuthLogout` are now attached in `lib/auth.ts` at module load, before `init()`. `watchSession()` only switches the bus on.
+  - Also folded in the Tester's optional point: `AppToaster` switches toasts off once the session has ended.
+  - Logged backlog F10: keep unsent drafts across the re-login.
+- **State:** branch `feat/3.8.8-session-expiry`, head `90e81b0` before this handoff commit. Ran in this session:
+  - `pnpm typecheck --force`: 4/4, 0 cached.
+  - web tests: 98/98. That's 92 plus 6 new: the real keycloak-js `auth.expiry-timer.test.ts` (3), a hooks-on-load test in `auth.test.ts` (1), and `AppToaster.test.tsx` (2).
+  - api tests: 123/123.
+  - web build: OK.
+  - The 3 expiry-timer tests fail against the previous `auth.ts` and pass now.
+- **How to see it** (the Tester's repro, which I ran in this session):
+  1. Load the app fresh and sign in. Don't force a refresh.
+  2. Open ⌘K or a ticket and type something.
+  3. End the session with kcadm or the admin console. Touch nothing.
+  4. Within a second of the access token's expiry (5 min after sign-in), the prompt appears by itself. Focus is on "Log in again", and there's no toast behind it.
+  - My run: signed in 12:54:56, ended the session 12:55:04, token expired 12:59:56.0, prompt at 12:59:56.6, 0 API calls during the wait.
+- **Migrations / realm / env:** none.
+- **Next role should:** review `90e81b0`.
+  - First `lib/auth.ts`: hooks at module load, `watchSession()` reduced to a flag. Check that nothing else assigns those hooks (I grepped: only `auth.ts` does).
+  - Then `lib/auth.expiry-timer.test.ts`, which runs the real library with fake timers and a stubbed token endpoint.
+  - Then `components/AppToaster.tsx` and its use in `main.tsx`.
+- **Watch out for:**
+  - **Correction to my first handoff note:** "the prompt appears at the next token refresh" was true only after one refresh had happened. It's now true from the first token.
+  - **For the Tester's re-run:** Vite reloads the page whenever a file under `apps/web/src` changes, test files included. Don't edit anything there during the 5-minute wait, or the page reloads and simply shows the landing page (correct for an ended session, but not the case being tested). That spoiled my first attempt.
+  - `tokenTimeoutHandle` isn't in keycloak-js's public types; the test reads it through a small cast.
+  - The e2e user's Keycloak session from my browser check is ended. No app data was changed.
