@@ -26,7 +26,7 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | F5 | Dependency types (finish-to-start, start-to-start, …) and a scheduling engine for the Timeline. | Beta doc DEF-1 | 2026-07-16 |
 | F6 | GitHub and Jira integrations. The GitHub part overlaps Phase 5. | Beta doc DEF-2 | 2026-07-16 |
 | F7 | AI daily standup, and an AI-written version of the "Needs attention" digest. | Beta doc DEF-3; 3.8.6 | 2026-07-24 |
-| F8 | Full Jira-style board restructure, only if the owner's trial of the scoped Board says it's needed (⛔5). | 3.8.6 DEC-1 | 2026-07-24 |
+| F8 | Full Jira-style board restructure, only if the owner finds the scoped Board lacking (decision 5 on BOARD.md keeps it as is). | 3.8.6 DEC-1 | 2026-07-24 |
 | F9 | Social sign-in end to end: register the Google / Microsoft / GitHub OAuth apps (owner), put the keys in `.env`, verify the round trip on localhost. See `docs/reference/13-social-login-setup.md`. | 1, 2.8.5 | 2026-06-26 |
 
 ## Tech debt & docs

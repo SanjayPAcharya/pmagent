@@ -62,7 +62,7 @@ To call authenticated API endpoints with curl, you need a token. The `agentpm-we
 - **AI eval** (spends real Bedrock tokens; needs AI configured): `pnpm --filter @agentpm/api ai:eval` writes `docs/reports/ai-eval-report.md`.
 
 ## AI features locally
-AI is off unless `.env` sets `AI_PROVIDER=bedrock` plus the dev AWS key. With AI off, the AI buttons show as disabled with a reason. Whether to keep using Bedrock locally is an open owner decision (⛔3 on BOARD.md).
+AI is off unless `.env` sets `AI_PROVIDER=bedrock` plus the dev AWS key. With AI off, the AI buttons show as disabled with a reason. Local dev keeps using Bedrock with the dev key (decision 3 on BOARD.md, 2026-11-19).
 
 ## Test users and data
 - **e2e test user:** created by `infra/keycloak/seed-e2e-user.sh`. Use it for Tester and browser checks.

@@ -46,4 +46,4 @@
   1. Re-verify the ground truth above against today's code.
   2. Split T1 and X1 into separate items (`phase-3.8.3-t1-….md`, `phase-3.8.3-x1-….md`) using the work-item template.
   3. Write the ACs, build steps and test plan for T1 first.
-- **Watch out for:** ⛔3 (the AI provider for local dev) decides how the Tester can verify AI output. The DoD lines above still say "PROGRESS"; use BOARD.md + `docs/product/features.md` instead.
+- **Watch out for:** AI runs on Bedrock locally (decision 3 on BOARD.md; the dev key is set in `.env`). If the key stops working, build and test against the mock provider and mark live checks "not verified". The DoD lines above still say "PROGRESS"; use BOARD.md + `docs/product/features.md` instead.

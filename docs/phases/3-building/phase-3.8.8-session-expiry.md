@@ -11,7 +11,7 @@
 ## 2. Scope — *Product Planning*
 - **In:** a session-expired prompt in the web app; a "Remember me" checkbox on the Keycloak login page; 30-day remember-me session lifetimes in the realm.
 - **Out (non-goals):** changing normal (not remembered) session lengths; refresh-token rotation; syncing the expired state across tabs.
-- **Open questions for the owner (⛔):** ⛔2 on BOARD.md — keep the full-screen modal, or use an inline banner?
+- **Decided (2026-11-19, decision 2 on BOARD.md):** keep the full-screen prompt, as a deliberate exception to the no-modal rule: once you're signed out, nothing on the page can be saved.
 - **Risks:** realm settings that silently don't apply (gap 1 below).
 
 ## 3. Ground truth — what was built (working tree from 2026-08-06; read on 2026-11-19)
@@ -37,7 +37,7 @@
 7. `docs/product/features.md` doesn't mention either feature.
 8. "Typecheck + build + 123 API tests green" was reported on 2026-08-06 and hasn't been re-run since.
 
-## 4. Acceptance criteria — *Product Manager* (proposed 2026-11-19; confirm once ⛔2 is settled)
+## 4. Acceptance criteria — *Product Manager* (set 2026-11-19)
 - [ ] **AC1** — When the session can't be refreshed, the app shows the session-expired prompt instead of redirecting, and nothing behind it can be used until the user acts.
 - [ ] **AC2** — An API call that gets a 401 and can't refresh shows the same prompt, once (prompts don't stack).
 - [ ] **AC3** — "Log in again" opens the Keycloak login. After signing in, the user is back in the app.
@@ -50,7 +50,7 @@
 
 ## 5. Build steps — *PM writes · Developer ticks* (one step = one commit)
 - [ ] **S0** — Package the existing work. Run `git switch -c feat/3.8.8-session-expiry` (it carries the uncommitted changes), then commit only the eight files in §3, as built: `feat(3.8.8 S0): session-expired prompt + Remember me (as built 2026-08-06)`.
-- [ ] **S1** — Close gaps 1–6: apply the realm settings via `keycloak-init` and `prod-bootstrap.sh`; remove the dead exports and the unused key; make the websocket decision; restore `verifyEmail`; fix focus and copy. Apply the ⛔2 decision.
+- [ ] **S1** — Close gaps 1–6: apply the realm settings via `keycloak-init` and `prod-bootstrap.sh`; remove the dead exports and the unused key; make the websocket decision; restore `verifyEmail`; fix focus and copy. Keep the full-screen prompt (decision 2).
 - [ ] **S2** — Add unit tests for the event bus (fires once, only when authenticated). Describe both features in `docs/product/features.md` in plain language and refresh its date.
 
 DevOps impact: Keycloak realm settings on the running dev Keycloak (via kcadm/init), plus the prod bootstrap script (prod itself is parked). No migrations, env vars or new dependencies.
@@ -80,6 +80,10 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
 
 ### 2026-11-19 · Docs restructure (Claude) → Product Developer
 - **Did:** filed this item from the uncommitted 2026-08-06 work during the docs restructure. Recorded the files, the known gaps and the proposed ACs.
-- **State:** the code is uncommitted in the `dev` working tree. Nothing has been re-run since August. Docker Desktop wasn't running on 2026-11-19.
-- **Next role should:** bring the stack up (runbook), do S0 so the work is on `feat/3.8.8-session-expiry`, settle ⛔2 with the owner, then S1–S2, then hand to the Reviewer.
+- **State:** the code is uncommitted in the `dev` working tree.
+- **Environment check (2026-11-19, later that day):**
+  - The local stack is up and healthy: api `/health` and `/ready` 200, Keycloak realm 200, web 200, `keycloak-init` clean.
+  - With this work in the tree, `pnpm typecheck` is green, api tests pass 123/123 and web tests pass 75/75 (so gap 8 is answered).
+  - Decision 2 (keep the full-screen prompt) is made.
+- **Next role should:** do S0 so the work is on `feat/3.8.8-session-expiry`, then S1–S2, then hand to the Reviewer.
 - **Watch out for:** the eight files in §3 are the only ones S0 should commit; don't stage anything else.

@@ -39,7 +39,7 @@ A work item is **one markdown file**. It moves between four folders under [`docs
                                               └─ changes-requested ◄────────┘
 ```
 
-- **`blocked`** means an owner decision (⛔) is needed. It's listed on BOARD.md under "Owner decisions waiting".
+- **`blocked`** means an owner decision (⛔) is needed. It's listed on BOARD.md under "Owner decisions".
 - **`parked`** means deliberately on hold, e.g. everything prod/AWS.
 - **WIP limit:** one item in `3-building/` at a time. Planning and the PM can keep shaping pending items meanwhile.
 - **Unit of flow:** one file = one pass through the pipeline, ideally 1–5 build steps. The PM splits anything bigger into lettered items (`3.8.3-t1`, `3.8.3-x1`).
@@ -53,7 +53,9 @@ A work item is **one markdown file**. It moves between four folders under [`docs
 **Finish (the handoff)**
 1. Update the item's header line: Stage, Next role, Branch.
 2. Append a handoff note to the item's **Handoff log** (template below).
-3. Update the item's row on BOARD.md. If its group changed, `git mv` the file and move the row to the matching table.
+3. Update the item's row on BOARD.md. If its group changed, `git mv` the file and move the row to the matching table. Then update the **▶ Next session** line at the top of BOARD.md:
+   - normally it's the next role in order (after DevOps, back to `/role-planning`);
+   - if you sent the item back, it's the role you sent it to.
 4. Commit those changes (see Git flow). **Never push.**
 5. Tell the owner in two or three lines what you did, what's next, and which command starts the next session.
 
@@ -89,7 +91,7 @@ A work item is **one markdown file**. It moves between four folders under [`docs
 
 - **Commit messages:** `<type>(<phase> <step>): <what>`, for example `feat(3.8.3-t1 S2): suggest-subtasks checklist`. Types: `feat`, `fix`, `test`, `docs`, `chore`. Docs-only handoffs use `docs(plan|pm|review|test|board): …`.
 - **One build step = one commit**, and the item file update goes in the same commit as the code.
-- **While an item is building**, its file and its BOARD row change only on its feature branch. Planning and the PM edit other rows on `dev`. BOARD.md has no global "last updated" line, which keeps those edits from conflicting.
+- **While an item is building**, its file and its BOARD row change only on its feature branch. Planning and the PM edit other rows on `dev`. BOARD.md has only one shared line (▶ Next session) and no "last updated" line, so those edits rarely conflict. If the ▶ line conflicts at merge time, keep the newer one.
 - **Merging:** only DevOps merges, and only after the Tester passes: `git merge --no-ff feat/…` into `dev`, then delete the branch.
 - **Pushing:** never without the owner's explicit "yes" in chat, for any branch.
 - **Destructive git** (`reset --hard`, force-push, deleting unmerged branches) needs the owner's OK every time.
