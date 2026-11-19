@@ -88,6 +88,21 @@ describe('session-expired bus (3.8.8)', () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
+  it('has its Keycloak hooks attached on load, before init(), yet stays silent until watchSession()', async () => {
+    // keycloak-js only arms its expiry timer if onTokenExpired is set when the
+    // first token arrives (see auth.expiry-timer.test.ts for the real library).
+    expect(auth.keycloak.onTokenExpired).toBeTypeOf('function')
+    expect(auth.keycloak.onAuthLogout).toBeTypeOf('function')
+
+    const listener = vi.fn()
+    auth.onSessionExpired(listener)
+    ;(auth.keycloak.updateToken as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('refused'))
+    auth.keycloak.onTokenExpired?.()
+    auth.keycloak.onAuthLogout?.()
+    await flush()
+    expect(listener).not.toHaveBeenCalled() // a signed-out page never prompts
+  })
+
   it('fires when Keycloak ends the session and clears the tokens', () => {
     const listener = vi.fn()
     auth.onSessionExpired(listener)

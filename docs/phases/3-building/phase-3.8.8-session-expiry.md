@@ -178,6 +178,27 @@ No new findings. Copy, tokens and lucide icons are unchanged, there are no new i
   - Add a unit test: the first token's expiry, with no earlier refresh, triggers a refresh and, if that fails, the prompt.
 - **Small, same area (fold in if cheap):** when the expiry is discovered by a failed save, the save's raw "Unauthorized" toast shows behind the prompt. It's covered by the overlay, but the prompt alone says it better.
 
+**Developer response** (2026-11-19, all in one commit, `R2_SHA`):
+- **AC1 idle tab — fixed in `R2_SHA`.**
+  - **Root cause confirmed** in `keycloak-js@26.2.4` `#setToken` (`lib/keycloak.js` around line 1575). The expiry timer is set only if `onTokenExpired` is already attached when a token is stored. `watchSession()` attached it after `init()`, so the first token of every page load had no timer.
+  - **Fix:** `onTokenExpired` and `onAuthLogout` are now attached in `lib/auth.ts` right after `new Keycloak(…)`, at module load. `main.tsx` imports that module before it calls `init()`, so every stored token gets a timer, the first one included. `watchSession()` now only switches the bus on. A signed-out page has no token, so nothing is armed, and the bus stays off there either way (AC4).
+  - Why this option and not arming the first timer in `watchSession()` from `tokenParsed.exp`: it uses keycloak-js's own timer, with its own clock-skew handling and its own re-arming after each refresh, instead of a copy of that logic.
+- **Test for this path:** `lib/auth.expiry-timer.test.ts` (3 tests) runs the **real keycloak-js** with fake timers and a stubbed token endpoint. A mock can't catch this bug, because the bug lived inside the library. The test signs in through `init()` (the first stored token, with no refresh before it) and checks:
+  - the expiry timer is armed straight away;
+  - with the session ended (the token endpoint answers 400 `invalid_grant`), the prompt fires by itself just after the token's 5 minutes, and not before;
+  - with a live session it refreshes quietly at each expiry and re-arms, with no prompt (AC9).
+  - All 3 fail against the previous `auth.ts` (no timer, no prompt, no refresh) and pass now.
+  - `auth.test.ts` gained one test: the hooks are attached at load, but a refused refresh or a cleared token on a page that never called `watchSession()` stays silent.
+- **Browser, the Tester's repro** (this session, e2e user): I followed the Tester's repro with no forced refresh and no action during the wait.
+  - Fresh page load and sign-in at 12:54:56 UTC. `tokenTimeoutHandle` was **set straight away**; before the fix it was empty.
+  - I opened ⌘K and typed a draft, then ended the session with kcadm `users/<id>/logout` at 12:55:04.
+  - I touched nothing after that, and the page made 0 API calls.
+  - The token expired at 12:59:56.0. The prompt appeared **by itself at 12:59:56.6**, and the network log ends with the token endpoint's `400`.
+  - Focus was on "Log in again". The palette was inert with its draft untouched, and the toast area was gone.
+  - A first attempt was spoiled: Vite reloads the page whenever a file under `apps/web/src` changes, test files included, so editing a test mid-wait reloaded the page. The repeat touched nothing under `apps/web`.
+- **"Unauthorized" toast behind the prompt — folded in, `R2_SHA`.** The new `components/AppToaster.tsx` wraps sonner's `Toaster` (used by `main.tsx`) and renders nothing once the session has ended. Toasts already on screen go, and later ones (the failed save's) never show. `"Log in again"` reloads the page, so toasts come back after re-login. Test: `AppToaster.test.tsx` (2 tests). I didn't need to touch any call site.
+- **Draft lost after re-login:** the prompt now appears before the user presses Send, but "Log in again" still reloads the page, so an unsent draft is lost. The prompt's copy says changes can't be saved. Keeping drafts across the re-login is a feature of its own, so I logged it as **BACKLOG F10** rather than building it here.
+
 **Regressions found:** none caused by this item.
 
 **Noticed in passing** (outside this item; logged in BACKLOG):

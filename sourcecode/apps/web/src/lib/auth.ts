@@ -7,6 +7,21 @@ export const keycloak = new Keycloak({
   clientId: import.meta.env.VITE_KEYCLOAK_CLIENT as string,
 })
 
+// 3.8.8: session-ending hooks, attached here, *before* main.tsx calls init(), on
+// purpose. keycloak-js arms its expiry timer only when it stores a token while
+// `onTokenExpired` is already set. Attached after init(), the first token of
+// every page load got no timer, so an idle tab never noticed its session had
+// ended. On a signed-out page there's no token, so nothing is armed, and the
+// bus below stays silent until watchSession() anyway.
+//
+// The access token is about to lapse: refresh it. If Keycloak refuses, the session is over.
+keycloak.onTokenExpired = () => {
+  void keycloak.updateToken(30).catch(() => notifySessionExpired())
+}
+// keycloak-js clears its own tokens when the SSO session ends (a refused
+// refresh, or its login-iframe check). A normal logout() just navigates away.
+keycloak.onAuthLogout = () => notifySessionExpired()
+
 export function getToken(): string | undefined {
   return keycloak.token
 }
@@ -42,16 +57,13 @@ const expiryListeners = new Set<ExpiryListener>()
 let hadSession = false
 let expired = false
 
-/** Called once from main.tsx when keycloak.init() comes back signed in. */
+/**
+ * Called once from main.tsx when keycloak.init() comes back signed in. From
+ * then on, a session that ends raises the prompt. (The keycloak-js hooks that
+ * detect it are attached at the top of this file, before init().)
+ */
 export function watchSession() {
   hadSession = true
-  // The access token is about to lapse: refresh it. If Keycloak refuses, the session is over.
-  keycloak.onTokenExpired = () => {
-    void keycloak.updateToken(30).catch(() => notifySessionExpired())
-  }
-  // keycloak-js clears its own tokens when the SSO session ends (a refused
-  // refresh, or its login-iframe check). A normal logout() just navigates away.
-  keycloak.onAuthLogout = () => notifySessionExpired()
 }
 
 export function onSessionExpired(listener: ExpiryListener): () => void {

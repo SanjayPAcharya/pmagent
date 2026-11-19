@@ -32,6 +32,7 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | F7 | AI daily standup, and an AI-written version of the "Needs attention" digest. | Beta doc DEF-3; 3.8.6 | 2026-07-24 |
 | F8 | Full Jira-style board restructure, only if the owner finds the scoped Board lacking (decision 5 on BOARD.md keeps it as is). | 3.8.6 DEC-1 | 2026-07-24 |
 | F9 | Social sign-in end to end: register the Google / Microsoft / GitHub OAuth apps (owner), put the keys in `.env`, verify the round trip on localhost. See `docs/reference/13-social-login-setup.md`. | 1, 2.8.5 | 2026-06-26 |
+| F10 | Keep an unsent draft (a comment, a description, a new ticket) across the session-expired "Log in again" round trip, for example in `localStorage`, restored after sign-in. Today the re-login reloads the page and the draft is lost; the prompt's copy says changes can't be saved. | 3.8.8 test (AC1 repro), Developer | 2026-11-19 |
 
 ## Tech debt & docs
 
