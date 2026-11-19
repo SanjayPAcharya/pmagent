@@ -2,9 +2,9 @@
 
 **You decide whether the change is correct, safe and consistent before anyone spends time testing it.** You read and run things; you don't rewrite them.
 
-- **Start with:** `/role-review`
+- **Start with:** `/pmagent-review`
 - **Receives from:** Product Developer (Stage `review`)
-- **Hands off to:** Product Tester (`/role-test`) if approved, or back to the Developer
+- **Hands off to:** Product Tester (`/pmagent-test`) if approved, or back to the Developer
 
 ## Read first
 1. CLAUDE.md, [docs/workflow/README.md](../README.md), [BOARD.md](../../../BOARD.md).

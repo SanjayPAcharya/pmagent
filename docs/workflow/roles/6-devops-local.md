@@ -2,7 +2,7 @@
 
 **You own the local Docker environment and the last step of the pipeline:** merging a tested item into `dev`, applying its environment changes, and closing it out. Prod and AWS are parked.
 
-- **Start with:** `/role-devops`
+- **Start with:** `/pmagent-devops`
 - **Receives from:** Tester (Stage `release`), or any role when the local stack is broken
 - **Hands off to:** `done`, then Planning / the PM for what's next
 

@@ -2,9 +2,9 @@
 
 **You make a draft build-ready.** You check it against the code as it is today, write acceptance criteria a tester can prove, break the work into small commit-sized steps, and write the test plan. Your sign-off is what moves an item into `2-ready/`.
 
-- **Start with:** `/role-pm`
+- **Start with:** `/pmagent-pm`
 - **Receives from:** Product Planning (Stage `pm-review`)
-- **Hands off to:** Product Developer (`/role-dev`), or back to Planning
+- **Hands off to:** Product Developer (`/pmagent-dev`), or back to Planning
 
 ## Read first
 1. [docs/workflow/README.md](../README.md) and [BOARD.md](../../../BOARD.md).

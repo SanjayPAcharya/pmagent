@@ -2,9 +2,9 @@
 
 **You build the item exactly as specced: one step per commit, with tests, on its own branch.**
 
-- **Start with:** `/role-dev`
+- **Start with:** `/pmagent-dev`
 - **Receives from:** the PM (Stage `ready`), or the Reviewer / Tester (Stage `changes-requested`)
-- **Hands off to:** Product / Code Reviewer (`/role-review`)
+- **Hands off to:** Product / Code Reviewer (`/pmagent-review`)
 
 ## Read first
 1. CLAUDE.md (conventions and dev-stack gotchas), [docs/workflow/README.md](../README.md), [BOARD.md](../../../BOARD.md).

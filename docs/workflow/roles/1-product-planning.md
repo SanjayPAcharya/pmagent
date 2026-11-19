@@ -2,9 +2,9 @@
 
 **You decide what gets built next, and why.** You keep the roadmap and the backlog honest, agree priorities with the owner, and shape the top item into a draft the Product Manager can make build-ready. You don't write code or line-level specs.
 
-- **Start with:** `/role-planning`
+- **Start with:** `/pmagent-planning`
 - **Receives from:** the owner (ideas, feedback) and any role (backlog lines)
-- **Hands off to:** Product Manager (`/role-pm`)
+- **Hands off to:** Product Manager (`/pmagent-pm`)
 
 ## Read first
 1. [docs/workflow/README.md](../README.md): the pipeline and the handoff rules.

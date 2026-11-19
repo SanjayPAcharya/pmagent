@@ -12,7 +12,7 @@ AI-agent-first project management for software teams: a full kanban + sprint boa
 | [`docs/`](docs/README.md) | Workflow (the six-role pipeline), product docs, phase specs, technical reference, reports, history |
 | [`sourcecode/`](sourcecode/README.md) | The pnpm / Turborepo workspace: `apps/api` (Fastify), `apps/web` (Vite/React), `packages/`, `infra/` |
 | [`CLAUDE.md`](CLAUDE.md) | Repo conventions (also loaded into every Claude Code session) |
-| `.claude/commands/` | Session launchers for the six roles: `/role-planning`, `/role-pm`, `/role-dev`, `/role-review`, `/role-test`, `/role-devops` |
+| `.claude/commands/` | Session launchers for the six roles: `/pmagent-planning`, `/pmagent-pm`, `/pmagent-dev`, `/pmagent-review`, `/pmagent-test`, `/pmagent-devops` |
 
 ## How the work flows
 

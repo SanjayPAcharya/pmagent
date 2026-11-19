@@ -7,7 +7,7 @@ Thumbs.db
 .vscode/
 
 # Claude Code: keep machine-specific settings local, but share the role launchers
-# (.claude/commands/role-*.md) that start each pipeline session.
+# (.claude/commands/pmagent-*.md) that start each pipeline session.
 .claude/*
 !.claude/commands/
 

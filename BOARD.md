@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/role-planning`.** It re-scopes 3.6 and tidies the backlog. Then go down the list (`/role-pm`, `/role-dev`, `/role-review`, `/role-test`, `/role-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-planning`.** It re-scopes 3.6 and tidies the backlog. Then go down the list (`/pmagent-pm`, `/pmagent-dev`, `/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
 
 The one place that says what's done, what's next, and who has the baton. **Every role session reads this first and updates its item's row when it hands off.** The four groups mirror the folders in [`docs/phases/`](docs/phases/). How the pipeline works: [docs/workflow/README.md](docs/workflow/README.md).
 
@@ -11,7 +11,7 @@ The one place that says what's done, what's next, and who has the baton. **Every
  └──────── 1-pending ─────────┘ └ 2-ready ┘ └──────────────── 3-building ────────────┘ → 4-completed
 ```
 
-Start each session with its command: `/role-planning` · `/role-pm` · `/role-dev` · `/role-review` · `/role-test` · `/role-devops`.
+Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/pmagent-dev` · `/pmagent-review` · `/pmagent-test` · `/pmagent-devops`.
 
 ## 🔨 Building — [docs/phases/3-building/](docs/phases/3-building/)
 *At most one item at a time.*

@@ -13,7 +13,7 @@ PmAgent by Buildenics is an AI-agent-first project-management app. One owner bui
 - **`sourcecode/`** is the pnpm workspace root; run all `pnpm` / `docker compose` commands from there. It contains `apps/api` (Fastify + Prisma), `apps/web` (Vite + React), `packages/shared-types` and `infra/`.
 
 ## How we work
-- **Six roles, one per session, in order:** Planning → Product Manager → Developer → Reviewer → Tester → DevOps. A session starts with its command (`/role-planning`, `/role-pm`, `/role-dev`, `/role-review`, `/role-test`, `/role-devops`), follows `docs/workflow/roles/<n>-*.md`, and stays in role. Full rules: [docs/workflow/README.md](docs/workflow/README.md).
+- **Six roles, one per session, in order:** Planning → Product Manager → Developer → Reviewer → Tester → DevOps. A session starts with its command (`/pmagent-planning`, `/pmagent-pm`, `/pmagent-dev`, `/pmagent-review`, `/pmagent-test`, `/pmagent-devops`), follows `docs/workflow/roles/<n>-*.md`, and stays in role. Full rules: [docs/workflow/README.md](docs/workflow/README.md).
 - **Every handoff:** update the item's header line and Handoff log, update its BOARD row, and commit.
 - **One item in `3-building/` at a time, on its own `feat/<phase>-<slug>` branch.** Work slowly: small steps, and check in with the owner.
 - **Never `git push` or merge to `main` without the owner's explicit OK.** `main` is frozen while prod is parked, because a push to `main` runs the AWS deploy workflow.

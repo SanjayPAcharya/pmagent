@@ -11,14 +11,14 @@ Nothing important lives only in a chat. The shared memory is:
 
 | # | Role | Job | Moves items | Start the session with |
 |---|---|---|---|---|
-| 1 | [Product Planning](roles/1-product-planning.md) | roadmap, backlog, priorities, phase drafts (why + scope) | idea → `draft` → `pm-review` | `/role-planning` |
-| 2 | [Product Manager](roles/2-product-manager.md) | makes a draft build-ready: checks it against the code, writes acceptance criteria, build steps, test plan | `pm-review` → `ready` | `/role-pm` |
-| 3 | [Product Developer](roles/3-product-developer.md) | builds it one step per commit, with tests; updates the user guide | `ready` → `dev` → `review` | `/role-dev` |
-| 4 | [Product / Code Reviewer](roles/4-code-reviewer.md) | approves or sends it back; never edits product code | `review` → `test` (or `changes-requested`) | `/role-review` |
-| 5 | [Product Tester](roles/5-product-tester.md) | proves every acceptance criterion on the local stack | `test` → `release` (or `changes-requested`) | `/role-test` |
-| 6 | [Product DevOps (local)](roles/6-devops-local.md) | owns the local Docker stack; merges and closes items | `release` → `done` | `/role-devops` |
+| 1 | [Product Planning](roles/1-product-planning.md) | roadmap, backlog, priorities, phase drafts (why + scope) | idea → `draft` → `pm-review` | `/pmagent-planning` |
+| 2 | [Product Manager](roles/2-product-manager.md) | makes a draft build-ready: checks it against the code, writes acceptance criteria, build steps, test plan | `pm-review` → `ready` | `/pmagent-pm` |
+| 3 | [Product Developer](roles/3-product-developer.md) | builds it one step per commit, with tests; updates the user guide | `ready` → `dev` → `review` | `/pmagent-dev` |
+| 4 | [Product / Code Reviewer](roles/4-code-reviewer.md) | approves or sends it back; never edits product code | `review` → `test` (or `changes-requested`) | `/pmagent-review` |
+| 5 | [Product Tester](roles/5-product-tester.md) | proves every acceptance criterion on the local stack | `test` → `release` (or `changes-requested`) | `/pmagent-test` |
+| 6 | [Product DevOps (local)](roles/6-devops-local.md) | owns the local Docker stack; merges and closes items | `release` → `done` | `/pmagent-devops` |
 
-The `/role-…` commands live in `.claude/commands/`. Each one loads its role guide, and the role guide says exactly what to read, do and hand off.
+The `/pmagent-…` commands live in `.claude/commands/`. Each one loads its role guide, and the role guide says exactly what to read, do and hand off.
 
 ## Groups (folders) and stages
 
@@ -54,7 +54,7 @@ A work item is **one markdown file**. It moves between four folders under [`docs
 1. Update the item's header line: Stage, Next role, Branch.
 2. Append a handoff note to the item's **Handoff log** (template below).
 3. Update the item's row on BOARD.md. If its group changed, `git mv` the file and move the row to the matching table. Then update the **▶ Next session** line at the top of BOARD.md:
-   - normally it's the next role in order (after DevOps, back to `/role-planning`);
+   - normally it's the next role in order (after DevOps, back to `/pmagent-planning`);
    - if you sent the item back, it's the role you sent it to.
 4. Commit those changes (see Git flow). **Never push.**
 5. Tell the owner in two or three lines what you did, what's next, and which command starts the next session.

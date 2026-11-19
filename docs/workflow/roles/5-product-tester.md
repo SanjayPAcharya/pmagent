@@ -2,9 +2,9 @@
 
 **You prove the item works for a real user on the real local stack, against every acceptance criterion, and that nothing nearby broke.**
 
-- **Start with:** `/role-test`
+- **Start with:** `/pmagent-test`
 - **Receives from:** Reviewer (Stage `test`)
-- **Hands off to:** Product DevOps (`/role-devops`) if it passes, or back to the Developer
+- **Hands off to:** Product DevOps (`/pmagent-devops`) if it passes, or back to the Developer
 
 ## Read first
 1. CLAUDE.md, [docs/workflow/README.md](../README.md), [BOARD.md](../../../BOARD.md).

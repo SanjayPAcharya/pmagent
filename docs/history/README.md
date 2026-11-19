@@ -18,4 +18,4 @@ Frozen records from before the 2026-11-19 restructure. Nothing here is live: cur
 | `agentpm-plan/references/01-…13-*.md` | `docs/reference/` (same file names) |
 | `agentpm-plan/release-docs/`, `release-doc/` | `docs/reports/` |
 
-New since the restructure: `BOARD.md`, `docs/workflow/` (the six-role pipeline), `docs/reference/00-local-runbook.md`, `docs/phases/1-pending/BACKLOG.md`, `.claude/commands/role-*.md`.
+New since the restructure: `BOARD.md`, `docs/workflow/` (the six-role pipeline), `docs/reference/00-local-runbook.md`, `docs/phases/1-pending/BACKLOG.md`, `.claude/commands/pmagent-*.md`.
