@@ -59,7 +59,10 @@
   - **Gap 6:** focus moves to "Log in again" on open and Tab stays on it. Copy is sentence case: "Session expired" / "You've been signed out, so changes can't be saved right now. Log in again to keep working." The button shows `Loader2` + `disabled` while it redirects (async-button standard).
   - **Bug found and fixed (AC1/AC2):** the as-built check `keycloak.authenticated || keycloak.token` never passed in the real case, because keycloak-js clears both as soon as Keycloak refuses a refresh (`clearToken()` on a 400). The bus now remembers that the page started signed in (`watchSession()`, called from `main.tsx`) and also listens to `keycloak.onAuthLogout`. It fires once; later calls are no-ops.
   - **AC1 "nothing behind it can be used":** the prompt is portalled to `<body>`, `#root` gets `inert` while it's up, and a capture-phase key guard mutes the app's shortcuts (⌘K, `?`, board keys). Why: `aria-modal` alone doesn't stop Tab or document-level shortcuts.
-- [ ] **S2** — Add unit tests for the event bus (fires once, only when authenticated). Describe both features in `docs/product/features.md` in plain language and refresh its date.
+- [x] **S2** — Add unit tests for the event bus (fires once, only when authenticated). Describe both features in `docs/product/features.md` in plain language and refresh its date.
+  - `lib/auth.test.ts` (7 tests): never fires for a signed-out page; fires once however often it's reported; still fires after keycloak-js has cleared the token (the S1 bug); late listeners hear it; unsubscribe works; a refused refresh fires it and a good one doesn't; `onAuthLogout` fires it.
+  - `components/SessionExpiredModal.test.tsx` (5 tests): hidden until expiry; sentence-case title, focus on "Log in again", `#root` inert, prompt outside `#root`; ⌘K and `?` muted; the button starts login and shows busy; unmount releases `#root`. Why the extra file: it pins down AC1 and AC8, which the bus tests can't reach.
+  - `features.md`: "Remember me" in Step 1, plus a new "Signing in & staying signed in" section in Part 2. Date refreshed to 2026-11-19.
 
 DevOps impact: Keycloak realm settings on the running dev Keycloak (via kcadm/init), plus the prod bootstrap script (prod itself is parked). No migrations, env vars or new dependencies.
 
