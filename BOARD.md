@@ -1,6 +1,6 @@
 # PmAgent — Board
 
-> **▶ Next session: `/pmagent-test`.** It tests 3.8.8 (the Building row) on `feat/3.8.8-session-expiry` against every AC on the local stack, including the session ending with a ticket drawer open. Then it passes the item to DevOps or sends it back. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-devops`). Each session updates this line and tells you which command comes next.
+> **▶ Next session: `/pmagent-dev`.** The Tester sent 3.8.8 back (AC1, §8). It fixes the gap on `feat/3.8.8-session-expiry`: on a freshly loaded page, a session that ends while the tab is idle shows no prompt, because the token-expiry handler is attached after `keycloak.init()`, so keycloak-js never arms its timer for the first token. 3.8.3-t1 waits in Ready until 3.8.8 has merged. Then go down the list (`/pmagent-review`, `/pmagent-test`, `/pmagent-devops`). Each session updates this line and tells you which command comes next.
 >
 > **Autopilot is on.** You do Planning; the Overview session wakes each role in turn from here ([how](docs/workflow/README.md#autopilot-the-overview-session)).
 > **Waiting to push:** nothing yet.
@@ -21,7 +21,7 @@ Start each session with its command: `/pmagent-planning` · `/pmagent-pm` · `/p
 
 | Phase | Work item | Stage | Next role | Branch | Updated | Notes |
 |---|---|---|---|---|---|---|
-| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `test` | **Product Tester** | `feat/3.8.8-session-expiry` | 2026-11-19 | Re-review: approved with nits. The drawer-focus fix (`3e09228`) checks out, and nit #4 is logged as BACKLOG B4. Re-ran suites: web 92/92, api 123/123, typecheck and build green. Tester: check AC1/AC8 with a ticket drawer open. |
+| 3.8.8 | [Session expiry & "Remember me"](docs/phases/3-building/phase-3.8.8-session-expiry.md) | `changes-requested` | **Product Developer** | `feat/3.8.8-session-expiry` | 2026-11-19 | Test: **Fail** on AC1. An idle tab gets no prompt when the session ends, until the user acts and their save fails; repro and cause in §8. AC2–AC7 and AC9 pass; AC8 passes for the keyboard, VoiceOver not verified. Suites: api 123/123, web 92/92, typecheck and build green; e2e a11y passed (core-flow self-skipped, BACKLOG T6). Test data cleaned up. New BACKLOG lines: B5–B7, T6. |
 
 ## ✅ Reviewed — ready to build — [docs/phases/2-ready/](docs/phases/2-ready/)
 

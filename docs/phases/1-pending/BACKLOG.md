@@ -15,6 +15,9 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | B2 | The drawer's collapsed Relationships header never shows the blocked badge, because `api.getTicket` returns no blocker count. **→ Promoted to [3.6-b](phase-3.6-b-loose-ends.md) on 2026-11-19.** | Noticed during 3.7.2 | 2026-07-07 |
 | B3 | Line 21 of `sourcecode/apps/api/src/services/ai.prompts.ts` says the subtasks and quick-parse prompts exist; only sprint-goal does. Fix it when 3.8.3 lands. **→ In [3.8.3-t1](../2-ready/phase-3.8.3-t1-ai-subtasks.md) step S1 (2026-11-19).** | Restructure audit | 2026-11-19 |
 | B4 | A network blip during a token refresh (Keycloak briefly unreachable) shows the "Session expired" prompt, though the session may still be fine. keycloak-js rejects but keeps the token in that case. Retry once while `keycloak.token` is still set (`sourcecode/apps/web/src/lib/auth.ts`, `onTokenExpired`; also the 401 path in `lib/api.ts`). Recoverable today: "Log in again" signs straight back in. | 3.8.8 review nit #4 | 2026-11-19 |
+| B5 | At 375 px the board page's project header row (back link, All/Sprint/Ad-hoc, Board/List, My tickets, Sprints, Reports) is about 650 px wide, so the whole page overflows sideways and fixed layers (prompts, dialogs) centre in the wider layout, partly off-screen. Fits 3.6-b's phone check. | 3.8.8 test | 2026-11-19 |
+| B6 | The shared primary `Button`'s focus ring is 1 px in the same blue as the button, so `:focus-visible` is barely visible on primary buttons (CLAUDE.md asks for a visible ring). | 3.8.8 test | 2026-11-19 |
+| B7 | "Delete ticket" in the drawer (`TicketDrawer.tsx`, `remove()`) asks with a native `window.confirm`, not the product's inline two-click confirm. | 3.8.8 test | 2026-11-19 |
 
 ## Features (deferred or requested)
 
@@ -39,6 +42,7 @@ Every entry here is at Stage `idea`. Priority lives on [BOARD.md](../../../BOARD
 | T3 | Old verification debt from 2.1: silent sign-in on hard refresh (C9), drag-reorder feel within a column (C10), the mention → notification chain. Probably fine; confirm in a Tester regression pass. | 2.1 | 2026-06-24 |
 | T4 | `docs/product/overview.md` still describes the original MVP and pricing. | Restructure audit | 2026-11-19 |
 | T5 | The offline AI eval (`pnpm --filter @agentpm/api ai:eval`) only has fixtures for draft / expand / summary. `--endpoint sprintGoal` already crashes on `fixtures[ep].length`, and the 3.8.3-t1 `subtasks` and X1 `quickParse` entries won't be covered either. Add fixtures, or skip endpoints that have none. | PM, 3.8.3-t1 check | 2026-11-19 |
+| T6 | e2e: `core-flow.spec.ts` never runs, because its file-level `test.skip(!process.env.E2E_USER2, …)` skips the whole file, not just the second-user test. And each `a11y.spec.ts` run leaves an "A11y Org <stamp>" org behind (the e2e user has 18 leftover test orgs). Scope the skip to the mention test, and delete the throwaway org at the end of the a11y spec. | 3.8.8 test | 2026-11-19 |
 
 ## DevOps (local)
 

@@ -1,7 +1,7 @@
 # Phase 3.8.8 — Session expiry & "Remember me"
 
-> **Stage:** `test` · **Next role:** Product Tester · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
-> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back for one blocking fix (§7), the fix landed in `3e09228`, and the re-review approved it for the Tester.
+> **Stage:** `changes-requested` · **Next role:** Product Developer · **Branch:** `feat/3.8.8-session-expiry` · **Size:** S
+> Built on 2026-08-06 outside the pipeline. On 2026-11-19 the Developer put it on its branch and closed the known gaps (§3). The Reviewer sent it back for one blocking fix (§7), the fix landed in `3e09228`, and the re-review approved it for the Tester. The Tester failed AC1 (§8): on a freshly loaded page, a session that ends while the tab sits idle shows no prompt until the user acts.
 
 ## 1. Why — *Product Planning*
 - **Problem:** when a Keycloak session ran out, the app sent the user straight to the login page mid-task with no explanation (`main.tsx` called `keycloak.login()` when a refresh failed). There was also no way to stay signed in across days.
@@ -137,7 +137,63 @@ No new findings. Copy, tokens and lucide icons are unchanged, there are no new i
 - Not run by me: a browser check. The Developer did one with ⌘K; the Tester covers the drawer and AC1–AC9 on the stack.
 
 ## 8. Test report — *Tester*
-_Not started._
+**Verdict: Fail** (2026-11-19). AC1 fails in its main case, an idle tab (repro below). Every other AC passes. Two checks couldn't be done in the browser pane and are marked: the VoiceOver part of AC8, and a real browser restart for AC6, which was checked through the cookies as §6 allows.
+
+**Environment**
+- Branch `feat/3.8.8-session-expiry` at `2d6ce99`, clean tree. Ran `docker compose restart api keycloak`, then `docker compose up keycloak-init` (the realm step from the Handoff log).
+- Health: api `/health` and `/ready` 200, web 200. The e2e user already existed (`seed-e2e-user.sh` reported "already exists").
+- `pnpm typecheck --force`: 4/4 tasks, 0 cached.
+- `pnpm --filter @agentpm/api test`: 22 files, **123/123**.
+- `pnpm --filter @agentpm/web test`: 17 files, **92/92**.
+- `pnpm --filter @agentpm/web build`: OK (only the usual chunk-size warning).
+- `pnpm --filter @agentpm/web test:e2e`: **1 passed, 2 skipped.** The a11y spec passed: no serious axe violations on Dashboard, Account, Board and List. Both core-flow tests were skipped, because the file-level `test.skip(!E2E_USER2)` skips the whole file. That predates this item and is logged as BACKLOG T6. I ran the core flow by hand instead (AC9).
+- `bash -n infra/keycloak/prod-bootstrap.sh`: OK. Prod is parked, so the script wasn't run.
+- Browser: the in-app pane, signed in as the seeded e2e user. Light, dark and 375 px checked.
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC1 | **fail** | **Idle tab, fresh page:** I signed in, opened a ticket drawer and typed a comment draft, then ended the session with kcadm `users/<id>/logout` at 17:55:20. The access token ran out at about 17:58:25. I watched until 17:59:11: no prompt, `keycloak.authenticated` still true, and no refresh attempted (`keycloak.tokenTimeoutHandle` was empty). The prompt appeared only when I pressed Send. The refresh then got a 400, `POST …/comments` got a 401, an "Unauthorized" toast showed behind the prompt, and the draft was lost after re-login. **The intended path works only after one refresh has happened:** I forced a refresh (`tokenTimeoutHandle` then set), ended the session at 18:01:05 with the drawer open and a draft typed, and the prompt appeared on its own at 18:05:54, exactly at expiry, with no action from me. Focus moved from the drawer's textarea to "Log in again". In every case it's a prompt, never a redirect, and nothing behind it is usable (see AC8). Root cause and repro below. |
+| AC2 | pass | After an admin sign-out I sent three API calls at once (`me`, `listOrgs`, `getOrg`) with a token the API rejects. All three got 401 and the refresh got 400. **Exactly one** prompt appeared (one dialog: overlay + content), with focus on "Log in again". The Send case in AC1 also took the 401 path: the network log shows `token` 400, then `POST …/comments` 401, and one prompt. |
+| AC3 | pass | Done three times. Enter on "Log in again" opens the Keycloak login with `redirect_uri` set to the current URL. After signing in I was back on `/…/board/ticket/1` with the drawer open, no prompt and nothing inert, and on `/…/board` the other times. The button shows `Loader2` and `disabled` on click (unit-tested; in the browser the page leaves before the state can be read). |
+| AC4 | pass | Signed out on `/`: the landing page shows with no dialog, no inert nodes and no console errors after 6 s. A normal **Sign out** from the board leads to the landing page with no prompt after 6 s. |
+| AC5 | pass | Keycloak login: "Remember me" sits between the password field and "Forgot Password?", with an accessible label "Remember me" (the label wraps the input). The checkbox `accent-color` is the brand primary: rgb(0,123,255) in dark, rgb(0,118,245) in light. The label colour follows the theme. Checked in dark and light (the theme comes from the `pmagent-theme` cookie, which follows the OS when set to "system") and at 375 px. |
+| AC6 | pass (cookie check) | A real browser restart isn't possible in the pane, so I read the Set-Cookie headers of a scripted hosted-login sign-in, as §6 allows. **Ticked:** `KEYCLOAK_IDENTITY` and `KEYCLOAK_SESSION` have `Max-Age=2592000` (30 days) and `KEYCLOAK_REMEMBER_ME` has `Max-Age=31536000`, so they survive a restart. **Unticked:** `KEYCLOAK_IDENTITY` has no Max-Age (a browser-session cookie, gone on restart) and `KEYCLOAK_SESSION` has `Max-Age=36000`. The Keycloak sessions from the pane's own sign-ins showed `rememberMe: true` for ticked and `false` for unticked. Realm lengths: 30 days with Remember me, normally 1800 s idle and 36000 s max. |
+| AC7 | pass | On the running realm I set `rememberMe=false` and both RememberMe lifetimes to `0`, then re-ran `docker compose up keycloak-init` ("remember-me on (30-day sessions)"). The kcadm read-back was `rememberMe: true`, `ssoSessionIdleTimeoutRememberMe: 2592000`, `ssoSessionMaxLifespanRememberMe: 2592000`. Normal lengths were unchanged (1800 / 36000) and `verifyEmail` stayed false. |
+| AC8 | pass (keyboard); VoiceOver **not verified** | With the ticket drawer open behind the prompt, focus is on "Log in again" and stays there through Tab, Shift+Tab, typing, Esc, ⌘K, a real `?`, `F`, and clicks on the backdrop and card text. The drawer stays open, `inert` and `aria-hidden`; `#root` is inert; the draft text is unchanged; no palette or help opens. The dialog is labelled by "Session expired" and described by the body text, and the button's name is "Log in again". Copy is sentence case from `en.json`. `:focus-visible` matches on the button. **Not verified:** a VoiceOver spot check, since the pane has no screen reader. The accessibility tree above is the stand-in. |
+| AC9 | pass | Sign in with the box ticked and unticked. A forced refresh with a live session gives a new token and no prompt. ⌘K opens the palette and `?` opens "Keyboard shortcuts". Core flow by hand: org → project → board → create ticket (drawer opens) → comment posted. Sign out leads to the landing page. |
+
+**Failure: AC1, an idle tab never shows the prompt**
+- **Repro:**
+  1. Load the app and sign in (or reload a signed-in page). Open a ticket and start typing a comment. Do nothing else.
+  2. End the session: admin console → Users → the user → Sessions → Sign out, or `kcadm.sh create users/<id>/logout -r agentpm`.
+  3. Wait more than 5 minutes (the access-token lifetime). **Expected:** the session-expired prompt appears by itself. **Actual:** nothing happens and the page still looks signed in.
+  4. Press Send. Only now does the prompt appear. The comment fails with 401, an "Unauthorized" toast shows behind the prompt, and the draft is gone after "Log in again".
+- **Why:** keycloak-js 26.2.4 schedules its `onTokenExpired` timer inside `setToken` (`lib/keycloak.js`, around line 1575), and only if `onTokenExpired` is already set when a token is stored. `watchSession()` sets it after `keycloak.init()` resolves, so the first token after any page load (sign-in, reload, check-sso restore) has no timer. A timer is armed only after a later refresh, for example an API call made in the token's last 30 s.
+  - The API checks tokens locally, so calls keep succeeding until the token expires.
+  - The board and drawer don't poll, so an idle tab never finds out.
+  - `dev` attached the handler at the same point, so the gap predates this item. But AC1, and the Handoff log's note that the prompt "appears at the next token refresh (up to 5 minutes)", depend on it. That idle-tab case is what this feature is for.
+- **Suggested fix (Developer's call):**
+  - Attach `onTokenExpired` before `init()`. The bus is already gated on `watchSession()`, so the landing page is unaffected.
+  - Or arm the first timer in `watchSession()` from `tokenParsed.exp`.
+  - Add a unit test: the first token's expiry, with no earlier refresh, triggers a refresh and, if that fails, the prompt.
+- **Small, same area (fold in if cheap):** when the expiry is discovered by a failed save, the save's raw "Unauthorized" toast shows behind the prompt. It's covered by the overlay, but the prompt alone says it better.
+
+**Regressions found:** none caused by this item.
+
+**Noticed in passing** (outside this item; logged in BACKLOG):
+- **B5:** at 375 px the board page's project header row is about 650 px wide, so the whole page overflows. Fixed layers, including this prompt, centre in the 650 px layout and sit partly off-screen until the user pans. 3.6-b's phone check covers this area.
+- **B6:** the shared primary `Button`'s focus ring is 1 px in the same blue as the button, so it's barely visible.
+- **B7:** "Delete ticket" in the drawer uses a native `window.confirm`, not the inline two-click confirm.
+- **T6:** the e2e core-flow file is always skipped, and each a11y run leaves an "A11y Org <stamp>" org behind (the e2e user now has 18 leftover test orgs).
+
+**Clean-up**
+- Deleted my test ticket A11Y-1 permanently, with its comment, from the e2e user's "A11y Org 1783497623300". There are 0 rows left in Comment, Notification, TicketActivity and TicketWatcher.
+- Deleted the "A11y Org t388" org that my e2e run created.
+- The append-only AuditLog keeps 3 entries (ticket, and org created/deleted). That's by design, so I left them.
+- The A11y Project's ticket counter is now 1. That's harmless.
+- AC7's temporary `rememberMe=false` and `0` lifetimes were put back by `keycloak-init` itself. I read back the full set at the end: unchanged from the start.
+- Ended every e2e-user Keycloak session, including the two from the cookie check and the e2e run's own. `agentpm-web` direct-access grants are still off, and no realm timeout was shortened.
+- No owner data ("Oracle") was touched.
 
 ## 9. Release — *DevOps*
 _Not started._ The realm settings must be applied to the running dev Keycloak (kcadm or a re-run of `keycloak-init`), not just written into the JSON.
@@ -218,3 +274,15 @@ _Not started._ The realm settings must be applied to the running dev Keycloak (k
 - **State:** branch `feat/3.8.8-session-expiry`, reviewed at `5adb156`, with no product code changed by me. Ran: typecheck 4/4 (uncached), web 92/92, api 123/123, web build OK. My throwaway open-drawer test now passes.
 - **Next role should:** run §6 on the local stack. For AC1 and AC8, end the session with a **ticket drawer** open, not only ⌘K. The jsdom tests can't enforce `inert`, and the Developer browser-checked only ⌘K. The e2e user has no tickets, so create one and delete it afterwards (restore test data).
 - **Watch out for:** after an admin sign-out, the prompt waits for the next token refresh (up to 5 minutes), unless you force one with `keycloak.updateToken(-1)`. AC6 (survives a browser restart) is still unverified. Restore any realm timeout you shorten.
+
+### 2026-11-19 · Product Tester → Product Developer
+- **Did:** ran §6 on the local stack against every AC. Verdict: **Fail** on AC1. AC2–AC7 and AC9 pass. AC8 passes for the keyboard; the VoiceOver part isn't verified. AC6 was checked through cookies (§6 fallback). Full table, evidence and repro in §8. No product code changed.
+- **State:** branch `feat/3.8.8-session-expiry` at `2d6ce99` before this commit.
+  - Ran: typecheck 4/4 (0 cached), api 123/123, web 92/92, web build OK.
+  - e2e: 1 passed (a11y) and 2 skipped (core-flow is skipped by its own file-level `test.skip`, BACKLOG T6). I did the core flow by hand.
+  - All test data is cleaned up (§8). The realm settings are as they were, and the e2e user has no Keycloak sessions.
+- **Next role should:** fix the AC1 gap in `apps/web/src/lib/auth.ts` / `main.tsx`. keycloak-js only arms its `onTokenExpired` timer if the handler exists when a token is stored, but `watchSession()` attaches it after `init()`. So the first token after a page load is never watched, and an idle tab learns of the ended session only on the user's next action. Add a unit test for "first token expires with no earlier refresh". Then re-check in the browser: sign in fresh, end the session, wait more than 5 min without touching anything, and the prompt should appear on its own.
+- **Watch out for:**
+  - Don't force a refresh (`updateToken(-1)`) before you wait. That arms the timer and hides the bug, which is why earlier browser checks passed.
+  - Optional, same area: the raw "Unauthorized" toast behind the prompt when a save discovers the expiry.
+  - Logged in BACKLOG, not this item: B5 (board header overflows at 375 px), B6 (barely visible focus ring on primary buttons), B7 (`window.confirm` on Delete ticket), T6 (e2e skip and leftover orgs).
